@@ -23,7 +23,7 @@ void spi_device::set_speed(uint32_t speed)
 		throw "can't set max speed hz";
 }
 
-void spi_device::write(void* tx, void* rx, int len)
+void spi_device::message(void* tx, void* rx, int len)
 {
 	struct spi_ioc_transfer tr;
 

@@ -17,6 +17,7 @@ void max5590::write_outputs(std::vector<std::pair<int, uint16_t> > channels)
 		command cmd = (command) channels[i].first;
 		tx[i] = build_command(cmd, channels[i].second);
 	}
-	write(tx, NULL, n);
+
+	message(tx, NULL, n);
 }
 

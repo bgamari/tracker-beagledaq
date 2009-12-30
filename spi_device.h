@@ -20,6 +20,6 @@ protected:
 	void set_bits_per_word(uint8_t bits);
 	void set_speed(uint32_t speed);
 
-	void write(void* tx, void* rx, int len);
+	void message(void* tx, void* rx, int len);
 };
 

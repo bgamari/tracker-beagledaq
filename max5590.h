@@ -29,7 +29,6 @@ public:
 		LOAD_DAC,
 	};
 
-private:
 	uint16_t build_command(enum command cmd, short data);
 };
 

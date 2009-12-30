@@ -1,12 +1,11 @@
 #pragma once
 
-#include <cstdio>
+#include <cstdint>
 #include <vector>
 #include <utility>
 
 #include "spi_device.h"
 
-typedef uint16_t sample_t;
 
 class max5590 : spi_device {
 public:
@@ -16,7 +15,7 @@ public:
 	 * write_outputs()
 	 *
 	 */
-	void write_outputs(std::vector<std::pair<int, sample_t> > channels);
+	void write_outputs(std::vector<std::pair<int, uint16_t> > channels);
 	
 	enum command {
 		LOAD_A=0x0,

@@ -10,9 +10,7 @@
  *
  */
 
-
-#ifndef _BITFIELD_H
-#define _BITFIELD_H
+#pragma once
 
 #define BIT_SIZEOF(type) (8*sizeof(type))
 
@@ -100,6 +98,4 @@ void extract_bits(const TSrc* src, int src_start_bit, int src_end_bit, TDest* de
 		dest_bit = (dest_bit == BIT_SIZEOF(TDest)) ? 0 : dest_bit+1;
 	}
 }
-
-#endif
 

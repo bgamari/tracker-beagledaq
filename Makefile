@@ -2,6 +2,6 @@ CXXFLAGS = -std=gnu++0x
 
 all : tracker
 
-tracker : main.o max5590.o spi_device.o
+tracker : main.o spi_device.o max5590.o max1270.o
 	g++ -o $@ $<
 

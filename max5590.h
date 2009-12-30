@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cstdio>
+#include <vector>
+#include <utility>
+
 #include "spi_device.h"
 
 typedef uint16_t sample_t;
@@ -13,20 +16,7 @@ public:
 	 * write_outputs()
 	 *
 	 */
-	template<int N>
-	void write_outputs(std::tr1::array<int,N> channels, std::tr1::array<sample_t,N> value)
-	{
-		uint16_t tx[N];
-
-		for (int i=0; i<N; i++) {
-			if (channels[i] > 7)
-				throw new "invalid channel"
-
-			command cmd = (command) channels[i];
-			tx[i] = build_command(cmd, value);
-		}
-		write(tx, NULL, N);
-	}
+	void write_outputs(std::vector<std::pair<int, sample_t> > channels);
 	
 	enum command {
 		LOAD_A=0x0,

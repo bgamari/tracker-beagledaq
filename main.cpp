@@ -1,8 +1,7 @@
-#include <array>
-
 #include <stdint.h>
-#include <linux/spi/spidev.h>
 #include "bitfield.h"
+#include "max5590.h"
+#include "max1270.h"
 
 static const char* in_dev = "/dev/spidev1.0";
 static const char* out_dev = "/dev/spidev1.1";
@@ -15,12 +14,5 @@ static uint32_t speed = 500000;
 
 int main(int argc, char** argv)
 {
-	int fd;
-       
-	fd = open(device, O_RDWR);
-	if (fd < 0)
-		pabort("can't open device");
-
-	configure_spi(fd);
 }
 

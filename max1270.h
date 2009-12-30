@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+#include <cstring>
+
 #include "spi_device.h"
 
 class max1270 : spi_device {
@@ -8,18 +11,20 @@ class max1270 : spi_device {
 	/*
 	 * read_inputs(): SPI interface for MAX1270 12-bit ADC
 	 */
-	template<int N>
-	static std::tr1::array<sample_t,N> read_inputs(std::tr1::array<int,N> channels)
+	std::vector<sample_t> read_inputs(std::vector<int> channels)
 	{
-		const int samp_stride = 18; // Number of clocks between consecutive requests
-		int words = 18*len/16 + ((18*len % 16) != 0);
-		uint16_t tx[words];
-		uint16_t rx[words] = {0, };
-		int ret;
+		int n = channels.size();
+		const int sample_stride = 18; // Number of clocks between consecutive requests
+		const int words = 18*n/16 + ((18*n % 16) != 0);
 
-		for (int bit=0, i=0; i<len; i++, bit += samp_stride) {
+		uint16_t* tx = new uint16_t[words];
+		uint16_t* rx = new uint16_t[words];
+		memset(tx, 0, 2*words);
+		memset(rx, 0, 2*words);
+		
+		for (int bit=0, i=0; i<n; i++, bit += sample_stride) {
 			if (channels[i] > 7)
-				throw new "invalid channel"
+				throw "invalid channel";
 
 			uint8_t cntrl_byte = 
 				1 << 7			// Start bit
@@ -32,9 +37,12 @@ class max1270 : spi_device {
 
 		write(tx, rx, words);
 
-		std::tr1::array<sample_t,N> res;
-		for (int bit=14, i=0; i<len; i++, bit += sample_stride)
-			res[i] = extract_bits(&rt[0], bit, bit+12, &res[i]);
+		std::vector<sample_t> res(n);
+		for (int bit=14, i=0; i<n; i++, bit += sample_stride)
+			extract_bits(&rx[0], bit, bit+12, &res[i]);
+
+		delete [] tx;
+		delete [] rx;
 
 		return res;
 	}

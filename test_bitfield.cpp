@@ -3,8 +3,7 @@
  *
  * (c) 2009 Ben Gamari
  *
- * Unit tests for bitfield manipulation library. These tests are written for a
- * little-endian architecture (FIXME).
+ * Unit tests for bitfield manipulation library.
  *
  */
 

@@ -12,14 +12,18 @@
 
 #pragma once
 
+/*
+ * set_bits(): Sets a range of bits
+ */
 template<typename TWord>
 void set_bits(TWord* data, int start_bit, int length=1)
 {
-	int bit=0, word=0;
+        int word = start_bit / (8*sizeof(TWord));
+	int bit = start_bit % (8*sizeof(TWord));
 	for (int i=0; i<length; i++) {
 		data[word] |= (1 << bit);
-		word += (bit == 8*sizeof(TWord));
-		bit = (bit == 8*sizeof(TWord)) ? 0 : bit+1;
+		word += (bit == 8*sizeof(TWord)-1);
+		bit = (bit == 8*sizeof(TWord)-1) ? 0 : bit+1;
 	}
 }
 
@@ -29,11 +33,12 @@ void set_bits(TWord* data, int start_bit, int length=1)
 template<typename TWord>
 void clear_bits(TWord* data, int start_bit, int length=1)
 {
-	int bit=0, word=0;
+        int word = start_bit / (8*sizeof(TWord));
+	int bit = start_bit % (8*sizeof(TWord));
 	for (int i=0; i<length; i++) {
 		data[word] &= ~(1 << bit);
-		word += (bit == 8*sizeof(TWord));
-		bit = (bit == 8*sizeof(TWord)) ? 0 : bit+1;
+		word += (bit == 8*sizeof(TWord)-1);
+		bit = (bit == 8*sizeof(TWord)-1) ? 0 : bit+1;
 	}
 }
 
@@ -56,14 +61,15 @@ void assign_bits(const TSrc* src, TDest* dest, int dest_start_bit, int dest_end_
 
 	int bits = dest_end_bit - dest_start_bit;
 	for (int i=0; i<bits; i++) {
+		TSrc bit = src[src_word] & (1 << src_bit);
 		dest[dest_word] &= ~(1 << dest_bit);
-		dest[dest_word] |= ((src[src_word] & (1 << src_bit)) != 0);
+		dest[dest_word] |= ((bit != 0) << dest_bit);
 
-		src_word += (src_bit == 8*sizeof(TSrc));
-		src_bit = (src_bit == 8*sizeof(TSrc)) ? 0 : src_bit+1;
+		src_word += (src_bit == 8*sizeof(TSrc)-1);
+		src_bit = (src_bit == 8*sizeof(TSrc)-1) ? 0 : src_bit+1;
 
-		dest_word += (dest_bit == 8*sizeof(TDest));
-		dest_bit = (dest_bit == 8*sizeof(TDest)) ? 0 : dest_bit+1;
+		dest_word += (dest_bit == 8*sizeof(TDest)-1);
+		dest_bit = (dest_bit == 8*sizeof(TDest)-1) ? 0 : dest_bit+1;
 	}
 }
 
@@ -71,8 +77,8 @@ void assign_bits(const TSrc* src, TDest* dest, int dest_start_bit, int dest_end_
  * extract_bits(): Extracts a given range of bits
  *
  * @src:		The buffer to copy from
- * @src_start_bit:	The bit number of the beginning of the assignment range
- * @src_end_bit:	The bit number of the end of the assignment range
+ * @src_start_bit:	The bit number of the beginning of the extraction range
+ * @src_end_bit:	The bit number of the end of the extraction range
  * @dest:		The buffer to copy to
  *
  */
@@ -86,14 +92,15 @@ void extract_bits(const TSrc* src, int src_start_bit, int src_end_bit, TDest* de
 
 	int bits = src_end_bit - src_start_bit;
 	for (int i=0; i<bits; i++) {
+		TSrc bit = src[src_word] & (1 << src_bit);
 		dest[dest_word] &= ~(1 << dest_bit);
-		dest[dest_word] |= ((src[src_word] & (1 << src_bit)) != 0);
+		dest[dest_word] |= ((bit != 0) << dest_bit);
 
-		src_word += (src_bit == 8*sizeof(TSrc));
-		src_bit = (src_bit == 8*sizeof(TSrc)) ? 0 : src_bit+1;
+		src_word += (src_bit == 8*sizeof(TSrc)-1);
+		src_bit = (src_bit == 8*sizeof(TSrc)-1) ? 0 : src_bit+1;
 
-		dest_word += (dest_bit == 8*sizeof(TDest));
-		dest_bit = (dest_bit == 8*sizeof(TDest)) ? 0 : dest_bit+1;
+		dest_word += (dest_bit == 8*sizeof(TDest)-1);
+		dest_bit = (dest_bit == 8*sizeof(TDest)-1) ? 0 : dest_bit+1;
 	}
 }
 

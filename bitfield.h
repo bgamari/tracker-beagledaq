@@ -1,7 +1,14 @@
 /*
  * bitfield.h
  *
- * (c) 2009 Ben Gamari
+ * (c) Copyright 2009 Ben Gamari
+ * Author: Ben Gamari <bgamari.foss@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; version 2
+ * of the License.
+ *
  *
  * This library arose out of a need for a mechanism for flexibly manipulating
  * bit-fields. The implementation may not be the fastest, but it is written to

@@ -11,11 +11,7 @@ class max5590 : spi_device {
 public:
 	max5590(const char* dev) : spi_device(dev) { }
 
-	/*
-	 * write_outputs()
-	 *
-	 */
-	void write_outputs(std::vector<std::pair<int, uint16_t> > channels);
+	void set(std::vector<std::pair<int, uint16_t> > channels);
 	
 	enum command {
 		LOAD_A=0x0,

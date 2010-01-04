@@ -4,7 +4,7 @@
 /*
  * read_inputs(): SPI interface for MAX1270 12-bit ADC
  */
-std::vector<uint16_t> max1270::read_inputs(std::vector<int> channels)
+std::vector<uint16_t> max1270::get(std::vector<int> channels)
 {
 	int n = channels.size();
 	const int sample_stride = 18; // Number of clocks between consecutive requests

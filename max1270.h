@@ -10,6 +10,6 @@ class max1270 : spi_device {
 public:
 	max1270(const char* dev) : spi_device(dev) { }
 
-	std::vector<uint16_t> read_inputs(std::vector<int> channels);
+	std::vector<uint16_t> get(std::vector<int> channels);
 };
 

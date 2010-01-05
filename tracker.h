@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
 
 struct input_channels {
@@ -10,5 +11,5 @@ struct output_channels {
 	virtual void set(std::vector<uint16_t> values) = 0;
 };
 
-void track(input_channels inputs, output_channels outputs);
+void track(input_channels& inputs, output_channels& outputs);
 

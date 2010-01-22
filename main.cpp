@@ -21,7 +21,7 @@ struct max1270_inputs : input_channels {
 		adc(adc), channels(channels) { }
 
 	std::vector<uint16_t> get() {
-		adc.get(channels);
+		std::vector<uint16_t> inputs = adc.get(channels);
 	}
 };
 

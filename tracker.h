@@ -1,15 +1,18 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
+#include <tr1/array>
 
+template <int N>
 struct input_channels {
-	virtual std::vector<uint16_t> get() = 0;
+	virtual std::tr1::array<uint16_t,N> get() = 0;
 };
 
+template <int N>
 struct output_channels {
-	virtual void set(std::vector<uint16_t> values) = 0;
+	virtual void set(std::tr1::array<uint16_t,N> values) = 0;
 };
 
-void track(input_channels& inputs, output_channels& outputs);
+template <int n_in, int n_out>
+void track(input_channels<n_in>& inputs, output_channels& outputs);
 

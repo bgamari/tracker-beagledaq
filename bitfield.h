@@ -120,7 +120,7 @@ public:
 	generic_bitfield resized(unsigned int size) const {
 		generic_bitfield res(size);
 		int mask_size = std::min(bits, size);
-		for (int i=0; i < res.words(); i++) {
+		for (unsigned int i=0; i < res.words(); i++) {
 			uint8_t mask = 0xff;
 			if (mask_size-sizeof(word_t)*i < sizeof(word_t))
 				mask = (1 << (mask_size - 8*i)) - 1;

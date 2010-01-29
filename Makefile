@@ -1,4 +1,4 @@
-CXXFLAGS = -g3 -std=gnu++0x
+CXXFLAGS = -g3 -std=gnu++0x -Wall
 
 all : tracker
 

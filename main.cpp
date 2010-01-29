@@ -12,22 +12,25 @@ static uint8_t mode = 0;
 static uint8_t bits = 16;
 static uint32_t speed = 500000;
 
+using std::tr1::array;
 
 struct max1270_inputs : input_channels {
 	max1270& adc;
-	std::vector<int> channels;
+	array<int,4> psd_chans;
+	array<int,3> feedback_chans;
 
-	max1270_inputs(max1270& adc, std::vector<int> channels) :
-		adc(adc), channels(channels) { }
+	max1270_inputs(max1270& adc, std::vector<int> channels, array<int,4> psd_chans, array<int,3> feedback_chans) :
+		adc(adc), psd_chans(psd_chans), feedback_chans(feedback_chans) { }
 
-	std::vector<uint16_t> get() {
-		std::vector<uint16_t> inputs = adc.get(channels);
+	input_data get() {
+		input_data v;
+		v.psd = adc.get();
 	}
 };
 
 struct max5590_outputs : output_channels {
 	max5590& dac;
-	std::vector<int> channels;
+	array<int,3> stage_chans;
 
 	max5590_outputs(max5590& dac, std::vector<int> channels) : dac(dac), channels(channels) { }
 

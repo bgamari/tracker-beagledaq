@@ -3,16 +3,25 @@
 #include <cstdint>
 #include <tr1/array>
 
-template <int N>
+
+struct input_data {
+	std::tr1::array<uint16_t,4> psd;
+	std::tr1::array<uint16_t,3> feedback;
+};
+
 struct input_channels {
-	virtual std::tr1::array<uint16_t,N> get() = 0;
+	virtual input_data get() = 0;
+};
+
+
+struct output_data {
+	std::tr1::array<uint16_t,3> stage;
 };
 
 template <int N>
 struct output_channels {
-	virtual void set(std::tr1::array<uint16_t,N> values) = 0;
+	virtual void set(output_data data) = 0;
 };
 
-template <int n_in, int n_out>
-void track(input_channels<n_in>& inputs, output_channels& outputs);
+void track(input_channels& inputs, output_channels& outputs);
 

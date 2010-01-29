@@ -17,20 +17,18 @@ struct point_callback {
 	virtual bool operator()(int n, std::array<uint16_t,N>& outputs) = 0;
 };
 
-template<int N>
 struct route {
-	virtual std::array<uint16_t,N> get_point() = 0;
+	virtual std::array<uint16_t,3> get_point() = 0;
 	virtual void operator++() = 0;
 	virtual bool is_end() = 0;
 };
 
-template<int N>
 struct random_route : route {
 	int n_pts;
-	const std::array<std::uniform_int,N> rngs;
-	std::array<uint16_t,N> a;
+	const std::array<std::uniform_int,3> rngs;
+	std::array<uint16_t,3> a;
 
-	random_route(int n_pts, std::array<std::uniform_int,N> rngs) :
+	random_route(int n_pts, std::array<std::uniform_int,3> rngs) :
 		rngs(rngs), n_pts(n_pts) { }
 
 	void operator++()  {
@@ -46,57 +44,44 @@ struct random_route : route {
 	}
 };
 
-template<int N>
 struct raster_route : route {
-	const std::array<uint16_t,N> start;
-	const std::array<uint16_t,N> step;
-	const std::array<int,N> points;
+	const std::array<uint16_t,3> start;
+	const std::array<uint16_t,3> step;
+	const std::array<unsigned int,3> points;
 
-	int n, n_pts;
-	std::array<int,N> dirs;
-	std::array<int,N> pos; // in units of steps
+	std::array<int,3> dirs;
+	std::array<int,3> pos; // current position in steps
 
-	raster_route(std::array<uint16_t,N> start, std::array<uint16_t,N> step, std::array<int,N> points) :
-		n(0), start(start), step(step), points(points) { 
-		n_pts = 1;
-		for (int i=0; i<N; i++) {
-			n_pts *= points[i];
-			dirs[i] = +1;
-		}
-	}
+	raster_route(std::array<uint16_t,3> start, std::array<uint16_t,3> step, std::array<int,3> points) :
+		n(0), start(start), step(step), points(points), pos({0,0,0}) {  }
 
-	std::array<uint16_t,N> get_point() {
+	std::array<uint16_t,3> get_point() {
 		std::array<uint16_t,N> a;
-		for (int i=0; i<N; i++)
-			a[i] = pos[i]*step[i] + start[i];
+		for (int i=0; i < 3; i++)
+			a[i] = step[i]*pos[i];
 		return a;
 	}
 
 	void operator++() {
-		int i=0;
-		n++;
-		while (i < N) {
-			if (pos[i] < points) {
-				pos[i] += dirs[i];
-				return;
-			} else {
+		unsigned int i=0;
+		while (true) {
+			pos[i] += dirs[i];
+
+			if (pos[i] <= 0 || pos[i] >= points[i]) {
 				dirs[i] *= -1;
-				i++;
-			}
+			else
+				break;
 		}
 	}
 
 	bool is_end() {
-		return n >= n_pts;
+		for (int i=0; i<3; i++) {
+			if (pos[i] <= points[i])
+				return false;
+		}
+		return true;
 	}
 };
-
-std::vector<uint16_t> get_scaled_positions(input_channels<n_in>& positions, input_channels<n_in>& sums)
-{
-	for (int i=0; i<n_in; i++)
-		positions[i] = positions[i] / sums[i];
-	return positions;
-}
 
 template <int n_in, int n_out>
 struct find_min_max : point_callback<n_out> {

@@ -1,12 +1,19 @@
 #include <utility>
+#include <boost/random.hpp>
 #include <time.h>
 #include "tracker.h"
 
-std::array<uint16_t,3> cal_rough_start = {0,0,0};
-std::array<uint16_t,3> cal_rough_step = {100,100,100};
-std::array<int,3> cal_rough_pts = {1000,1000,1000};
+using std::tr1::array;
 
-template<int N>
+Vector3f rough_cal_start = (Vector3f() << 0, 0, 0).finished();
+Vector3f rough_cal_xy_step = (Vector3f() << 0.01, 0.01, 0).finished();
+Vector3i rough_cal_xy_pts = (Vector3i() << 100, 100, 1).finished();
+
+Vector3f rough_cal_z_step = (Vector3f() << 0, 0, 0.01).finished();
+Vector3i rough_cal_z_pts = (Vector3i() << 1, 1, 100).finished();
+
+unsigned int fine_cal_pts = 10000;
+
 struct point_callback {
 	/*
 	 * operator()
@@ -14,52 +21,63 @@ struct point_callback {
 	 * Returns: false to abort route. true otherwise.
 	 *
 	 */
-	virtual bool operator()(int n, std::array<uint16_t,N>& outputs) = 0;
+	virtual bool operator()(Vector3f& pos) = 0;
 };
 
 struct route {
-	virtual std::array<uint16_t,3> get_point() = 0;
+	virtual Vector3f get_pos() = 0;
 	virtual void operator++() = 0;
-	virtual bool is_end() = 0;
+	virtual bool has_more() = 0;
 };
 
-struct random_route : route {
-	int n_pts;
-	const std::array<std::uniform_int,3> rngs;
-	std::array<uint16_t,3> a;
+static void execute_route(output_channels& channels,
+		route& route, point_callback* cb=NULL)
+{
+	for (; route.has_more(); ++route) {
+		Vector3f pos = route.get_pos();
+		channels.set(pos);
+		if (cb)
+			if (! (*cb)(pos))
+				break;
+	}
+}
 
-	random_route(int n_pts, std::array<std::uniform_int,3> rngs) :
+template <class Distribution>
+struct random_route : route {
+	typedef boost::rand48 Engine;
+	const array<boost::variate_generator<Engine, Distribution>&,3> rngs;
+	int n_pts;
+	array<float,3> a;
+
+	random_route(int n_pts, array<boost::variate_generator<Engine, Distribution>&,3> rngs) :
 		rngs(rngs), n_pts(n_pts) { }
 
-	void operator++()  {
+	void operator++() {
 		n_pts--;
-		for (int i=0; i<N; i++)
+		for (int i=0; i<3; i++)
 			a[i] = rngs[i]();
 	}
 
-	std::array<uint16_t,N> get_point() { return a; }
+	array<float,3> get_pos() { return a; }
 
-	bool is_end() {
-		return !(n_pts > 0);
+	bool has_more() {
+		return n_pts > 0;
 	}
 };
 
 struct raster_route : route {
-	const std::array<uint16_t,3> start;
-	const std::array<uint16_t,3> step;
-	const std::array<unsigned int,3> points;
+	const Vector3f start;
+	const Vector3f step;
 
-	std::array<int,3> dirs;
-	std::array<int,3> pos; // current position in steps
+	const Vector3i points;
+	Vector3i pos; // current position in steps
+	Vector3i dirs;
 
-	raster_route(std::array<uint16_t,3> start, std::array<uint16_t,3> step, std::array<int,3> points) :
-		n(0), start(start), step(step), points(points), pos({0,0,0}) {  }
+	raster_route(Vector3f start, Vector3f step, Vector3i points) :
+		start(start), step(step), points(points), pos(Vector3i::Zero()), dirs(Vector3i::Ones()) {  }
 
-	std::array<uint16_t,3> get_point() {
-		std::array<uint16_t,N> a;
-		for (int i=0; i < 3; i++)
-			a[i] = step[i]*pos[i];
-		return a;
+	Vector3f get_pos() {
+		return step.cwise() * pos.cast<float>();
 	}
 
 	void operator++() {
@@ -67,117 +85,115 @@ struct raster_route : route {
 		while (true) {
 			pos[i] += dirs[i];
 
-			if (pos[i] <= 0 || pos[i] >= points[i]) {
+			if (pos[i] <= 0 || pos[i] >= points[i])
 				dirs[i] *= -1;
 			else
 				break;
 		}
 	}
 
-	bool is_end() {
+	bool has_more() {
 		for (int i=0; i<3; i++) {
 			if (pos[i] <= points[i])
-				return false;
+				return true;
 		}
+		return false;
+	}
+};
+
+struct find_min_max : point_callback {
+	input_channels& inputs;
+
+	float min_sum, max_sum;
+	array<Vector3f, 3> min_pos, max_pos;
+	array<Vector3f, 3> min_fb_pos, max_fb_pos;
+
+	find_min_max(input_channels& inputs) : inputs(inputs) { }
+
+	bool operator()(Vector3f& pos) {
+		input_data in = inputs.get();
+		for (int i=0; i<3; i++) {
+			if (in.psd_sum > max_sum) {
+				max_sum = in.psd_sum;
+				max_fb_pos[i] = in.fb_pos;
+				max_pos[i] = pos;
+			}
+			if (in.psd_sum < min_sum) {
+				min_sum = in.psd_sum;
+				min_fb_pos[i] = in.fb_pos;
+				min_pos[i] = pos;
+			}
+		}
+		usleep(100);
 		return true;
 	}
 };
 
-template <int n_in, int n_out>
-struct find_min_max : point_callback<n_out> {
-	input_channels<n_in>& inputs;
-	input_channels<2>& feedback;
+struct collect_cb : point_callback {
+	input_channels& inputs;
+	typedef std::pair<Vector3f, input_data> datum;
+	std::vector<datum> data;
 
-	std::array<int, n_in> min_val, max_val;
-	std::array<std::array<uint16_t,n_in>, n_out> min_pos, max_pos;
-	std::array<std::array<uint16_t,2>, n_out> min_fb_pos, max_fb_pos;
+	collect_cb(input_channels& inputs) : inputs(inputs) { }
 
-	find_min_max(input_channels<n_in> signals, input_channels<2> feedback) :
-		inputs(inputs), feedback(feedback) { }
-
-	bool operator()(int n, std::array<int,n_out> outputs) {
-		std::array<uint16_t,n_in> in = inputs.get();
-		std::array<uint16_t,2> fb = feedback.get();
-		for (int i=0; i<n_in; i++) {
-			if (in[i] > max_val[i]) {
-				max_fb_pos[i] = fb;
-				max_pos[i] = outputs;
-				max_val[i] = in[i];
-			}
-			if (in[i] < min_val[i]) {
-				min_fb_pos[i] = fb;
-				min_pos[i] = outputs;
-				min_val[i] = in[i];
-			}
-		}
-		usleep(100);
+	bool operator()(Vector3f& pos) {
+		datum d(pos, inputs.get());
+		data.push_back(d);
+		return true;
 	}
 };
 
-static std::array<uint16_t, 3> rough_calibrate(input_channels<4>& in, input_channels<2>& fb_in, output_channels<3>& out)
+static Vector3f rough_calibrate(input_channels& inputs, output_channels& outputs)
 {
-	raster_route<3> route(cal_rough_start, cal_rough_step, cal_rough_pts);
-	find_min_max<3> cb(in, fb_in);
+	raster_route route_xy(rough_cal_start, rough_cal_xy_step, rough_cal_xy_pts);
+	find_min_max scan_xy(inputs);
 
-	execute_route(out, route, cb);
-	std::array<uint16_t, 3> laser_pos = {
-		(max_pos[0][0] + min_pos[0][0]) / 2,
-		(max_pos[0][1] + min_pos[0][1]) / 2,
-		0 };
+	execute_route(outputs, route_xy, &scan_xy);
+	Vector3f laser_pos_xy = (scan_xy.max_pos[0] + scan_xy.min_pos[0]) / 2; // FIXME
 	
 	// Scan in Z direction
-	raster_route<1> route();
-	find_min_max<3> cb(in, fb_in);
-	execute_route(out, route, cb);
-	laser_pos[3] = (max_pos[0][0] + min_pos[0][0]) / 2;
+	raster_route route_z(laser_pos_xy, rough_cal_z_step, rough_cal_z_pts);
+	find_min_max scan_z(inputs);
+	execute_route(outputs, route_z, &scan_z);
+	Vector3f laser_pos = (scan_z.max_pos[0] + scan_z.min_pos[0]) / 2;
 	return laser_pos;
 }
 
-static matrix<9,3> fine_calibrate(input_channels<4>& in, input_channels<2>& fb_in, output_channels<3>& out)
+static Matrix<float, 9,3> fine_calibrate(Vector3f rough_pos, input_channels& inputs, output_channels& outputs)
 {
-	std::array<uniform_int,3> rngs = {
+	using boost::uniform_int;
+	array<boost::uniform_int,3> rngs = {
 		uniform_int(-100, +100),
 		uniform_int(-100, +100),
 		uniform_int(-100, +100)
 	};
-	random_route route(rngs, n_pts);
-	collect_data_cb cb(n_pts); // all inputs
+	random_route<uniform_int> rt(rngs, fine_cal_pts);
+	collect_cb cb(inputs);
 
-	execute_route(out, route, cb);
-
+	execute_route(outputs, rt, cb);
+	return true;
 }
 
-static matrix<9,3> invert_matrix(matrix)
+static Matrix<float, 9,3> solve_response_matrix(MatrixXf R)
 {
-	matrix RRi = (R.transpose() * R).inverse();
-	matrix beta = (RRi * R.transpose()) * S;
-	return beta.transpose()
-}
-
-static void execute_route(
-		output_channels<n_out> channels,
-		route route,
-		point_callback* cb=NULL)
-{
-	int n=0;
-	for (; route.has_more(); route++, n++) {
-		channels.set(*i);
-		if (cb) cb(n, *i);
-	}
+	MatrixXf RRi = (R.transpose() * R).inverse();
+	MatrixXf beta = (RRi * R.transpose()) * S;
+	return beta.transpose();
 }
 
 void feedback(input_channels& inputs, output_channels& outputs)
 {
 	while (1) {
-		inputs = get_inputs();
-		calulate_delta();
-		set_outputs()
+		inputs = inputs.get();
+		Vector3f delta = calulate_delta(inputs);
+		outputs.set(delta);
 	}
 }
 
 void track(input_channels& inputs, output_channels& outputs)
 {
-	std::vector<uint16_t, 3> laser_pos = rough_calibrate();
+	Vector3f rough_pos = rough_calibrate();
+	fine_calibrate(rough_pos, inputs, outputs);
 	feedback(coeffs);
 }
 

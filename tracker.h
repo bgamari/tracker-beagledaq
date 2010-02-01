@@ -2,25 +2,22 @@
 
 #include <cstdint>
 #include <tr1/array>
+#include <Eigen/Core>
 
+USING_PART_OF_NAMESPACE_EIGEN
 
 struct input_data {
-	std::tr1::array<uint16_t,4> psd;
-	std::tr1::array<uint16_t,3> feedback;
+	Vector2f psd_pos;
+	float psd_sum;
+	Vector3f fb_pos;
 };
 
 struct input_channels {
 	virtual input_data get() = 0;
 };
 
-
-struct output_data {
-	std::tr1::array<uint16_t,3> stage;
-};
-
-template <int N>
 struct output_channels {
-	virtual void set(output_data data) = 0;
+	virtual void set(Vector3f stage) = 0;
 };
 
 void track(input_channels& inputs, output_channels& outputs);

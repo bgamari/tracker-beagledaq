@@ -19,38 +19,60 @@ struct max1270_inputs : input_channels {
 	array<int,4> psd_chans;
 	array<int,3> feedback_chans;
 
-	max1270_inputs(max1270& adc, std::vector<int> channels, array<int,4> psd_chans, array<int,3> feedback_chans) :
+	max1270_inputs(max1270& adc, array<int,4> psd_chans, array<int,3> feedback_chans) :
 		adc(adc), psd_chans(psd_chans), feedback_chans(feedback_chans) { }
 
 	input_data get() {
 		input_data v;
-		v.psd = adc.get();
+		std::vector<max1270::command*> cmds;
+
+		for (int i=0; i<4; i++)
+			cmds.push_back( new max1270::take_sample(psd_chans[i], v.psd[i]) );
+		for (int i=0; i<3; i++)
+			cmds.push_back( new max1270::take_sample(feedback_chans[i], v.feedback[i]) );
+		
+		adc.submit(cmds);
+
+		for (auto i=cmds.begin(); i!=cmds.end(); i++)
+			delete *i;
+		return v;
 	}
 };
 
 struct max5590_outputs : output_channels {
 	max5590& dac;
-	array<int,3> stage_chans;
+	array<max5590::input_reg,3> stage_chans;
 
-	max5590_outputs(max5590& dac, std::vector<int> channels) : dac(dac), channels(channels) { }
+	max5590_outputs(max5590& dac, array<max5590::input_reg,3> stage_chans) :
+		dac(dac), stage_chans(stage_chans) { }
 
-	void set(std::vector<uint16_t> values) {
-		std::vector<std::pair<int, uint16_t> > v;
-		for (int i=0; i<channels.size(); i++) {
-			std::pair<int, uint16_t> p(channels[i], values[i]);
-			v.push_back(p);
-		}
-		dac.set(v);
+	void set(output_data d) {
+		std::vector<max5590::command*> cmds;
+		for (int i=0; i<3; i++)
+			cmds.push_back( new max5590::load_input_cmd(stage_chans[i], d.stage[i]) );
+
+		dac.submit(cmds);
+
+		for (auto i=cmds.begin(); i!=cmds.end(); i++)
+			delete *i;
 	}
 };
 
 int main(int argc, char** argv)
 {
+	using std::tr1::array;
+	array<int,4> psd_chans = {{0,1,2,3}};
+	array<int,3> feedback_chans = {{4,5,6}};
+	array<max5590::input_reg,3> stage_chans = {{
+		max5590::input_reg::A,
+		max5590::input_reg::B,
+		max5590::input_reg::C }};
+
 	max1270 adc("/dev/spidev0.0");
-	max1270_inputs inputs(adc, {1,2,3});
+	max1270_inputs inputs(adc, psd_chans, feedback_chans);
 
 	max5590 dac("/dev/spidev0.1");
-	max5590_outputs outputs(dac, {1,2,3});
+	max5590_outputs outputs(dac, stage_chans);
 
 	track(inputs, outputs);
 }

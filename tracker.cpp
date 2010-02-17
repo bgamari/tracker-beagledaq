@@ -45,11 +45,11 @@ static void execute_route(output_channels& channels,
 template <class Distribution>
 struct random_route : route {
 	typedef boost::rand48 Engine;
-	const array<boost::variate_generator<Engine, Distribution>&,3> rngs;
-	int n_pts;
+	const array<boost::variate_generator<Engine, Distribution>*,3>& rngs;
+	unsigned int n_pts;
 	array<float,3> a;
 
-	random_route(int n_pts, array<boost::variate_generator<Engine, Distribution>&,3> rngs) :
+	random_route(array<boost::variate_generator<Engine, Distribution>*,3>& rngs, unsigned int n_pts) :
 		rngs(rngs), n_pts(n_pts) { }
 
 	void operator++() {
@@ -58,7 +58,7 @@ struct random_route : route {
 			a[i] = rngs[i]();
 	}
 
-	array<float,3> get_pos() { return a; }
+	Vector3f get_pos() { return a; }
 
 	bool has_more() {
 		return n_pts > 0;
@@ -161,13 +161,14 @@ static Vector3f rough_calibrate(input_channels& inputs, output_channels& outputs
 
 static Matrix<float, 9,3> fine_calibrate(Vector3f rough_pos, input_channels& inputs, output_channels& outputs)
 {
-	using boost::uniform_int;
-	array<boost::uniform_int,3> rngs = {
-		uniform_int(-100, +100),
-		uniform_int(-100, +100),
-		uniform_int(-100, +100)
-	};
-	random_route<uniform_int> rt(rngs, fine_cal_pts);
+	using boost::uniform_real;
+	typedef boost::uniform_real<float> distribution;
+	array<distribution*,3> rngs = {{
+		new distribution(-100, +100),
+		new distribution(-100, +100),
+		new distribution(-100, +100)
+	}};
+	random_route<uniform_real<>> rt(rngs, fine_cal_pts);
 	collect_cb cb(inputs);
 
 	execute_route(outputs, rt, cb);

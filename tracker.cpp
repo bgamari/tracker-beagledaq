@@ -21,6 +21,7 @@
 
 #include <utility>
 #include <boost/random.hpp>
+#include <boost/random/mersenne_twister.hpp>
 #include <time.h>
 #include "tracker.h"
 
@@ -56,21 +57,21 @@ static void execute_route(output_channels& channels,
 {
 	for (; route.has_more(); ++route) {
 		Vector3f pos = route.get_pos();
-		channels.set(pos);
+		output_data d = { pos };
+		channels.set(d);
 		if (cb)
 			if (! (*cb)(pos))
 				break;
 	}
 }
 
-template <class Distribution>
+template <class Engine, class Distribution>
 struct random_route : route {
-	typedef boost::rand48 Engine;
-	const array<boost::variate_generator<Engine, Distribution>*,3>& rngs;
+	array<boost::variate_generator<Engine&, Distribution>,3>& rngs;
 	unsigned int n_pts;
-	array<float,3> a;
+	Vector3f a;
 
-	random_route(array<boost::variate_generator<Engine, Distribution>*,3>& rngs, unsigned int n_pts) :
+	random_route(array<boost::variate_generator<Engine&, Distribution>,3>& rngs, unsigned int n_pts) :
 		rngs(rngs), n_pts(n_pts) { }
 
 	void operator++() {
@@ -180,22 +181,6 @@ static Vector3f rough_calibrate(input_channels& inputs, output_channels& outputs
 	return laser_pos;
 }
 
-static Matrix<float, 9,3> fine_calibrate(Vector3f rough_pos, input_channels& inputs, output_channels& outputs)
-{
-	using boost::uniform_real;
-	typedef boost::uniform_real<float> distribution;
-	array<distribution*,3> rngs = {{
-		new distribution(-100, +100),
-		new distribution(-100, +100),
-		new distribution(-100, +100)
-	}};
-	random_route<uniform_real<>> rt(rngs, fine_cal_pts);
-	collect_cb cb(inputs);
-
-	execute_route(outputs, rt, cb);
-	return true;
-}
-
 static Matrix<float, 9,3> solve_response_matrix(MatrixXf R)
 {
 	MatrixXf RRi = (R.transpose() * R).inverse();
@@ -203,19 +188,38 @@ static Matrix<float, 9,3> solve_response_matrix(MatrixXf R)
 	return beta.transpose();
 }
 
-void feedback(input_channels& inputs, output_channels& outputs)
+static Matrix<float, 9,3> fine_calibrate(Vector3f rough_pos, input_channels& inputs, output_channels& outputs)
+{
+	typedef boost::mt19937 engine;
+	typedef boost::uniform_real<float> distribution;
+	typedef boost::variate_generator<engine&, distribution> vg;
+	engine e;
+	array<vg,3> rngs = {{
+		vg(e, distribution(-100, +100)),
+		vg(e, distribution(-100, +100)),
+		vg(e, distribution(-100, +100))
+	}};
+	random_route<engine, distribution> rt(rngs, fine_cal_pts);
+	collect_cb cb(inputs);
+
+	execute_route(outputs, rt, &cb);
+	return solve_response_matrix(r);
+}
+
+void feedback(Matrix<float,9,3> M, input_channels& inputs, output_channels& outputs)
 {
 	while (1) {
-		inputs = inputs.get();
-		Vector3f delta = calulate_delta(inputs);
-		outputs.set(delta);
+		input_data in = inputs.get();
+		Vector3f delta = calulate_delta(in);
+		output_data out = { delta };
+		outputs.set(out);
 	}
 }
 
 void track(input_channels& inputs, output_channels& outputs)
 {
-	Vector3f rough_pos = rough_calibrate();
-	fine_calibrate(rough_pos, inputs, outputs);
-	feedback(coeffs);
+	Vector3f rough_pos = rough_calibrate(inputs, outputs);
+	auto coeffs = fine_calibrate(rough_pos, inputs, outputs);
+	feedback(coeffs, inputs, outputs);
 }
 

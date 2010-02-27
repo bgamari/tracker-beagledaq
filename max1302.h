@@ -92,7 +92,7 @@ class max1302 : spi_device
 	};
 
 
-	max1302();
+	max1302(const char* dev) : spi_device(dev) { }
 
 	void submit(std::vector<command*> cmds) {
 		submit(cmds, true);

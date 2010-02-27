@@ -44,15 +44,22 @@ struct max1270_inputs : input_channels {
 		adc(adc), psd_chans(psd_chans), feedback_chans(feedback_chans) { }
 
 	input_data get() {
-		input_data v;
 		std::vector<max1270::command*> cmds;
+		std::vector<uint16_t> psd(4,0), fb(4,0); // Need to convert to float
 
 		for (int i=0; i<4; i++)
-			cmds.push_back( new max1270::take_sample(psd_chans[i], v.psd[i]) );
+			cmds.push_back( new max1270::take_sample(psd_chans[i], psd[i]) );
 		for (int i=0; i<3; i++)
-			cmds.push_back( new max1270::take_sample(feedback_chans[i], v.feedback[i]) );
+			cmds.push_back( new max1270::take_sample(feedback_chans[i], fb[i]) );
 		
 		adc.submit(cmds);
+
+		input_data v;
+		auto c = cmds.begin();
+		for (int i=0; i<4; i++)
+			v.psd_pos[i] = psd[i];
+		for (int i=0; i<3; i++)
+			v.fb_pos[i] = fb[i];
 
 		for (auto i=cmds.begin(); i!=cmds.end(); i++)
 			delete *i;

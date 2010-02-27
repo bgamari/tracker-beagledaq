@@ -32,15 +32,16 @@
 class spi_device {
 	int fd;
 
-protected:
+public:
 	class command {
 		friend class spi_device;
 	protected:
 		virtual unsigned int length() const = 0;
 		virtual void pack(uint8_t* buf) const = 0;
-		virtual void unpack(const uint8_t* buf) = 0;
+		virtual void unpack(const uint8_t* buf) { };
 	};
 
+protected:
 	spi_device(const char* dev) {
 		fd = open(dev, O_RDWR);
 		if (fd < 0)

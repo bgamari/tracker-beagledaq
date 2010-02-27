@@ -9,3 +9,12 @@ tracker : main.o spi_device.o max5590.o max1270.o tracker.o
 clean :
 	rm *.o
 
+% : %.o
+
+max1270_test : spi_device.o
+max5134_test : spi_device.o
+max5590_test : spi_device.o
+max1302_test : spi_device.o
+
+tests : max1270_test max5134_test max5590_test max1302_test
+

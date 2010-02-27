@@ -33,7 +33,7 @@ public:
 
 	class command : spi_device::command { };
 
-	class take_sample : public command {
+	class take_sample_cmd : public command {
 		int channel;
 		uint16_t& sample_out;
 		unsigned int length() const { return 4; }
@@ -50,7 +50,7 @@ public:
 			sample_out |= (buf[3] & 0x01) << 11;
 		}
 	public:
-		take_sample(int channel, uint16_t& sample_out) : channel(channel), sample_out(sample_out) { }
+		take_sample_cmd(int channel, uint16_t& sample_out) : channel(channel), sample_out(sample_out) { }
 	};
 
 	void submit(std::vector<command*> cmds) {

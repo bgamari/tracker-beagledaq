@@ -35,6 +35,8 @@ void sample(max1302 adc) {
 		new max1302::start_conversion_cmd(0, s[3]),
 	};
 	adc.submit(cmds);
+	for (auto i=cmds.begin(); i != cmds.end(); i++)
+		delete *i;
 }
 
 int main(int argc, char** argv) {

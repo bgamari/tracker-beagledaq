@@ -35,6 +35,8 @@ void sample(max1270 adc) {
 		new max1270::take_sample_cmd(3, s[3]),
 	};
 	adc.submit(cmds);
+	for (auto i=cmds.begin(); i != cmds.end(); i++)
+		delete *i;
 }
 
 int main(int argc, char** argv) {

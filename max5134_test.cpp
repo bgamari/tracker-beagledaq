@@ -34,6 +34,8 @@ void set(max5134 dac) {
 		new max5134::write_thru_cmd({3}, 5000),
 	};
 	dac.submit(cmds);
+	for (auto i=cmds.begin(); i != cmds.end(); i++)
+		delete *i;
 }
 
 int main(int argc, char** argv) {

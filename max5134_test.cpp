@@ -28,10 +28,10 @@ using std::array;
 
 void set(max5134 dac) {
 	vector<max5134::command*> cmds = {
-		new max5134::write_thru_cmd({0}, 100),
-		new max5134::write_thru_cmd({1}, 1000),
-		new max5134::write_thru_cmd({2}, 10000),
-		new max5134::write_thru_cmd({3}, 5000),
+		new max5134::write_thru_cmd(0x1, 100),
+		new max5134::write_thru_cmd(0x2, 1000),
+		new max5134::write_thru_cmd(0x4, 10000),
+		new max5134::write_thru_cmd(0x8, 5000),
 	};
 	dac.submit(cmds);
 	for (auto i=cmds.begin(); i != cmds.end(); i++)

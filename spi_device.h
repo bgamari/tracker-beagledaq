@@ -51,6 +51,8 @@ protected:
 	void set_mode(uint8_t mode);
 	void set_bits_per_word(uint8_t bits);
 	void set_max_speed(uint32_t speed);
+#define KHZ 1000
+#define MHZ 1000*KHZ
 
 	void send_msg(void* tx, void* rx, int len);
 	void submit(std::vector<command*> cmds);

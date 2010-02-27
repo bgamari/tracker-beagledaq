@@ -35,9 +35,9 @@ class max5590 : spi_device {
 public:
 	max5590(const char* dev) : spi_device(dev) {
 #if MAX5590_18V
-		set_max_speed(10*1000000);
+		set_max_speed(10*MHZ);
 #else
-		set_max_speed(20*1000000);
+		set_max_speed(20*MHZ);
 #endif
 	}
 

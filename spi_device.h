@@ -55,6 +55,42 @@ protected:
 #define MHZ 1000*KHZ
 
 	void send_msg(void* tx, void* rx, int len);
-	void submit(std::vector<command*> cmds);
+
+	template<class command>
+	void submit(std::vector<command*>& cmds) {
+		std::vector<uint8_t> buf;
+		struct spi_ioc_transfer* xfer = new spi_ioc_transfer[cmds.size()];
+
+		int msg_length = 0;
+		for (auto c=cmds.begin(); c != cmds.end(); c++)
+			msg_length += (*c)->length();
+
+		buf.reserve(msg_length);
+
+		uint8_t* b = &buf[0];
+		unsigned int i = 0;
+		for (auto c=cmds.begin(); c != cmds.end(); c++) {
+			spi_device::command& cmd = **c;
+			cmd.pack(b);
+
+			xfer[i].tx_buf = (__u64) b;
+			xfer[i].rx_buf = (__u64) b;
+			xfer[i].cs_change = true;
+			xfer[i].len = cmd.length();
+			b += cmd.length();
+			i++;
+		}
+
+		int status = ioctl(fd, SPI_IOC_MESSAGE(cmds.size()), xfer);
+		if (status < 0)
+			throw "failed sending spi message";
+
+		b = &buf[0];
+		for (auto c=cmds.begin(); c != cmds.end(); c++) {
+			spi_device::command& cmd = **c;
+			cmd.unpack(b);
+			b += cmd.length();
+		}
+	}
 };
 

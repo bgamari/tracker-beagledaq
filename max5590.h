@@ -180,7 +180,7 @@ public:
 
 public:
 	void submit(std::vector<command*> cmds) {
-		submit(cmds);
+		spi_device::submit(cmds);
 	}
 };
 

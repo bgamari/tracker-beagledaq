@@ -31,7 +31,7 @@ class max1270 : spi_device {
 public:
 	max1270(const char* dev) : spi_device(dev) { }
 
-	class command : spi_device::command { };
+	class command : public spi_device::command { };
 
 	class take_sample_cmd : public command {
 		int channel;
@@ -53,8 +53,8 @@ public:
 		take_sample_cmd(int channel, uint16_t& sample_out) : channel(channel), sample_out(sample_out) { }
 	};
 
-	void submit(std::vector<command*> cmds) {
-		submit(cmds);
+	void submit(std::vector<command*>& cmds) {
+		spi_device::submit(cmds);
 	}
 };
 

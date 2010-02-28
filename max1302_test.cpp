@@ -28,7 +28,7 @@ using std::array;
 
 void sample(max1302 adc) {
 	array<uint16_t,4> s;
-	vector<spi_device::command*> cmds = {
+	vector<max1302::command*> cmds = {
 		new max1302::start_conversion_cmd(0, s[0]),
 		new max1302::start_conversion_cmd(1, s[1]),
 		new max1302::start_conversion_cmd(2, s[2]),

@@ -81,7 +81,8 @@ protected:
 			i++;
 		}
 
-		int status = ioctl(fd, SPI_IOC_MESSAGE(cmds.size()), xfer);
+		int size = cmds.size();
+		int status = ioctl(fd, SPI_IOC_MESSAGE(size), xfer);
 		if (status < 0)
 			throw "failed sending spi message";
 

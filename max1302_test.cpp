@@ -41,7 +41,7 @@ void sample(max1302 adc) {
 
 int main(int argc, char** argv) {
 	max1302 adc("/dev/spidev3.1");
-	vector<spi_device::command*> cmds;
+	vector<max1302::command*> cmds;
 	
 	for (int i=0; i<8; i++) {
 		cmds.push_back(new max1302::mode_cntrl_cmd(i, max1302::SE_MINUS_VREF_PLUS_VREF));

@@ -32,7 +32,7 @@ class max5134 : spi_device {
 public:
 	max5134(const char* dev) : spi_device(dev) { }
 
-	class command : public spi_device::command {
+	struct command : spi_device::command {
 		unsigned int length() const { return 3; }
 		void unpack(uint8_t* buf) { }
 	};
@@ -117,7 +117,7 @@ public:
 	};
 
 	void submit(std::vector<command*> cmds) {
-		submit(cmds);
+		spi_device::submit(cmds);
 	}
 };
 

@@ -24,7 +24,9 @@
 class max1302 : spi_device
 {
 public:
-	class start_conversion_cmd : public spi_device::command {
+	class command : public spi_device::command { };
+
+	class start_conversion_cmd : public command {
 		int channel;
 		uint16_t& sample_out;
 		unsigned int length() const { return 4; }
@@ -57,7 +59,7 @@ public:
 		DIFF_MINUS_2_VREF_PLUS_2VREF = 0xf 
 	};
 
-	class mode_cntrl_cmd : public spi_device::command {
+	class mode_cntrl_cmd : public command {
 		int channel;
 		input_range range;
 		unsigned int length() const { return 2; }
@@ -81,7 +83,7 @@ public:
 		FULL_PWD_DOWN	= 0x7,
 	};
 
-	class input_config_cmd : public spi_device::command {
+	class input_config_cmd : public command {
 		int channel;
 		input_mode mode;
 		unsigned int length() const { return 2; }
@@ -99,7 +101,7 @@ public:
 	max1302(const char* dev) : spi_device(dev) { }
 
 	void submit(std::vector<command*> cmds) {
-		submit(cmds);
+		spi_device::submit(cmds);
 	}
 };
 

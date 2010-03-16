@@ -31,13 +31,15 @@ class max1270 : spi_device {
 public:
 	max1270(const char* dev) : spi_device(dev) { }
 
-	class command : public spi_device::command { };
+	class command : public spi_device::command {
+		virtual void unpack(const uint8_t* buf) { };
+	};
 
 	class take_sample_cmd : public command {
 		int channel;
 		uint16_t& sample_out;
-		unsigned int length() const { return 4; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 4; }
+		void pack(uint8_t* buf) {
 			buf[0] =  (1 << 7)		// Start bit
 				| (channel << 4)	// Channel
 				| (0x0 << 2)		// RNG=0, BIP=0

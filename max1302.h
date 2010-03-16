@@ -20,6 +20,7 @@
 
 
 #include "spi_device.h"
+#include <cstdio>
 
 class max1302 : spi_device
 {
@@ -29,15 +30,15 @@ public:
 	class start_conversion_cmd : public command {
 		int channel;
 		uint16_t& sample_out;
-		unsigned int length() const { return 4; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 4; }
+		void pack(uint8_t* buf) {
 			buf[0] = (1<<7) | (channel & 0x7) << 4;
 			buf[1] = 0x00;
 			buf[2] = 0x00;
-			buf[2] = 0x00;
+			buf[3] = 0x00;
 		}
-		void unpack(uint8_t* buf) const {
-			sample_out = (buf[0] << 8) & (buf[1] << 0);
+		void unpack(const uint8_t* buf) {
+			sample_out = (buf[2] << 8) | (buf[3] << 0);
 		}
 	public:
 		start_conversion_cmd(int channel, uint16_t& sample_out) :
@@ -62,12 +63,12 @@ public:
 	class mode_cntrl_cmd : public command {
 		int channel;
 		input_range range;
-		unsigned int length() const { return 2; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 2; }
+		void pack(uint8_t* buf) {
 			buf[0] = (1<<7) | (channel & 0x7) << 4 | range;
 			buf[1] = 0x00;
 		}
-		void unpack(uint8_t* buf) const { }
+		void unpack(const uint8_t* buf) { }
 	public:
 		mode_cntrl_cmd(int channel, input_range range) :
 			channel(channel), range(range) { }
@@ -86,19 +87,21 @@ public:
 	class input_config_cmd : public command {
 		int channel;
 		input_mode mode;
-		unsigned int length() const { return 2; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 2; }
+		void pack(uint8_t* buf) {
 			buf[0] = (1<<7) | (mode<<4) | (1<<3);
 			buf[1] = 0x00;
 		}
-		void unpack(uint8_t* buf) const { }
+		void unpack(const uint8_t* buf) { }
 	public:
 		input_config_cmd(int channel, input_mode mode) :
 			channel(channel), mode(mode) { }
 	};
 
 
-	max1302(const char* dev) : spi_device(dev) { }
+	max1302(const char* dev) : spi_device(dev) {
+		set_max_speed(1*MHZ);
+	}
 
 	void submit(std::vector<command*> cmds) {
 		spi_device::submit(cmds);

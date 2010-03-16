@@ -49,8 +49,8 @@ public:
 	class load_input_cmd : public command {
 		input_reg reg;
 		uint16_t value;
-		unsigned int length() const { return 2; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 2; }
+		void pack(uint8_t* buf) {
 			buf[0] = reg | (value & 0xf);
 			buf[1] = (value & 0x0ff0) >> 4;
 		}
@@ -59,8 +59,8 @@ public:
 	};
 	class load_dac_cmd : public command {
 		std::bitset<8> dacs;
-		unsigned int length() const { return 2; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 2; }
+		void pack(uint8_t* buf) {
 			buf[0] = 0x80;
 			buf[1] = (uint8_t) dacs.to_ulong();
 		}
@@ -69,8 +69,8 @@ public:
 	};
 	class load_all_inputs_cmd : public command {
 		uint16_t value;
-		unsigned int length() const { return 2; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 2; }
+		void pack(uint8_t* buf) {
 			buf[0] = 0x90 | (value & 0xf);
 			buf[1] = (value & 0x0ff0) >> 4;
 		}
@@ -80,8 +80,8 @@ public:
 	};
 	class load_all_inputs_dacs_cmd : public command {
 		uint16_t value;
-		unsigned int length() const { return 2; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 2; }
+		void pack(uint8_t* buf) {
 			buf[0] = 0xa0 | (value & 0xf);
 			buf[1] = (value & 0x0ff0) >> 4;
 		}
@@ -97,8 +97,8 @@ private:
 	class set_shutdown_mode_cmd : public command {
 		uint8_t cmd;
 		std::array<shutdown_mode,4> modes;
-		unsigned int length() const { return 2; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 2; }
+		void pack(uint8_t* buf) {
 			buf[0] = cmd;
 			for (int i=0; i<4; i++)
 				buf[1] = modes[0] << 0 |
@@ -124,8 +124,8 @@ public:
 	};
 	class set_shutdown_cntrl_cmd : public command {
 		std::bitset<8> bits;
-		unsigned int length() const { return 2; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 2; }
+		void pack(uint8_t* buf) {
 			buf[0] = 0xb4;
 			buf[1] = bits.to_ulong();
 		}
@@ -140,8 +140,8 @@ public:
 	 */
 	class set_settling_time_mode_cmd : public command {
 		std::bitset<8> mode;
-		unsigned int length() const { return 2; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 2; }
+		void pack(uint8_t* buf) {
 			buf[0] = 0xb8;
 			buf[1] = mode.to_ulong();
 		}
@@ -169,8 +169,8 @@ public:
 	class set_upio_config_cmd : public command {
 		upio_sel sel;
 		upio_config config;
-		unsigned int length() const { return 2; }
-		void pack(uint8_t* buf) const {
+		unsigned int length() { return 2; }
+		void pack(uint8_t* buf) {
 			buf[0] = 0xb6;
 			buf[1] = (sel << 6) | (config << 2);
 		}

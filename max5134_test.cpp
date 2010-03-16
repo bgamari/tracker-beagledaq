@@ -21,17 +21,18 @@
 #include <array>
 #include <vector>
 #include <unistd.h>
+#include <cmath>
 #include "max5134.h"
 
 using std::vector;
 using std::array;
 
-void set(max5134 dac) {
+void set(max5134 dac, uint16_t value) {
 	vector<max5134::command*> cmds = {
-		new max5134::write_thru_cmd(0x1, 100),
-		new max5134::write_thru_cmd(0x2, 1000),
-		new max5134::write_thru_cmd(0x4, 10000),
-		new max5134::write_thru_cmd(0x8, 5000),
+		new max5134::write_thru_cmd(0x1, value),
+		new max5134::write_thru_cmd(0x2, value),
+		new max5134::write_thru_cmd(0x4, value),
+		new max5134::write_thru_cmd(0x8, value),
 	};
 	dac.submit(cmds);
 	for (auto i=cmds.begin(); i != cmds.end(); i++)
@@ -41,9 +42,12 @@ void set(max5134 dac) {
 int main(int argc, char** argv) {
 	max5134 dac("/dev/spidev4.0");
 	
+	float t = 0;
 	do {
-		set(dac);
-		sleep(1);
+		float value = 0.5*sinf(t) + 0.5;
+		set(dac, 0xffff*value);
+		t += 0.01;
+		usleep(1000*1);
 	} while (true);
 }
 

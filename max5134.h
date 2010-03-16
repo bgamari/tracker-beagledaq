@@ -30,15 +30,17 @@
 
 class max5134 : spi_device {
 public:
-	max5134(const char* dev) : spi_device(dev) { }
+	max5134(const char* dev) : spi_device(dev) {
+		set_max_speed(1*MHZ);
+	}
 
 	struct command : spi_device::command {
-		unsigned int length() const { return 3; }
-		void unpack(uint8_t* buf) { }
+		unsigned int length() { return 3; }
+		void unpack(const uint8_t* buf) { }
 	};
 
 	class noop_cmd : public command {
-		void pack(uint8_t* buf) const {
+		void pack(uint8_t* buf) {
 			buf[0] = 0x00;
 			buf[1] = 0x00;
 			buf[2] = 0x00;
@@ -49,7 +51,7 @@ public:
 
 	class load_dac_cmd : public command {
 		std::bitset<4> dacs;
-		void pack(uint8_t* buf) const {
+		void pack(uint8_t* buf) {
 			buf[0] = 0x01;
 			buf[1] = (uint8_t) dacs.to_ulong();
 			buf[2] = 0x00;
@@ -59,7 +61,7 @@ public:
 	};
 
 	class clear_cmd : public command {
-		void pack(uint8_t* buf) const {
+		void pack(uint8_t* buf) {
 			buf[0] = 0x02;
 			buf[1] = 0x00;
 			buf[2] = 0x00;
@@ -71,7 +73,7 @@ public:
 	class pwr_cntrl_cmd : public command {
 		std::bitset<4> dacs;
 		bool ready_en;
-		void pack(uint8_t* buf) const {
+		void pack(uint8_t* buf) {
 			buf[0] = 0x03;
 			buf[1] = (uint8_t) dacs.to_ulong();
 			buf[2] = ready_en ? (1<<7) : 0x00;
@@ -82,7 +84,7 @@ public:
 
 	class linearity_cmd : public command {
 		bool lin;
-		void pack(uint8_t* buf) const {
+		void pack(uint8_t* buf) {
 			buf[0] = 0x05;
 			buf[1] = 0x00;
 			buf[2] = lin ? (1<<1) : 0x00;
@@ -94,7 +96,7 @@ public:
 	class write_cmd : public command {
 		std::bitset<4> dacs;
 		uint16_t value;
-		void pack(uint8_t* buf) const {
+		void pack(uint8_t* buf) {
 			buf[0] = (0x01 << 4) | ((uint8_t) dacs.to_ulong());
 			buf[1] = (value >> 8) & 0xff;
 			buf[2] = (value >> 0) & 0xff;
@@ -107,7 +109,7 @@ public:
 	class write_thru_cmd : public command {
 		std::bitset<4> dacs;
 		uint16_t value;
-		void pack(uint8_t* buf) const {
+		void pack(uint8_t* buf) {
 			buf[0] = (0x03 << 4) | ((uint8_t) dacs.to_ulong());
 			buf[1] = (value >> 8) & 0xff;
 			buf[2] = (value >> 0) & 0xff;

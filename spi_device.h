@@ -18,6 +18,8 @@
  * Author: Ben Gamari <bgamari@physics.umass.edu>
  */
 
+//#define DEBUG
+
 
 #pragma once
 
@@ -27,6 +29,7 @@
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
 #include <vector>
+#include <cstdio>
 
 
 class spi_device {
@@ -36,9 +39,9 @@ public:
 	class command {
 		friend class spi_device;
 	protected:
-		virtual unsigned int length() const = 0;
-		virtual void pack(uint8_t* buf) const = 0;
-		virtual void unpack(const uint8_t* buf) { };
+		virtual unsigned int length() = 0;
+		virtual void pack(uint8_t* buf) = 0;
+		virtual void unpack(const uint8_t* buf) = 0;
 	};
 
 protected:
@@ -59,13 +62,14 @@ protected:
 	template<class command>
 	void submit(std::vector<command*>& cmds) {
 		std::vector<uint8_t> buf;
-		struct spi_ioc_transfer* xfer = new spi_ioc_transfer[cmds.size()];
+		int n_xfers = cmds.size();
+		struct spi_ioc_transfer* xfer = new spi_ioc_transfer[n_xfers];
 
 		int msg_length = 0;
 		for (auto c=cmds.begin(); c != cmds.end(); c++)
 			msg_length += (*c)->length();
 
-		buf.reserve(msg_length);
+		buf.resize(msg_length);
 
 		uint8_t* b = &buf[0];
 		unsigned int i = 0;
@@ -81,16 +85,29 @@ protected:
 			i++;
 		}
 
-		int size = cmds.size();
-		int status = ioctl(fd, SPI_IOC_MESSAGE(size), xfer);
+#ifdef DEBUG
+		printf("Sent:");
+		for (auto i=buf.begin(); i != buf.end(); i++)
+			printf(" %02x", *i);
+		printf("\n");
+#endif
+
+		int status = ioctl(fd, SPI_IOC_MESSAGE(n_xfers), xfer);
 		if (status < 0)
 			throw "failed sending spi message";
 
+#ifdef DEBUG
+		printf("Recv: ");
+		for (auto i=buf.begin(); i != buf.end(); i++)
+			printf(" %02x", *i);
+		printf("\n");
+#endif
+
 		b = &buf[0];
 		for (auto c=cmds.begin(); c != cmds.end(); c++) {
-			spi_device::command& cmd = **c;
-			cmd.unpack(b);
-			b += cmd.length();
+			spi_device::command* cmd = *c;
+			cmd->unpack(b);
+			b += cmd->length();
 		}
 	}
 };

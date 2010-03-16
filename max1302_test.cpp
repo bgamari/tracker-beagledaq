@@ -20,6 +20,7 @@
 
 #include <array>
 #include <vector>
+#include <cstdio>
 #include <unistd.h>
 #include "max1302.h"
 
@@ -35,8 +36,10 @@ void sample(max1302 adc) {
 		new max1302::start_conversion_cmd(3, s[3]),
 	};
 	adc.submit(cmds);
-	for (auto i=cmds.begin(); i != cmds.end(); i++)
-		delete *i;
+	for (unsigned int i=0; i<cmds.size(); i++) {
+		printf("Chan %d: %d\n", i, s[i]);
+		delete cmds[i];
+	}
 }
 
 int main(int argc, char** argv) {

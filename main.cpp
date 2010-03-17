@@ -31,6 +31,13 @@ static const char* stage_pos_dac_dev = "/dev/spidev4.0";
 
 using std::tr1::array;
 
+struct test_inputs : input_channels {
+	input_data get() {
+		input_data v = {};
+		return v;
+	}
+};
+
 struct max1302_inputs : input_channels {
 	max1302& psd_adc;
 	max1302& fb_adc;
@@ -43,7 +50,7 @@ struct max1302_inputs : input_channels {
 
 	input_data get() {
 		std::vector<max1302::command*> psd_cmds, fb_cmds;
-		std::vector<uint16_t> psd(4,0), fb(4,0); // Need to convert to float
+		std::vector<uint16_t> psd(4,0), fb(3,0); // Need to convert to float
 
 		for (int i=0; i<4; i++)
 			psd_cmds.push_back( new max1302::start_conversion_cmd(psd_chans[i], psd[i]) );
@@ -54,16 +61,26 @@ struct max1302_inputs : input_channels {
 		fb_adc.submit(fb_cmds);
 
 		input_data v;
-		for (int i=0; i<4; i++)
-			v.psd_pos[i] = psd[i];
+		for (int i=0; i<2; i++)
+			v.psd_pos[i] = 1.0*psd[i] / 0xffff;
+		v.psd_sum = (1.0*psd[2]/0xffff) + (1.0*psd[3]/0xffff);
+
 		for (int i=0; i<3; i++)
-			v.fb_pos[i] = fb[i];
+			v.fb_pos[i] = 1.0*fb[i] / 0xffff;
 
 		for (auto i=psd_cmds.begin(); i!=psd_cmds.end(); i++)
 			delete *i;
 		for (auto i=fb_cmds.begin(); i!=fb_cmds.end(); i++)
 			delete *i;
 		return v;
+	}
+};
+
+struct test_outputs : output_channels {
+	void set(output_data d) {
+		printf("stage_pos: ");
+		for (int i=0; i<3; i++)
+			printf(" %f", d.stage_pos[i]);
 	}
 };
 
@@ -78,7 +95,7 @@ struct max5134_outputs : output_channels {
 		max5134::chan_mask all_mask;
 		std::vector<max5134::command*> cmds;
 		for (int i=0; i<3; i++) {
-			cmds.push_back( new max5134::write_cmd(stage_chans[i], d.stage_pos[i]) );
+			cmds.push_back( new max5134::write_cmd(stage_chans[i], d.stage_pos[i]*0xffff) );
 			all_mask |= stage_chans[i];
 		}
 		cmds.push_back( new max5134::load_dac_cmd(all_mask) );
@@ -94,7 +111,7 @@ int main(int argc, char** argv)
 {
 	using std::tr1::array;
 	array<int,4> psd_chans = {{0,1,2,3}};
-	array<int,3> feedback_chans = {{4,5,6}};
+	array<int,3> feedback_chans = {{0,1,2}};
 	array<max5134::chan_mask,3> stage_chans = {{ 0x1, 0x2, 0x4 }};
 
 	max1302 psd_adc(psd_adc_dev);

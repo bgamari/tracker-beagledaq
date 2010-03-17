@@ -19,10 +19,14 @@
  */
 
 
+#define DELAY 100	// us
+
+#include <time.h>
 #include <utility>
 #include <boost/random.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <time.h>
+#include <cstdio>
 #include "tracker.h"
 
 using std::tr1::array;
@@ -58,6 +62,7 @@ static void execute_route(output_channels& channels,
 	for (; route.has_more(); ++route) {
 		Vector3f pos = route.get_pos();
 		output_data d = { pos };
+		printf("hi\n");
 		channels.set(d);
 		if (cb)
 			if (! (*cb)(pos))
@@ -99,6 +104,7 @@ struct raster_route : route {
 		start(start), step(step), points(points), pos(Vector3i::Zero()), dirs(Vector3i::Ones()) {  }
 
 	Vector3f get_pos() {
+		fprintf(stderr, "%d %d %d\n", pos[0], pos[1], pos[2]);
 		return step.cwise() * pos.cast<float>();
 	}
 
@@ -107,9 +113,10 @@ struct raster_route : route {
 		while (true) {
 			pos[i] += dirs[i];
 
-			if (pos[i] <= 0 || pos[i] >= points[i])
+			if (pos[i] <= 0 || pos[i] >= points[i]) {
 				dirs[i] *= -1;
-			else
+				i++;
+			} else
 				break;
 		}
 	}
@@ -183,7 +190,8 @@ static Vector3f rough_calibrate(input_channels& inputs, output_channels& outputs
 
 static Matrix<float, 9,3> solve_response_matrix(MatrixXf R)
 {
-	MatrixXf RRi = (R.transpose() * R).inverse();
+	MatrixXf RRi ;//= (R.transpose() * R).inverse();
+	MatrixXf S;
 	MatrixXf beta = (RRi * R.transpose()) * S;
 	return beta.transpose();
 }
@@ -203,21 +211,48 @@ static Matrix<float, 9,3> fine_calibrate(Vector3f rough_pos, input_channels& inp
 	collect_cb cb(inputs);
 
 	execute_route(outputs, rt, &cb);
+	MatrixXf r;
 	return solve_response_matrix(r);
+}
+
+static Vector3f calculate_delta(input_data in) {
+	return {0,0,0};
 }
 
 void feedback(Matrix<float,9,3> M, input_channels& inputs, output_channels& outputs)
 {
-	while (1) {
+	while (true) {
 		input_data in = inputs.get();
-		Vector3f delta = calulate_delta(in);
+		Vector3f delta = calculate_delta(in);
 		output_data out = { delta };
 		outputs.set(out);
+		usleep(DELAY);
 	}
 }
 
+struct dump_inputs_cb : point_callback {
+	input_channels& in;
+	dump_inputs_cb(input_channels& in) : in(in) { }
+	bool operator()(Vector3f& pos) {
+		input_data d = in.get();
+		printf("psd: ");
+		for (int i=0; i<2; i++)
+			printf("%f ", d.psd_pos[i]);
+		printf("\tsum: %f\nfb: ", d.psd_sum);
+		for (int i=0; i<3; i++)
+			printf("%f ", d.fb_pos[i]);
+		usleep(1000);
+		return true;
+	}
+};
+
 void track(input_channels& inputs, output_channels& outputs)
 {
+	raster_route route({0,0,0}, {0.01,0.01,0.01}, {100,100,100});
+	dump_inputs_cb cb(inputs);
+	execute_route(outputs, route, &cb);
+	return;
+
 	Vector3f rough_pos = rough_calibrate(inputs, outputs);
 	auto coeffs = fine_calibrate(rough_pos, inputs, outputs);
 	feedback(coeffs, inputs, outputs);

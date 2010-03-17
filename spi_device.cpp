@@ -24,23 +24,31 @@
 // spi mode
 void spi_device::set_mode(uint8_t mode)
 {
-	if (ioctl(fd, SPI_IOC_WR_MODE, &mode) < 0)
-		throw "failed to set mode";
+	if (ioctl(fd, SPI_IOC_WR_MODE, &mode) < 0) {
+		fprintf(stderr, "failed to set mode\n");
+		exit(1);
+	}
 }
 
 // bits per word
 void spi_device::set_bits_per_word(uint8_t bits) {
-	if (ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bits) < 0)
-		throw "failed to set bits-per-word";
+	if (ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bits) < 0) {
+		fprintf(stderr, "failed to set bits-per-word\n");
+		exit(1);
+	}
 }
 
 // max speed (Hz)
 void spi_device::set_max_speed(uint32_t speed)
 {
-	if (ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed) < 0)
-		throw "failed to set max write speed";
-	if (ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed) < 0)
-		throw "failed to set max read speed";
+	if (ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed) < 0) {
+		fprintf(stderr, "failed to set max write speed\n");
+		exit(1);
+	}
+	if (ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed) < 0) {
+		fprintf(stderr, "failed to set max read speed\n");
+		exit(1);
+	}
 }
 
 void spi_device::send_msg(void* tx, void* rx, int len)
@@ -51,7 +59,9 @@ void spi_device::send_msg(void* tx, void* rx, int len)
 	tr.rx_buf = (unsigned long) rx;
 	tr.len = len;
 
-	if (ioctl(fd, SPI_IOC_MESSAGE(1), &tr) < 0)
-		throw "failed to send message";
+	if (ioctl(fd, SPI_IOC_MESSAGE(1), &tr) < 0) {
+		fprintf(stderr, "failed to send message\n");
+		exit(1);
+	}
 }
 

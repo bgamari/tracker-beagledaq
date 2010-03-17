@@ -42,12 +42,17 @@ void set(max5134 dac, uint16_t value) {
 int main(int argc, char** argv) {
 	max5134 dac("/dev/spidev4.0");
 	
+	vector<max5134::command*> cmds = {
+		new max5134::pwr_cntrl_cmd(0xf, false),
+	};
+	dac.submit(cmds);
+
 	float t = 0;
 	do {
 		float value = 0.5*sinf(t) + 0.5;
 		set(dac, 0xffff*value);
-		t += 0.01;
-		usleep(1000*1);
+		t += 0.0001;
+		usleep(1*1);
 	} while (true);
 }
 

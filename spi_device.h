@@ -24,12 +24,15 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
 #include <vector>
 #include <cstdio>
+#include <cstring>
 
 
 class spi_device {
@@ -47,8 +50,10 @@ public:
 protected:
 	spi_device(const char* dev) {
 		fd = open(dev, O_RDWR);
-		if (fd < 0)
-			throw "can't open device";
+		if (fd < 0) {
+			fprintf(stderr, "can't open device: %s\n", dev);
+			abort();
+		}
 	}
 
 	void set_mode(uint8_t mode);
@@ -64,6 +69,7 @@ protected:
 		std::vector<uint8_t> buf;
 		int n_xfers = cmds.size();
 		struct spi_ioc_transfer* xfer = new spi_ioc_transfer[n_xfers];
+		memset(xfer, 0, sizeof(spi_ioc_transfer)*n_xfers);
 
 		int msg_length = 0;
 		for (auto c=cmds.begin(); c != cmds.end(); c++)
@@ -93,8 +99,10 @@ protected:
 #endif
 
 		int status = ioctl(fd, SPI_IOC_MESSAGE(n_xfers), xfer);
-		if (status < 0)
-			throw "failed sending spi message";
+		if (status < 0) {
+			fprintf(stderr, "failed sending spi message\n");
+			exit(1);
+		}
 
 #ifdef DEBUG
 		printf("Recv: ");

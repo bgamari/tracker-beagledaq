@@ -44,7 +44,7 @@ void sample(max1302 adc) {
 }
 
 int main(int argc, char** argv) {
-	max1302 adc("/dev/spidev3.1");
+	max1302 adc("/dev/spidev3.0");
 	vector<max1302::command*> cmds;
 	
 	for (int i=0; i<8; i++) {
@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
 
 	do {
 		sample(adc);
-		usleep(50*1000);
+		usleep(5*100);
 	} while (true);
 }
 

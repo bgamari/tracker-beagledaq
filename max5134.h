@@ -33,7 +33,7 @@ public:
 	typedef std::bitset<4> chan_mask;
 
 	max5134(const char* dev) : spi_device(dev) {
-		set_max_speed(1*MHZ);
+		set_max_speed(10*MHZ);
 	}
 
 	struct command : spi_device::command {

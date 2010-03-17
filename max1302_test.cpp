@@ -51,6 +51,8 @@ int main(int argc, char** argv) {
 		cmds.push_back(new max1302::input_config_cmd(i, max1302::INT_CLOCK));
 	}
 	adc.submit(cmds);
+	for (auto i=cmds.begin(); i!=cmds.end(); i++)
+		delete *i;
 
 	do {
 		sample(adc);

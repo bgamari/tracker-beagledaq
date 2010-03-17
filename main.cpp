@@ -21,63 +21,67 @@
 
 #include <cstdint>
 #include "bitfield.h"
-#include "max5590.h"
-#include "max1270.h"
+#include "max5134.h"
+#include "max1302.h"
 #include "tracker.h"
 
-static const char* in_dev = "/dev/spidev1.0";
-static const char* out_dev = "/dev/spidev1.1";
-
-static uint16_t delay = 0;
-static uint8_t mode = 0;
-static uint8_t bits = 16;
-static uint32_t speed = 500000;
+static const char* fb_adc_dev = "/dev/spidev3.0";
+static const char* psd_adc_dev = "/dev/spidev3.1";
+static const char* stage_pos_dac_dev = "/dev/spidev4.0";
 
 using std::tr1::array;
 
-struct max1270_inputs : input_channels {
-	max1270& adc;
+struct max1302_inputs : input_channels {
+	max1302& psd_adc;
+	max1302& fb_adc;
 	array<int,4> psd_chans;
-	array<int,3> feedback_chans;
+	array<int,3> fb_chans;
 
-	max1270_inputs(max1270& adc, array<int,4> psd_chans, array<int,3> feedback_chans) :
-		adc(adc), psd_chans(psd_chans), feedback_chans(feedback_chans) { }
+	max1302_inputs(max1302& psd_adc, max1302& fb_adc, array<int,4> psd_chans, array<int,3> feedback_chans) :
+		psd_adc(psd_adc), fb_adc(fb_adc),
+		psd_chans(psd_chans), fb_chans(feedback_chans) { }
 
 	input_data get() {
-		std::vector<max1270::command*> cmds;
+		std::vector<max1302::command*> psd_cmds, fb_cmds;
 		std::vector<uint16_t> psd(4,0), fb(4,0); // Need to convert to float
 
 		for (int i=0; i<4; i++)
-			cmds.push_back( new max1270::take_sample(psd_chans[i], psd[i]) );
+			psd_cmds.push_back( new max1302::start_conversion_cmd(psd_chans[i], psd[i]) );
 		for (int i=0; i<3; i++)
-			cmds.push_back( new max1270::take_sample(feedback_chans[i], fb[i]) );
+			fb_cmds.push_back( new max1302::start_conversion_cmd(fb_chans[i], fb[i]) );
 		
-		adc.submit(cmds);
+		psd_adc.submit(psd_cmds);
+		fb_adc.submit(fb_cmds);
 
 		input_data v;
-		auto c = cmds.begin();
 		for (int i=0; i<4; i++)
 			v.psd_pos[i] = psd[i];
 		for (int i=0; i<3; i++)
 			v.fb_pos[i] = fb[i];
 
-		for (auto i=cmds.begin(); i!=cmds.end(); i++)
+		for (auto i=psd_cmds.begin(); i!=psd_cmds.end(); i++)
+			delete *i;
+		for (auto i=fb_cmds.begin(); i!=fb_cmds.end(); i++)
 			delete *i;
 		return v;
 	}
 };
 
-struct max5590_outputs : output_channels {
-	max5590& dac;
-	array<max5590::input_reg,3> stage_chans;
+struct max5134_outputs : output_channels {
+	max5134& dac;
+	array<max5134::chan_mask,3> stage_chans;
 
-	max5590_outputs(max5590& dac, array<max5590::input_reg,3> stage_chans) :
-		dac(dac), stage_chans(stage_chans) { }
+	max5134_outputs(max5134& stage_dac, array<max5134::chan_mask,3> stage_chans) :
+		dac(stage_dac), stage_chans(stage_chans) { }
 
 	void set(output_data d) {
-		std::vector<max5590::command*> cmds;
-		for (int i=0; i<3; i++)
-			cmds.push_back( new max5590::load_input_cmd(stage_chans[i], d.stage[i]) );
+		max5134::chan_mask all_mask;
+		std::vector<max5134::command*> cmds;
+		for (int i=0; i<3; i++) {
+			cmds.push_back( new max5134::write_cmd(stage_chans[i], d.stage_pos[i]) );
+			all_mask |= stage_chans[i];
+		}
+		cmds.push_back( new max5134::load_dac_cmd(all_mask) );
 
 		dac.submit(cmds);
 
@@ -91,17 +95,15 @@ int main(int argc, char** argv)
 	using std::tr1::array;
 	array<int,4> psd_chans = {{0,1,2,3}};
 	array<int,3> feedback_chans = {{4,5,6}};
-	array<max5590::input_reg,3> stage_chans = {{
-		max5590::input_reg::A,
-		max5590::input_reg::B,
-		max5590::input_reg::C }};
+	array<max5134::chan_mask,3> stage_chans = {{ 0x1, 0x2, 0x4 }};
 
-	max1270 adc("/dev/spidev0.0");
-	max1270_inputs inputs(adc, psd_chans, feedback_chans);
+	max1302 psd_adc(psd_adc_dev);
+	max1302 fb_adc(fb_adc_dev);
+	max1302_inputs inputs(psd_adc, fb_adc, psd_chans, feedback_chans);
 
-	max5590 dac("/dev/spidev0.1");
-	max5590_outputs outputs(dac, stage_chans);
+	max5134 dac(stage_pos_dac_dev);
+	max5134_outputs stage_outputs(dac, stage_chans);
 
-	track(inputs, outputs);
+	track(inputs, stage_outputs);
 }
 

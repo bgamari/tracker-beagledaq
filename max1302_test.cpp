@@ -37,9 +37,10 @@ void sample(max1302 adc) {
 	};
 	adc.submit(cmds);
 	for (unsigned int i=0; i<cmds.size(); i++) {
-		printf("Chan %d: %d\n", i, s[i]);
+		printf("%d\t", s[i]);
 		delete cmds[i];
 	}
+	printf("\n");
 }
 
 int main(int argc, char** argv) {
@@ -56,7 +57,7 @@ int main(int argc, char** argv) {
 
 	do {
 		sample(adc);
-		sleep(1);
+		usleep(50*1000);
 	} while (true);
 }
 

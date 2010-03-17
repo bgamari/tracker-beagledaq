@@ -18,3 +18,11 @@ max1302_test : spi_device.o
 
 tests : max1270_test max5134_test max5590_test max1302_test
 
+# For automatic header dependencies
+.deps/%.d : %
+	@mkdir -p .deps
+	@makedepend  ${INCLUDES} -f - $< 2>/dev/null | sed 's,\($*\.o\)[ :]*,\1 $@ : ,g' >$@
+
+SOURCES = $(wildcard *.cpp) $(wildcard *.c)
+-include $(addprefix .deps/,$(addsuffix .d,$(SOURCES)))
+

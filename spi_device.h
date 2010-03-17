@@ -109,6 +109,8 @@ protected:
 			cmd->unpack(b);
 			b += cmd->length();
 		}
+
+		delete [] xfer;
 	}
 };
 

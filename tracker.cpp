@@ -21,13 +21,16 @@
 
 #define DELAY 100	// us
 
+#include "tracker.h"
+
 #include <time.h>
 #include <utility>
 #include <boost/random.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <time.h>
 #include <cstdio>
-#include "tracker.h"
+#include <Eigen/LU>
+
 
 using std::tr1::array;
 
@@ -188,12 +191,34 @@ static Vector3f rough_calibrate(input_channels& inputs, output_channels& outputs
 	return laser_pos;
 }
 
-static Matrix<float, 9,3> solve_response_matrix(MatrixXf R)
+static Matrix<float, 9,3> solve_response_matrix(MatrixXf R, MatrixXf S)
 {
-	MatrixXf RRi ;//= (R.transpose() * R).inverse();
-	MatrixXf S;
-	MatrixXf beta = (RRi * R.transpose()) * S;
+	MatrixXf RRi = (R.transpose() * R).inverse();
+	MatrixXf beta = RRi * R.transpose() * S;
 	return beta.transpose();
+}
+
+/*
+ * pack_inputs(): Pack input data into vector with higher order terms
+ */
+static Matrix<float,1,9> pack_inputs(input_data data) {
+	Matrix<float,1,9> R;
+
+	// First order
+	R(0) = data.psd_pos[0];
+	R(1) = data.psd_pos[1];
+	R(2) = data.psd_sum;
+	
+	// Second order
+	R(3) = R(0)*R(0);
+	R(4) = R(1)*R(1);
+	R(5) = R(2)*R(2);
+
+	// Cross terms
+	R(6) = R(0)*R(1);
+	R(7) = R(0)*R(2);
+	R(8) = R(1)*R(2);
+	return R;
 }
 
 static Matrix<float, 9,3> fine_calibrate(Vector3f rough_pos, input_channels& inputs, output_channels& outputs)
@@ -211,19 +236,28 @@ static Matrix<float, 9,3> fine_calibrate(Vector3f rough_pos, input_channels& inp
 	collect_cb cb(inputs);
 
 	execute_route(outputs, rt, &cb);
-	MatrixXf r;
-	return solve_response_matrix(r);
+
+	// Fill R and S matricies with collected data
+	MatrixXf R(fine_cal_pts, 9), S(fine_cal_pts, 3);
+	for (unsigned int i=0; i < fine_cal_pts; i++) {
+		input_data data = cb.data[i].second;
+		R.row(i) = pack_inputs(data);
+		for (unsigned int j=0; j<3; j++)
+			S(i,j) = data.fb_pos[j];
+	}
+	return solve_response_matrix(R, S);
 }
 
-static Vector3f calculate_delta(input_data in) {
-	return {0,0,0};
+static Vector3f calculate_delta(Matrix<float, 9,3> R, input_data in) {
+	Matrix<float, 1,9> v = pack_inputs(in);
+	return v*R;
 }
 
-void feedback(Matrix<float,9,3> M, input_channels& inputs, output_channels& outputs)
+void feedback(Matrix<float,9,3> R, input_channels& inputs, output_channels& outputs)
 {
 	while (true) {
 		input_data in = inputs.get();
-		Vector3f delta = calculate_delta(in);
+		Vector3f delta = calculate_delta(R, in);
 		output_data out = { delta };
 		outputs.set(out);
 		usleep(DELAY);

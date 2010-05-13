@@ -29,6 +29,7 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <time.h>
 #include <cstdio>
+#include <Eigen/Array>
 #include <Eigen/LU>
 
 
@@ -36,7 +37,7 @@ using std::tr1::array;
 
 Vector3f rough_cal_start = (Vector3f() << 0, 0, 0).finished();
 Vector3f rough_cal_xy_step = (Vector3f() << 0.01, 0.01, 0).finished();
-Vector3i rough_cal_xy_pts = (Vector3i() << 100, 100, 1).finished();
+Vector3i rough_cal_xy_pts = (Vector3i() << 20, 20, 1).finished();
 
 Vector3f rough_cal_z_step = (Vector3f() << 0, 0, 0.01).finished();
 Vector3i rough_cal_z_pts = (Vector3i() << 1, 1, 100).finished();
@@ -98,38 +99,33 @@ struct random_route : route {
 struct raster_route : route {
 	const Vector3f start;
 	const Vector3f step;
-
 	const Vector3i points;
-	Vector3i pos; // current position in steps
-	Vector3i dirs;
+
+	unsigned int n;
 
 	raster_route(Vector3f start, Vector3f step, Vector3i points) :
-		start(start), step(step), points(points), pos(Vector3i::Zero()), dirs(Vector3i::Ones()) {  }
+		start(start), step(step), points(points), n(0) {  }
 
 	Vector3f get_pos() {
+		Vector3i pos;
+		unsigned int m = n;
+		for (int i=0; i<3; i++) {
+			pos[i] = m % points[i];
+			m /= points[i];
+		}
 		fprintf(stderr, "%d %d %d\n", pos[0], pos[1], pos[2]);
 		return step.cwise() * pos.cast<float>();
 	}
 
 	void operator++() {
-		unsigned int i=0;
-		while (true) {
-			pos[i] += dirs[i];
-
-			if (pos[i] <= 0 || pos[i] >= points[i]) {
-				dirs[i] *= -1;
-				i++;
-			} else
-				break;
-		}
+		n++;
 	}
 
 	bool has_more() {
-		for (int i=0; i<3; i++) {
-			if (pos[i] <= points[i])
-				return true;
-		}
-		return false;
+		unsigned int N=1;
+		for (int i=0; i<3; i++)
+			N *= points[i];
+		return n < N;
 	}
 };
 
@@ -282,7 +278,7 @@ struct dump_inputs_cb : point_callback {
 
 void track(input_channels& inputs, output_channels& outputs)
 {
-	raster_route route({0,0,0}, {0.01,0.01,0.01}, {100,100,100});
+	raster_route route({0,0,0}, {0.01,0.01,0.01}, {10,10,10});
 	dump_inputs_cb cb(inputs);
 	execute_route(outputs, route, &cb);
 	return;

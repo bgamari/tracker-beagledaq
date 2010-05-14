@@ -33,17 +33,17 @@ struct input_data {
 	Vector3f fb_pos;
 };
 
-struct output_data {
-	Vector3f stage_pos;
-};
-
 struct input_channels {
 	virtual input_data get() = 0;
 };
 
-struct output_channels {
-	virtual void set(output_data values) = 0;
+struct stage_outputs {
+protected:
+	Vector3f position;
+public:
+	Vector3f get_position() { return position; }
+	virtual void move(Vector3f position) = 0;
 };
 
-void track(input_channels& inputs, output_channels& outputs);
+void track(input_channels& inputs, stage_outputs& stage);
 

@@ -49,11 +49,11 @@ public:
 		SE_NO_CHANGE = 0x0,
 		SE_MINUS_VREF4_PLUS_VREF4 = 0x1,
 		SE_MINUS_VREF2_ZERO = 0x2,
-		SE_ZERO_MINUS_VREF2 = 0x3,
+		SE_ZERO_PLUS_VREF2 = 0x3,
 		SE_MINUS_VREF2_PLUS_VREF2 = 0x4,
-		SE_MINUS_VERF2_ZERO = 0x5,
+		SE_MINUS_VREF_ZERO = 0x5,
 		SE_ZERO_PLUS_VREF = 0x6,
-		SE_MINUS_VREF_PLUS_VREF = 0x7,
+		SE_MINUS_VREF_PLUS_VREF = 0x7,		/* Default */
 		DIFF_NO_CHANGE = 0xa,
 		DIFF_MINUS_VREF2_PLUS_VREF2 = 0xb,
 		DIFF_MINUS_VREF_PLUS_VREF = 0xc,
@@ -100,7 +100,7 @@ public:
 
 
 	max1302(const char* dev) : spi_device(dev) {
-		set_max_speed(1*MHZ);
+		set_max_speed(10*MHZ);
 	}
 
 	void submit(std::vector<command*> cmds) {

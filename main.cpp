@@ -25,8 +25,8 @@
 #include "max1302.h"
 #include "tracker.h"
 
-static const char* fb_adc_dev = "/dev/spidev3.0";
-static const char* psd_adc_dev = "/dev/spidev3.1";
+static const char* psd_adc_dev = "/dev/spidev3.0";
+static const char* fb_adc_dev = "/dev/spidev3.1";
 static const char* stage_pos_dac_dev = "/dev/spidev4.0";
 
 using std::tr1::array;
@@ -46,7 +46,27 @@ struct max1302_inputs : input_channels {
 
 	max1302_inputs(max1302& psd_adc, max1302& fb_adc, array<int,4> psd_chans, array<int,3> feedback_chans) :
 		psd_adc(psd_adc), fb_adc(fb_adc),
-		psd_chans(psd_chans), fb_chans(feedback_chans) { }
+		psd_chans(psd_chans), fb_chans(feedback_chans)
+	{
+		std::vector<max1302::command*> psd_cmds, fb_cmds;
+		
+		for (int i=0; i<4; i++) {
+			psd_cmds.push_back( new max1302::input_config_cmd(psd_chans[i], max1302::input_mode::EXT_CLOCK) );
+			psd_cmds.push_back( new max1302::mode_cntrl_cmd(psd_chans[i], max1302::input_range::SE_ZERO_PLUS_VREF) );
+		}
+		for (int i=0; i<3; i++) {
+			fb_cmds.push_back( new max1302::input_config_cmd(fb_chans[i], max1302::input_mode::EXT_CLOCK) );
+			fb_cmds.push_back( new max1302::mode_cntrl_cmd(fb_chans[i], max1302::input_range::SE_ZERO_PLUS_VREF) );
+		}
+		
+		psd_adc.submit(psd_cmds);
+		fb_adc.submit(fb_cmds);
+
+		for (auto i=psd_cmds.begin(); i!=psd_cmds.end(); i++)
+			delete *i;
+		for (auto i=fb_cmds.begin(); i!=fb_cmds.end(); i++)
+			delete *i;
+	}
 
 	input_data get() {
 		std::vector<max1302::command*> psd_cmds, fb_cmds;
@@ -76,31 +96,35 @@ struct max1302_inputs : input_channels {
 	}
 };
 
-struct test_outputs : output_channels {
-	void set(output_data d) {
+struct test_outputs : stage_outputs {
+	void move(Vector3f position) {
 		printf("stage_pos: ");
 		for (int i=0; i<3; i++)
-			printf(" %f", d.stage_pos[i]);
+			printf(" %f", position[i]);
+		printf("\n");
 	}
 };
 
-struct max5134_outputs : output_channels {
+struct max5134_outputs : stage_outputs {
 	max5134& dac;
-	array<max5134::chan_mask,3> stage_chans;
+	array<max5134::chan_mask,3> channels;
 
-	max5134_outputs(max5134& stage_dac, array<max5134::chan_mask,3> stage_chans) :
-		dac(stage_dac), stage_chans(stage_chans) { }
+	max5134_outputs(max5134& stage_dac, array<max5134::chan_mask,3> channels) :
+		dac(stage_dac), channels(channels) { }
 
-	void set(output_data d) {
+	void move(Vector3f position) {
 		max5134::chan_mask all_mask;
 		std::vector<max5134::command*> cmds;
 		for (int i=0; i<3; i++) {
-			cmds.push_back( new max5134::write_cmd(stage_chans[i], d.stage_pos[i]*0xffff) );
-			all_mask |= stage_chans[i];
+			if (position[i] < 0.0 || position[i] > 1.0)
+				fprintf(stderr, "Warning: Clamped output\n");
+			cmds.push_back( new max5134::write_cmd(channels[i], position[i]*0xffff) );
+			all_mask |= channels[i];
 		}
 		cmds.push_back( new max5134::load_dac_cmd(all_mask) );
 
 		dac.submit(cmds);
+		this->position = position;
 
 		for (auto i=cmds.begin(); i!=cmds.end(); i++)
 			delete *i;
@@ -114,13 +138,40 @@ int main(int argc, char** argv)
 	array<int,3> feedback_chans = {{0,1,2}};
 	array<max5134::chan_mask,3> stage_chans = {{ 0x1, 0x2, 0x4 }};
 
+//#define TEST
+#ifndef TEST
 	max1302 psd_adc(psd_adc_dev);
 	max1302 fb_adc(fb_adc_dev);
 	max1302_inputs inputs(psd_adc, fb_adc, psd_chans, feedback_chans);
 
 	max5134 dac(stage_pos_dac_dev);
 	max5134_outputs stage_outputs(dac, stage_chans);
+#else	
+	test_inputs inputs;
+	test_outputs stage_outputs;
+#endif
 
+//#define TRACK
+#ifdef TRACK
+	stage_outputs.move({0.5, 0.5, 0.5});
+	fprintf(stderr, "Position bead. Press any key.\n");
+	getchar();
 	track(inputs, stage_outputs);
+#else
+	printf("# psd_x psd_y\tpsd_sum\tfb_x fb_y fb_z\n");
+	while (true) {
+		input_data d = inputs.get();
+		printf("%f\n", d.fb_pos[0]);
+		continue;
+		for (int i=0; i<2; i++)
+			printf("%f ", d.psd_pos[i]);
+		printf("\t%f\t", d.psd_sum);
+		for (int i=0; i<3; i++)
+			printf("%f ", d.fb_pos[i]);
+		printf("\n");
+		//usleep(100);
+	}
+#endif
+	return 0;
 }
 

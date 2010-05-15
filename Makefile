@@ -1,5 +1,5 @@
 INCLUDES = -Ieigen
-CXXFLAGS = -lrt -O0 -g3 -std=gnu++0x -Wall ${INCLUDES}
+CXXFLAGS = -lrt -O0 -g3 -std=gnu++0x -Wall ${INCLUDES} -pg
 
 all : tracker
 

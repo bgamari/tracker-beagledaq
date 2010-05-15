@@ -120,7 +120,7 @@ public:
 		write_thru_cmd(chan_mask dacs, uint16_t value) : dacs(dacs), value(value) { }
 	};
 
-	void submit(std::vector<command*> cmds) {
+	void submit(std::vector<command*>& cmds) {
 		spi_device::submit(cmds);
 	}
 };

@@ -29,7 +29,7 @@ public:
 
 	class start_conversion_cmd : public command {
 		int channel;
-		uint16_t& sample_out;
+		uint16_t* sample_out;
 		unsigned int length() { return 4; }
 		void pack(uint8_t* buf) {
 			buf[0] = (1<<7) | (channel & 0x7) << 4;
@@ -38,10 +38,10 @@ public:
 			buf[3] = 0x00;
 		}
 		void unpack(const uint8_t* buf) {
-			sample_out = (buf[2] << 8) | (buf[3] << 0);
+			*sample_out = (buf[2] << 8) | (buf[3] << 0);
 		}
 	public:
-		start_conversion_cmd(int channel, uint16_t& sample_out) :
+		start_conversion_cmd(int channel, uint16_t* sample_out) :
 			channel(channel), sample_out(sample_out) { }
 	};
 
@@ -103,7 +103,7 @@ public:
 		set_max_speed(10*MHZ);
 	}
 
-	void submit(std::vector<command*> cmds) {
+	void submit(std::vector<command*>& cmds) {
 		spi_device::submit(cmds);
 	}
 };

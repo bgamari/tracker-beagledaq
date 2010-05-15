@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <sched.h>
 #include <time.h>
 #include "max1302.h"
 
@@ -19,9 +20,14 @@ int main(int argc, char** argv)
 {
 	max1302 dev("/dev/spidev3.1");
 	std::vector<max1302::command*> cmds;
-	uint16_t scratch;
+
+	sched_param sp;
+	sp.sched_priority = 10;
+	if (sched_setscheduler(0, SCHED_RR, &sp))
+		fprintf(stderr, "Warning: Failed to acquire SCHED_RR\n");
 
 	for (unsigned int i=0; i<4; i++) {
+		uint16_t scratch;
 		cmds.push_back( new max1302::start_conversion_cmd(i, scratch) );
 		float t = time_commands(dev, cmds);
 		float rate = 1.0*rep*(i+1)/t; // samp/sec

@@ -72,22 +72,21 @@ protected:
 		memset(xfer, 0, sizeof(spi_ioc_transfer)*n_xfers);
 
 		int msg_length = 0;
-		for (auto c=cmds.begin(); c != cmds.end(); c++)
-			msg_length += (*c)->length();
+		for (auto cmd=cmds.begin(); cmd != cmds.end(); cmd++)
+			msg_length += (**cmd).length();
 
 		buf.resize(msg_length);
 
 		uint8_t* b = &buf[0];
 		unsigned int i = 0;
 		for (auto c=cmds.begin(); c != cmds.end(); c++) {
-			spi_device::command& cmd = **c;
-			cmd.pack(b);
-
+			spi_device::command* cmd = *c;
+			cmd->pack(b);
 			xfer[i].tx_buf = (__u64) b;
 			xfer[i].rx_buf = (__u64) b;
 			xfer[i].cs_change = true;
-			xfer[i].len = cmd.length();
-			b += cmd.length();
+			xfer[i].len = cmd->length();
+			b += cmd->length();
 			i++;
 		}
 

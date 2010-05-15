@@ -48,50 +48,50 @@ struct max1302_inputs : input_channels {
 		psd_adc(psd_adc), fb_adc(fb_adc),
 		psd_chans(psd_chans), fb_chans(feedback_chans)
 	{
-		std::vector<max1302::command*> psd_cmds, fb_cmds;
+		std::vector<max1302::command*> cmds;
 		
 		for (int i=0; i<4; i++) {
-			psd_cmds.push_back( new max1302::input_config_cmd(psd_chans[i], max1302::input_mode::EXT_CLOCK) );
-			psd_cmds.push_back( new max1302::mode_cntrl_cmd(psd_chans[i], max1302::input_range::SE_ZERO_PLUS_VREF) );
+			cmds.push_back(new max1302::input_config_cmd(psd_chans[i], max1302::EXT_CLOCK));
+			cmds.push_back(new max1302::mode_cntrl_cmd(psd_chans[i], max1302::SE_ZERO_PLUS_VREF));
 		}
-		for (int i=0; i<3; i++) {
-			fb_cmds.push_back( new max1302::input_config_cmd(fb_chans[i], max1302::input_mode::EXT_CLOCK) );
-			fb_cmds.push_back( new max1302::mode_cntrl_cmd(fb_chans[i], max1302::input_range::SE_ZERO_PLUS_VREF) );
-		}
-		
-		psd_adc.submit(psd_cmds);
-		fb_adc.submit(fb_cmds);
+		psd_adc.submit(cmds);
+		for (auto c=cmds.begin(); c != cmds.end(); c++)
+			delete *c;
 
-		for (auto i=psd_cmds.begin(); i!=psd_cmds.end(); i++)
-			delete *i;
-		for (auto i=fb_cmds.begin(); i!=fb_cmds.end(); i++)
-			delete *i;
+		cmds.clear();
+		for (int i=0; i<3; i++) {
+			cmds.push_back(new max1302::input_config_cmd(fb_chans[i], max1302::EXT_CLOCK));
+			cmds.push_back(new max1302::mode_cntrl_cmd(fb_chans[i], max1302::SE_ZERO_PLUS_VREF));
+		}
+		fb_adc.submit(cmds);
+		for (auto c=cmds.begin(); c != cmds.end(); c++)
+			delete *c;
 	}
 
 	input_data get() {
-		std::vector<max1302::command*> psd_cmds, fb_cmds;
-		std::vector<uint16_t> psd(4,0), fb(3,0); // Need to convert to float
+		std::vector<max1302::command*> cmds;
+		array<uint16_t,4> psd;
+		array<uint16_t,3> fb;
+		input_data v;
 
 		for (int i=0; i<4; i++)
-			psd_cmds.push_back( new max1302::start_conversion_cmd(psd_chans[i], psd[i]) );
-		for (int i=0; i<3; i++)
-			fb_cmds.push_back( new max1302::start_conversion_cmd(fb_chans[i], fb[i]) );
-		
-		psd_adc.submit(psd_cmds);
-		fb_adc.submit(fb_cmds);
-
-		input_data v;
-		for (int i=0; i<2; i++)
+			cmds.push_back(new max1302::start_conversion_cmd(psd_chans[i], &psd[i]));
+		psd_adc.submit(cmds);
+		for (int i=0; i<2; i++) {
 			v.psd_pos[i] = 1.0*psd[i] / 0xffff;
+			delete cmds[i];
+		}
 		v.psd_sum = (1.0*psd[2]/0xffff) + (1.0*psd[3]/0xffff);
+		cmds.clear();
 
 		for (int i=0; i<3; i++)
+			cmds.push_back(new max1302::start_conversion_cmd(fb_chans[i], &fb[i]));
+		fb_adc.submit(cmds);
+		for (int i=0; i<3; i++) {
 			v.fb_pos[i] = 1.0*fb[i] / 0xffff;
+			delete cmds[i];
+		}
 
-		for (auto i=psd_cmds.begin(); i!=psd_cmds.end(); i++)
-			delete *i;
-		for (auto i=fb_cmds.begin(); i!=fb_cmds.end(); i++)
-			delete *i;
 		return v;
 	}
 };
@@ -118,16 +118,13 @@ struct max5134_outputs : stage_outputs {
 		for (int i=0; i<3; i++) {
 			if (position[i] < 0.0 || position[i] > 1.0)
 				fprintf(stderr, "Warning: Clamped output\n");
-			cmds.push_back( new max5134::write_cmd(channels[i], position[i]*0xffff) );
+			cmds.push_back(new max5134::write_cmd(channels[i], position[i]*0xffff));
 			all_mask |= channels[i];
 		}
-		cmds.push_back( new max5134::load_dac_cmd(all_mask) );
+		cmds.push_back(new max5134::load_dac_cmd (all_mask));
 
 		dac.submit(cmds);
 		this->position = position;
-
-		for (auto i=cmds.begin(); i!=cmds.end(); i++)
-			delete *i;
 	}
 };
 
@@ -159,10 +156,10 @@ int main(int argc, char** argv)
 	track(inputs, stage_outputs);
 #else
 	printf("# psd_x psd_y\tpsd_sum\tfb_x fb_y fb_z\n");
-	while (true) {
+	int n=0;
+	while (n < 10000) {
 		input_data d = inputs.get();
 		printf("%f\n", d.fb_pos[0]);
-		continue;
 		for (int i=0; i<2; i++)
 			printf("%f ", d.psd_pos[i]);
 		printf("\t%f\t", d.psd_sum);
@@ -170,6 +167,7 @@ int main(int argc, char** argv)
 			printf("%f ", d.fb_pos[i]);
 		printf("\n");
 		//usleep(100);
+		n++;
 	}
 #endif
 	return 0;

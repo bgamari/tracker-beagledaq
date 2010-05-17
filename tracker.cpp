@@ -61,34 +61,34 @@ struct route {
 	virtual bool has_more() = 0;
 };
 
-static void smooth_move(stage_outputs& stage,
+static void smooth_move(output_channels<3>& stage,
 		Vector3f to, unsigned int move_time=1000)
 {
 	// How long to wait in between smoothed position updates
 	const unsigned int smooth_delay = 10; // us
 	const unsigned int smooth_pts = move_time / smooth_delay;
-	Vector3f initial = stage.get_position();
+	Vector3f initial = stage.get_last();
 	Vector3f step = (to - initial) / smooth_pts;
 
 	// Smoothly move into position
 	for (unsigned int i=0; i<smooth_pts; i++) {
 		Vector3f pos = initial + i*step;
-		stage.move(pos);
+		stage.set(pos);
 		usleep(smooth_delay);
 	}
-	stage.move(to);
+	stage.set(to);
 }
 
-static void execute_route(stage_outputs& stage,
-		route& route, point_callback* cb=NULL, unsigned int point_delay=1000)
+static void execute_route(output_channels<3>& stage,
+		route& route, vector<point_callback*> cbs=vector<point_callback*>(), unsigned int point_delay=1000)
 {
 	for (; route.has_more(); ++route) {
 		Vector3f pos = route.get_pos();
 		//printf("Pt\t%f\t%f\t%f\n", pos[0], pos[1], pos[2]);
 		smooth_move(stage, pos);
 		usleep(point_delay);
-		if (cb)
-			if (! (*cb)(pos))
+		for (auto cb = cbs.begin(); cb != cbs.end(); cb++)
+			if (! (**cb)(pos))
 				break;
 	}
 }
@@ -147,15 +147,16 @@ struct raster_route : route {
 	}
 };
 
+template<unsigned int N>
 struct collect_cb : point_callback {
-	input_channels& inputs;
+	input_channels<N>& inputs;
 	struct point {
 		Vector3f position;
-		input_data data;
+		Matrix<float,1,N> values;
 	};
 	std::vector<point> data;
 
-	collect_cb(input_channels& inputs) : inputs(inputs) { }
+	collect_cb(input_channels<N>& inputs) : inputs(inputs) { }
 
 	bool operator()(Vector3f& pos) {
 		point p = { pos, inputs.get() };
@@ -165,12 +166,12 @@ struct collect_cb : point_callback {
 };
 
 template<unsigned int axis>
-bool compare_position(vector<collect_cb::point>::iterator a, vector<collect_cb::point>::iterator b)
+bool compare_position(vector<collect_cb<4>::point>::iterator a, vector<collect_cb<4>::point>::iterator b)
 {
-	return a->data.psd_pos[axis] < b->data.psd_pos[axis];
+	return a->values[axis] < b->values[axis];
 }
 
-static Vector3f rough_calibrate(input_channels& inputs, stage_outputs& stage)
+static Vector3f rough_calibrate(input_channels<4>& psd_inputs, output_channels<3>& stage_outputs)
 {
 	Vector3f start, step;
         Vector3i pts;
@@ -180,12 +181,14 @@ static Vector3f rough_calibrate(input_channels& inputs, stage_outputs& stage)
 	step = (Vector3f() << rough_cal_xy_step, rough_cal_xy_step, 0).finished();
 	pts = (Vector3i() << rough_cal_xy_pts, rough_cal_xy_pts, 1).finished();
 	raster_route route_xy(start, step, pts);
-	collect_cb xy_data(inputs);
+	collect_cb<4> xy_data(psd_inputs);
 	
-	execute_route(stage, route_xy, &xy_data);
+	execute_route(stage_outputs, route_xy, {&xy_data});
 
+	// Find extrema of Vx
 	Vector3f min_x_pos = min(xy_data.data.begin(), xy_data.data.end(), compare_position<0>)->position;
 	Vector3f max_x_pos = max(xy_data.data.begin(), xy_data.data.end(), compare_position<0>)->position;
+	// Find extrema of Vy
 	Vector3f min_y_pos = min(xy_data.data.begin(), xy_data.data.end(), compare_position<1>)->position;
 	Vector3f max_y_pos = max(xy_data.data.begin(), xy_data.data.end(), compare_position<1>)->position;
 
@@ -198,8 +201,8 @@ static Vector3f rough_calibrate(input_channels& inputs, stage_outputs& stage)
 	step = (Vector3f() << 0, 0, rough_cal_z_step).finished();
 	pts = (Vector3i() << 1, 1, rough_cal_z_pts).finished();
 	raster_route route_z(laser_pos_xy, step, pts);
-	collect_cb z_data(inputs);
-	execute_route(stage, route_z, &z_data);
+	collect_cb<4> z_data(psd_inputs);
+	execute_route(stage_outputs, route_z, {&z_data});
 
 	//Vector3f
 	Vector3f laser_pos; // = (scan_z.max_pos[0] + scan_z.min_pos[0]) / 2;
@@ -217,13 +220,13 @@ static Matrix<float, 3,9> solve_response_matrix(Matrix<float, Dynamic,9> R, Matr
 /*
  * pack_inputs(): Pack input data into vector with higher order terms
  */
-static Matrix<float,1,9> pack_inputs(input_data data) {
+static Matrix<float,1,9> pack_inputs(Vector4f data) {
 	Matrix<float,1,9> R;
 
 	// First order
-	R(0) = data.psd_pos[0];
-	R(1) = data.psd_pos[1];
-	R(2) = data.psd_sum;
+	R(0) = data[0];
+	R(1) = data[1];
+	R(2) = data[2];
 	
 	// Second order
 	R(3) = R(0)*R(0);
@@ -237,7 +240,7 @@ static Matrix<float,1,9> pack_inputs(input_data data) {
 	return R;
 }
 
-static Matrix<float, 3,9> fine_calibrate(Vector3f rough_pos, input_channels& inputs, stage_outputs& stage)
+static Matrix<float, 3,9> fine_calibrate(Vector3f rough_pos, input_channels<4>& psd_inputs, output_channels<3>& stage_outputs, input_channels<3>& fb_inputs)
 {
 	typedef boost::mt19937 engine;
 	typedef boost::uniform_real<float> distribution;
@@ -250,52 +253,50 @@ static Matrix<float, 3,9> fine_calibrate(Vector3f rough_pos, input_channels& inp
 		vg(e, distribution(rough_pos[2]-scan_range, rough_pos[2]+scan_range))
 	}};
 	random_route<engine, distribution> rt(rngs, fine_cal_pts);
-	collect_cb cb(inputs);
+	collect_cb<4> psd_collect(psd_inputs);
+	collect_cb<3> fb_collect(fb_inputs);
 
-	execute_route(stage, rt, &cb, 10000);
+	execute_route(stage_outputs, rt, {&psd_collect, &fb_collect}, 10000);
 
 	// Fill R and S matricies with collected data
 	Matrix<float, Dynamic,9> R(fine_cal_pts, 9);
         Matrix<float, Dynamic,3> S(fine_cal_pts, 3);
 	for (unsigned int i=0; i < fine_cal_pts; i++) {
-		input_data data = cb.data[i].data;
-		R.row(i) = pack_inputs(data);
+		R.row(i) = pack_inputs(psd_collect.data[i].values);
 		for (unsigned int j=0; j<3; j++)
-			S(i,j) = data.fb_pos[j];
+			S(i,j) = fb_collect.data[j].values[j];
 	}
 	return solve_response_matrix(R, S);
 }
 
-static Vector3f calculate_delta(Matrix<float, 3,9> R, input_data in) {
-	Matrix<float, 9,1> v = pack_inputs(in);
+static Vector3f calculate_delta(Matrix<float, 3,9> R, Vector4f psd_datum) {
+	Matrix<float, 9,1> v = pack_inputs(psd_datum);
 	return R*v;
 }
 
-void feedback(Matrix<float,3,9> R, input_channels& inputs, stage_outputs& stage)
+void feedback(Matrix<float,3,9> R, input_channels<4>& psd_inputs, output_channels<3>& stage_outputs, input_channels<3>& fb_inputs)
 {
 	while (true) {
-		input_data in = inputs.get();
+		Vector4f in = psd_inputs.get();
 		Vector3f delta = calculate_delta(R, in);
 		printf("%f\t%f\t%f\n", delta[0], delta[1], delta[2]);
-		stage.move(delta);
+		stage_outputs.set(delta);
 		usleep(feedback_delay);
 	}
 }
 
+template<unsigned int N>
 struct dump_inputs_cb : point_callback {
-	input_channels& in;
-	dump_inputs_cb(input_channels& in) : in(in) { }
+	input_channels<N>& in;
+	dump_inputs_cb(input_channels<N>& in) : in(in) { }
 	bool operator()(Vector3f& pos) {
 		// pos_x pos_y pos_z\tpsd_x psd_y\tpsd_sum\tfb_x fb_y fb_z\n
-		input_data d = in.get();
+		Matrix<float,1,N> d = in.get();
 		for (int i=0; i<3; i++)
 			printf("%f ", pos[i]);
 		printf("\t");
-		for (int i=0; i<2; i++)
+		for (int i=0; i<N; i++)
 			printf("%f ", d.psd_pos[i]);
-		printf("\t%f\t", d.psd_sum);
-		for (int i=0; i<3; i++)
-			printf("%f ", d.fb_pos[i]);
 		printf("\n");
 		usleep(2000);
 		return true;
@@ -304,7 +305,8 @@ struct dump_inputs_cb : point_callback {
 
 //#define TEST
 #ifdef TEST
-void track(input_channels& inputs, stage_outputs& stage)
+void track(input_channels<4>& psd_inputs,
+		output_channels<3>& stage_outputs, input_channels<3>& fb_inputs)
 {
 	float step_sz = 0.02;
 	unsigned int npts = 20;
@@ -314,19 +316,20 @@ void track(input_channels& inputs, stage_outputs& stage)
 	Vector3f step = (Vector3f() << step_sz, step_sz, 0).finished();
         Vector3i pts = (Vector3i() << npts, npts, 1).finished();
 	raster_route route(start, step, pts);
-	dump_inputs_cb cb(inputs);
+	dump_inputs_cb cb(psd_inputs);
 	printf("# pos_x pos_y pos_z\tpsd_x psd_y\tpsd_sum\tfb_x fb_y fb_z\n");
-	execute_route(stage, route, &cb);
+	execute_route(stage_outputs, route, &cb);
 }
 #else
-void track(input_channels& inputs, stage_outputs& stage)
+void track(input_channels<4>& psd_inputs,
+		output_channels<3>& stage_outputs, input_channels<3>& fb_inputs)
 {
-	Vector3f rough_pos = rough_calibrate(inputs, stage);
+	Vector3f rough_pos = rough_calibrate(psd_inputs, stage_outputs);
 	fprintf(stderr, "Rough Cal: %f %f %f\n", rough_pos[0], rough_pos[1], rough_pos[2]);
 	getchar();
-	auto coeffs = fine_calibrate(rough_pos, inputs, stage);
+	auto coeffs = fine_calibrate(rough_pos, psd_inputs, stage_outputs, fb_inputs);
 	getchar();
-	feedback(coeffs, inputs, stage);
+	feedback(coeffs, psd_inputs, stage_outputs, fb_inputs);
 }
 #endif
 

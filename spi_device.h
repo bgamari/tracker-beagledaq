@@ -66,7 +66,6 @@ protected:
 
 	template<class command>
 	void submit(std::vector<command*>& cmds) {
-		std::vector<uint8_t> buf;
 		int n_xfers = cmds.size();
 		struct spi_ioc_transfer* xfer = new spi_ioc_transfer[n_xfers];
 		memset(xfer, 0, sizeof(spi_ioc_transfer)*n_xfers);
@@ -75,19 +74,19 @@ protected:
 		for (auto cmd=cmds.begin(); cmd != cmds.end(); cmd++)
 			msg_length += (**cmd).length();
 
-		buf.resize(msg_length);
-
+		std::vector<uint8_t> buf;
+		buf.reserve(msg_length);
 		uint8_t* b = &buf[0];
-		unsigned int i = 0;
+		unsigned int n = 0;
 		for (auto c=cmds.begin(); c != cmds.end(); c++) {
 			spi_device::command* cmd = *c;
 			cmd->pack(b);
-			xfer[i].tx_buf = (__u64) b;
-			xfer[i].rx_buf = (__u64) b;
-			xfer[i].cs_change = true;
-			xfer[i].len = cmd->length();
+			xfer[n].tx_buf = (__u64) b;
+			xfer[n].rx_buf = (__u64) b;
+			xfer[n].cs_change = true;
+			xfer[n].len = cmd->length();
 			b += cmd->length();
-			i++;
+			n++;
 		}
 
 #ifdef DEBUG

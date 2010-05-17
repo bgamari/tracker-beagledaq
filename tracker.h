@@ -27,23 +27,20 @@
 
 USING_PART_OF_NAMESPACE_EIGEN
 
-struct input_data {
-	Vector2f psd_pos;
-	float psd_sum;
-	Vector3f fb_pos;
-};
-
+template<unsigned int N>
 struct input_channels {
-	virtual input_data get() = 0;
+	virtual Matrix<float,1,N> get() = 0;
 };
 
-struct stage_outputs {
+template<unsigned int N>
+struct output_channels {
 protected:
-	Vector3f position;
+	Matrix<float,1,N> last_values;
 public:
-	Vector3f get_position() { return position; }
-	virtual void move(Vector3f position) = 0;
+	virtual void set(Matrix<float,1,N> values) = 0;
+	Matrix<float,1,N> get_last() { return last_values; }
 };
 
-void track(input_channels& inputs, stage_outputs& stage);
+void track(input_channels<4>& psd_inputs,
+		output_channels<3>& stage_outputs, input_channels<3>& fb_inputs);
 

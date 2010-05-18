@@ -43,15 +43,26 @@ template<unsigned int N>
 struct max1302_inputs : input_channels<N> {
 	max1302& dev;
 	array<int,N> channels;
+	float offset;
 
-	max1302_inputs(max1302& dev, array<int,N> channels) :
+	max1302_inputs(max1302& dev, array<int,N> channels,
+			max1302::input_range range) :
 		dev(dev), channels(channels)
 	{
 		std::vector<max1302::command*> cmds;
 		
+		switch (range) {
+		case max1302::SE_ZERO_PLUS_VREF:
+			offset = 0; break;
+		case max1302::SE_MINUS_VREF_PLUS_VREF:
+			offset = -0.5; break;
+		default:
+			abort();
+		}
+		
 		for (unsigned int i=0; i<N; i++) {
-			cmds.push_back(new max1302::input_config_cmd(channels[i], max1302::EXT_CLOCK));
-			cmds.push_back(new max1302::mode_cntrl_cmd(channels[i], max1302::SE_MINUS_VREF_PLUS_VREF));
+			cmds.push_back(new max1302::mode_control_cmd(max1302::EXT_CLOCK));
+			cmds.push_back(new max1302::input_config_cmd(channels[i], range));
 		}
 		dev.submit(cmds);
 		for (auto c=cmds.begin(); c != cmds.end(); c++)
@@ -67,10 +78,13 @@ struct max1302_inputs : input_channels<N> {
 		for (unsigned int i=0; i<N; i++)
 			cmds.push_back(new max1302::start_conversion_cmd(channels[i], &int_vals[i]));
 		dev.submit(cmds);
+		printf("In: ");
 		for (unsigned int i=0; i<N; i++) {
-			values[i] = 1.0*(int_vals[i] - 0xffff/2) / 0xffff;
+			values[i] = 1.0*int_vals[i] / 0xffff + offset;
+			printf("%d ", int_vals[i]);
 			delete cmds[i];
 		}
+		printf("\n");
 		return values;
 	}
 };
@@ -98,12 +112,17 @@ struct max5134_outputs : output_channels<N> {
 		max5134::chan_mask all_mask;
 		std::vector<max5134::command*> cmds;
 		cmds.reserve(N+1);
+		printf("Out: ");
 		for (unsigned int i=0; i<N; i++) {
+			assert(0.0 < values[i] && values[i] < 1.0);
 			if (values[i] < 0.0 || values[i] > 1.0)
 				fprintf(stderr, "Warning: Clamped output\n");
-			cmds.push_back(new max5134::write_cmd(channels[i], values[i]*0xffff));
+			uint16_t out_val = values[i]*0xffff;
+			cmds.push_back(new max5134::write_cmd(channels[i], out_val));
+			printf("%d ", out_val);
 			all_mask |= channels[i];
 		}
+		printf("\n");
 		cmds.push_back(new max5134::load_dac_cmd (all_mask));
 
 		dev.submit(cmds);
@@ -124,8 +143,8 @@ int main(int argc, char** argv)
 #ifndef TEST
 	max1302 psd_adc(psd_adc_dev);
 	max1302 fb_adc(fb_adc_dev);
-	max1302_inputs<4> psd_inputs(psd_adc, psd_chans);
-	max1302_inputs<3> fb_inputs(fb_adc, fb_chans);
+	max1302_inputs<4> psd_inputs(psd_adc, psd_chans, max1302::SE_MINUS_VREF_PLUS_VREF);
+	max1302_inputs<3> fb_inputs(fb_adc, fb_chans, max1302::SE_ZERO_PLUS_VREF);
 
 	max5134 dac(stage_pos_dac_dev);
 	max5134_outputs<3> stage_outputs(dac, stage_chans);
@@ -135,7 +154,7 @@ int main(int argc, char** argv)
 	test_outputs<3> stage_outputs;
 #endif
 
-#define TRACK
+//#define TRACK
 #ifdef TRACK
 	stage_outputs.set({0.5, 0.5, 0.5});
 	fprintf(stderr, "Position bead. Press any key.\n");
@@ -145,12 +164,13 @@ int main(int argc, char** argv)
 	printf("# psd_x psd_y\tpsd_sum\tfb_x fb_y fb_z\n");
 	int n=0;
 	while (true) {
-		Vector4f d;
-		d = psd_inputs.get();
-		for (int i=0; i<4; i++)
-			printf("%f ", d[i]);
-		printf("\n");
-		//usleep(100);
+		//Vector4f psd = psd_inputs.get();
+		Vector3f fb = fb_inputs.get();
+		/*for (int i=0; i<4; i++) printf("%f ", psd[i]);
+		printf("\t");
+		for (int i=0; i<3; i++) printf("%f ", fb[i]);
+		printf("\n");*/
+		usleep(1000*1000);
 		n++;
 	}
 #endif

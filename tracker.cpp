@@ -41,7 +41,8 @@ const unsigned int rough_cal_xy_pts = 20;
 const unsigned int rough_cal_z_step = 0.01;
 const unsigned int rough_cal_z_pts = 40;
 
-unsigned int fine_cal_pts = 1000;
+const float fine_cal_range = 0.01;
+unsigned int fine_cal_pts = 100;
 
 const unsigned int feedback_delay = 1000;	// us
 
@@ -100,7 +101,11 @@ struct random_route : route {
 	Vector3f a;
 
 	random_route(array<boost::variate_generator<Engine&, Distribution>,3>& rngs, unsigned int n_pts) :
-		rngs(rngs), n_pts(n_pts) { }
+		rngs(rngs), n_pts(n_pts)
+	{
+		for (int i=0; i<3; i++)
+			a[i] = rngs[i]();
+	}
 
 	void operator++() {
 		n_pts--;
@@ -257,31 +262,34 @@ static Matrix<float,1,9> pack_inputs(Vector4f data) {
 	return R;
 }
 
-static Matrix<float, 3,9> fine_calibrate(Vector3f rough_pos, input_channels<4>& psd_inputs, output_channels<3>& stage_outputs, input_channels<3>& fb_inputs)
+static Matrix<float, 3,9> fine_calibrate(Vector3f rough_pos,
+		input_channels<4>& psd_inputs,
+		output_channels<3>& stage_outputs,
+		input_channels<3>& fb_inputs)
 {
 	typedef boost::mt19937 engine;
 	typedef boost::uniform_real<float> distribution;
 	typedef boost::variate_generator<engine&, distribution> vg;
 	engine e;
-	const float scan_range = 0.01;
 	array<vg,3> rngs = {{
-		vg(e, distribution(rough_pos.x()-scan_range, rough_pos.x()+scan_range)),
-		vg(e, distribution(rough_pos.y()-scan_range, rough_pos.y()+scan_range)),
-		vg(e, distribution(rough_pos.z()-scan_range, rough_pos.z()+scan_range))
+		vg(e, distribution(rough_pos.x()-fine_cal_range, rough_pos.x()+fine_cal_range)),
+		vg(e, distribution(rough_pos.y()-fine_cal_range, rough_pos.y()+fine_cal_range)),
+		vg(e, distribution(rough_pos.z()-fine_cal_range, rough_pos.z()+fine_cal_range))
 	}};
 	random_route<engine, distribution> rt(rngs, fine_cal_pts);
 	collect_cb<4> psd_collect(psd_inputs);
 	collect_cb<3> fb_collect(fb_inputs);
 
-	execute_route(stage_outputs, rt, {&psd_collect, &fb_collect}, 10000);
+	execute_route(stage_outputs, rt, {&psd_collect, &fb_collect}, 100000);
 
 	// Fill R and S matricies with collected data
 	Matrix<float, Dynamic,9> R(fine_cal_pts, 9);
         Matrix<float, Dynamic,3> S(fine_cal_pts, 3);
 	for (unsigned int i=0; i < fine_cal_pts; i++) {
 		R.row(i) = pack_inputs(psd_collect.data[i].values);
-		for (unsigned int j=0; j<3; j++)
-			S(i,j) = fb_collect.data[j].values[j];
+		printf("%f %f %f\t%f %f %f\n", fb_collect.data[i].position.x(), fb_collect.data[i].position.y(), fb_collect.data[i].position.z(),
+				fb_collect.data[i].values.x(), fb_collect.data[i].values.y(), fb_collect.data[i].values.z());
+		S.row(i) = fb_collect.data[i].values - rough_pos.transpose();
 	}
 	return solve_response_matrix(R, S);
 }
@@ -297,6 +305,7 @@ void feedback(Matrix<float,3,9> R, input_channels<4>& psd_inputs, output_channel
 		Vector4f in = psd_inputs.get();
 		Vector3f delta = calculate_delta(R, in);
 		printf("%f\t%f\t%f\n", delta[0], delta[1], delta[2]);
+		delta.z() = 0.5; // TODO
 		stage_outputs.set(delta);
 		usleep(feedback_delay);
 	}
@@ -344,7 +353,6 @@ void track(input_channels<4>& psd_inputs,
 	getchar();
 	auto coeffs = fine_calibrate(rough_pos, psd_inputs, stage_outputs, fb_inputs);
 	getchar();
-	return;
 	feedback(coeffs, psd_inputs, stage_outputs, fb_inputs);
 }
 #endif

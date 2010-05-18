@@ -60,7 +60,7 @@ public:
 		DIFF_MINUS_2_VREF_PLUS_2VREF = 0xf 
 	};
 
-	class mode_cntrl_cmd : public command {
+	class input_config_cmd : public command {
 		int channel;
 		input_range range;
 		unsigned int length() { return 2; }
@@ -70,12 +70,11 @@ public:
 		}
 		void unpack(const uint8_t* buf) { }
 	public:
-		mode_cntrl_cmd(int channel, input_range range) :
+		input_config_cmd(int channel, input_range range) :
 			channel(channel), range(range) { }
 	};
 
-
-	enum input_mode {
+	enum device_mode {
 		EXT_CLOCK	= 0x0,
 		EXT_ACQ 	= 0x1,
 		INT_CLOCK 	= 0x2,
@@ -84,9 +83,8 @@ public:
 		FULL_PWD_DOWN	= 0x7,
 	};
 
-	class input_config_cmd : public command {
-		int channel;
-		input_mode mode;
+	class mode_control_cmd : public command {
+		device_mode mode;
 		unsigned int length() { return 2; }
 		void pack(uint8_t* buf) {
 			buf[0] = (1<<7) | (mode<<4) | (1<<3);
@@ -94,10 +92,8 @@ public:
 		}
 		void unpack(const uint8_t* buf) { }
 	public:
-		input_config_cmd(int channel, input_mode mode) :
-			channel(channel), mode(mode) { }
+		mode_control_cmd(device_mode mode) : mode(mode) { }
 	};
-
 
 	max1302(const char* dev) : spi_device(dev) {
 		set_max_speed(10*MHZ);

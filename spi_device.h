@@ -18,7 +18,7 @@
  * Author: Ben Gamari <bgamari@physics.umass.edu>
  */
 
-//#define DEBUG
+#define DEBUG
 
 
 #pragma once
@@ -74,8 +74,7 @@ protected:
 		for (auto cmd=cmds.begin(); cmd != cmds.end(); cmd++)
 			msg_length += (**cmd).length();
 
-		std::vector<uint8_t> buf;
-		buf.reserve(msg_length);
+		uint8_t* buf = new uint8_t[msg_length];
 		uint8_t* b = &buf[0];
 		unsigned int n = 0;
 		for (auto c=cmds.begin(); c != cmds.end(); c++) {
@@ -91,8 +90,8 @@ protected:
 
 #ifdef DEBUG
 		printf("Sent:");
-		for (auto i=buf.begin(); i != buf.end(); i++)
-			printf(" %02x", *i);
+		for (int i=0; i < msg_length; i++)
+			printf(" %02x", buf[i]);
 		printf("\n");
 #endif
 
@@ -104,8 +103,8 @@ protected:
 
 #ifdef DEBUG
 		printf("Recv: ");
-		for (auto i=buf.begin(); i != buf.end(); i++)
-			printf(" %02x", *i);
+		for (int i=0; i < msg_length; i++)
+			printf(" %02x", buf[i]);
 		printf("\n");
 #endif
 
@@ -117,6 +116,7 @@ protected:
 		}
 
 		delete [] xfer;
+		delete [] buf;
 	}
 };
 

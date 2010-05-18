@@ -54,8 +54,8 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "Warning: Failed to acquire SCHED_RR\n");
 
 	for (int i=0; i<8; i++) {
-		cmds.push_back(new max1302::mode_cntrl_cmd(i, max1302::SE_ZERO_PLUS_VREF));
-		cmds.push_back(new max1302::input_config_cmd(i, max1302::EXT_CLOCK));
+		cmds.push_back(new max1302::input_config_cmd(i, max1302::SE_ZERO_PLUS_VREF));
+		cmds.push_back(new max1302::mode_control_cmd(max1302::EXT_CLOCK));
 	}
 	adc.submit(cmds);
 	for (auto i=cmds.begin(); i!=cmds.end(); i++)

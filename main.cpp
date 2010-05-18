@@ -51,7 +51,7 @@ struct max1302_inputs : input_channels<N> {
 		
 		for (unsigned int i=0; i<N; i++) {
 			cmds.push_back(new max1302::input_config_cmd(channels[i], max1302::EXT_CLOCK));
-			cmds.push_back(new max1302::mode_cntrl_cmd(channels[i], max1302::SE_ZERO_PLUS_VREF));
+			cmds.push_back(new max1302::mode_cntrl_cmd(channels[i], max1302::SE_MINUS_VREF_PLUS_VREF));
 		}
 		dev.submit(cmds);
 		for (auto c=cmds.begin(); c != cmds.end(); c++)
@@ -68,7 +68,7 @@ struct max1302_inputs : input_channels<N> {
 			cmds.push_back(new max1302::start_conversion_cmd(channels[i], &int_vals[i]));
 		dev.submit(cmds);
 		for (unsigned int i=0; i<N; i++) {
-			values[i] = 1.0*int_vals[i] / 0xffff;
+			values[i] = 1.0*(int_vals[i] - 0xffff/2) / 0xffff;
 			delete cmds[i];
 		}
 		return values;
@@ -135,7 +135,7 @@ int main(int argc, char** argv)
 	test_outputs<3> stage_outputs;
 #endif
 
-//#define TRACK
+#define TRACK
 #ifdef TRACK
 	stage_outputs.set({0.5, 0.5, 0.5});
 	fprintf(stderr, "Position bead. Press any key.\n");
@@ -144,7 +144,7 @@ int main(int argc, char** argv)
 #else
 	printf("# psd_x psd_y\tpsd_sum\tfb_x fb_y fb_z\n");
 	int n=0;
-	while (n < 10000) {
+	while (true) {
 		Vector4f d;
 		d = psd_inputs.get();
 		for (int i=0; i<4; i++)

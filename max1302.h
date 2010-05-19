@@ -96,7 +96,7 @@ public:
 	};
 
 	max1302(const char* dev) : spi_device(dev) {
-		set_max_speed(10*MHZ);
+		set_max_speed(1*MHZ);
 	}
 
 	void submit(std::vector<command*>& cmds) {

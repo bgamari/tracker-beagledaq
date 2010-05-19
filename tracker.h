@@ -34,13 +34,29 @@ struct input_channels {
 
 template<unsigned int N>
 struct output_channels {
-protected:
-	Matrix<float,1,N> last_values;
-public:
 	virtual void set(Matrix<float,1,N> values) = 0;
-	Matrix<float,1,N> get_last() { return last_values; }
+};
+
+class stage {
+	output_channels<3>& out;
+	input_channels<3>& fb;
+	Vector3f last_pos;
+	Vector4f Rx, Ry, Rz;
+
+public:
+	stage(output_channels<3>& out, input_channels<3>& fb)
+		: out(out), fb(fb) { }
+
+	/*
+	 * calibrate():
+	 * Perform basic first-order OLS regression to map feedback positions
+	 * to stage position
+	 */
+	void calibrate(unsigned int n_pts=10);
+	void move(Vector3f pos);
+	Vector3f get_last_pos();
 };
 
 void track(input_channels<4>& psd_inputs,
-		output_channels<3>& stage_outputs, input_channels<3>& fb_inputs);
+		stage& stage_outputs, input_channels<3>& fb_inputs);
 

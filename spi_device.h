@@ -18,7 +18,7 @@
  * Author: Ben Gamari <bgamari@physics.umass.edu>
  */
 
-#define DEBUG
+//#define DEBUG
 
 
 #pragma once

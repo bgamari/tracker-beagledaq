@@ -172,13 +172,13 @@ int main(int argc, char** argv)
 	printf("# psd_x psd_y\tpsd_sum\tfb_x fb_y fb_z\n");
 	int n=0;
 	while (true) {
-		//Vector4f psd = psd_inputs.get();
+		Vector4f psd = psd_inputs.get();
 		Vector3f fb = fb_inputs.get();
-		/*for (int i=0; i<4; i++) printf("%f ", psd[i]);
+		for (int i=0; i<4; i++) printf("%f ", psd[i]);
 		printf("\t");
 		for (int i=0; i<3; i++) printf("%f ", fb[i]);
-		printf("\n");*/
-		usleep(1000*1000);
+		printf("\n");
+		usleep(1000*100);
 		n++;
 	}
 #endif

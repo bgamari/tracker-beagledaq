@@ -116,7 +116,7 @@ Vector3f stage::get_last_pos() {
 }
 
 static void smooth_move(stage& stage,
-		Vector3f to, unsigned int move_time=1000)
+		Vector3f to, unsigned int move_time=100)
 {
 	// How long to wait in between smoothed position updates
 	const unsigned int smooth_delay = 10; // us
@@ -139,7 +139,6 @@ static void execute_route(stage& stage, route& route,
 {
 	for (; route.has_more(); ++route) {
 		Vector3f pos = route.get_pos();
-		//printf("Pt\t%f\t%f\t%f\n", pos[0], pos[1], pos[2]);
 		smooth_move(stage, pos);
 		usleep(point_delay);
 		for (auto cb = cbs.begin(); cb != cbs.end(); cb++)
@@ -290,15 +289,6 @@ static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage)
 	return laser_pos;
 }
 
-static Matrix<float, 3,10> solve_response_matrix(Matrix<float, Dynamic,10> R,
-		Matrix<float, Dynamic,3> S)
-{
-	Matrix<float, 10,10> RRi = (R.transpose() * R).inverse();
-	Matrix<float, 10,3> beta = RRi * R.transpose() * S;
-	Matrix<float, 3,10> bt = beta.transpose();
-	return bt;
-}
-
 /*
  * pack_psd_inputs(): Pack input data into vector with higher order terms
  */
@@ -327,8 +317,7 @@ static Matrix<float,1,10> pack_psd_inputs(Vector4f data) {
 }
 
 static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
-		input_channels<4>& psd_inputs,
-		stage& stage,
+		input_channels<4>& psd_inputs, stage& stage,
 		input_channels<3>& fb_inputs)
 {
 	typedef boost::mt19937 engine;
@@ -344,7 +333,7 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 	collect_cb<4> psd_collect(psd_inputs);
 	collect_cb<3> fb_collect(fb_inputs);
 
-	execute_route(stage, rt, {&psd_collect, &fb_collect}, 100000);
+	execute_route(stage, rt, {&psd_collect, &fb_collect});
 
 	// Fill R and S matricies with collected data
 	Matrix<float, Dynamic,10> R(fine_cal_pts, 10);
@@ -367,7 +356,11 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 	fclose(f);
 #endif
 
-	return solve_response_matrix(R, S);
+	// Solve regression coefficients
+	Matrix<float, 10,10> RRi = (R.transpose() * R).inverse();
+	Matrix<float, 10,3> beta = RRi * R.transpose() * S;
+	Matrix<float, 3,10> bt = beta.transpose();
+	return bt;
 }
 
 void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
@@ -381,7 +374,7 @@ void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
 
 		printf("delta %f\t%f\t%f\n", delta[0], delta[1], delta[2]);
 		delta += fb;
-		delta.z() = 0.5; // TODO
+		//delta.z() = 0.5; // TODO
 		printf("dest %f\t%f\t%f\n", delta[0], delta[1], delta[2]);
 
 		stage.move(delta);

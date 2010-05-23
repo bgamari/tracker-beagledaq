@@ -49,8 +49,8 @@ public:
 
 	/*
 	 * calibrate():
-	 * Perform basic first-order OLS regression to map feedback positions
-	 * to stage position
+	 * Perform basic first-order OLS regression to map feedback coordinate
+	 * space to stage input space
 	 */
 	void calibrate(unsigned int n_pts=10);
 	void move(Vector3f pos);

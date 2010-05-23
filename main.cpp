@@ -156,15 +156,17 @@ int main(int argc, char** argv)
 
 #define TRACK
 #ifdef TRACK
-	std::cerr << "PSD: " << psd_inputs.get() << "\n";
 	stage stage(stage_outputs, fb_inputs);
 	stage.calibrate();
 	stage.move({0.5, 0.5, 0.5});
 	usleep(100*1000);
 	Vector3f fb = fb_inputs.get();
-	printf("Hello %f %f %f\n", fb.x(), fb.y(), fb.z());
+	fprintf(stderr, "Feedback position: %f %f %f\n", fb.x(), fb.y(), fb.z());
 	fprintf(stderr, "Position bead. Press any key.\n");
 	getchar();
+	Vector4f psd = psd_inputs.get();
+	fprintf(stderr, "PSD: pos=(%f, %f); sum=(%f, %f)\n",
+			psd[0], psd[1], psd[2], psd[3]);
 	track(psd_inputs, stage, fb_inputs);
 #else
 	printf("# psd_x psd_y\tpsd_sum\tfb_x fb_y fb_z\n");

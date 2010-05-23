@@ -285,38 +285,42 @@ static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage)
 	return laser_pos;
 }
 
-static Matrix<float, 3,9> solve_response_matrix(Matrix<float, Dynamic,9> R, Matrix<float, Dynamic,3> S)
+static Matrix<float, 3,10> solve_response_matrix(Matrix<float, Dynamic,10> R, Matrix<float, Dynamic,3> S)
 {
-	Matrix<float, 9,9> RRi = (R.transpose() * R).inverse();
-	Matrix<float, 9,3> beta = RRi * R.transpose() * S;
-	Matrix<float, 3,9> bt = beta.transpose();
+	Matrix<float, 10,10> RRi = (R.transpose() * R).inverse();
+	Matrix<float, 10,3> beta = RRi * R.transpose() * S;
+	Matrix<float, 3,10> bt = beta.transpose();
 	return bt;
 }
 
 /*
  * pack_psd_inputs(): Pack input data into vector with higher order terms
  */
-static Matrix<float,1,9> pack_psd_inputs(Vector4f data) {
-	Matrix<float,1,9> R;
+static Matrix<float,1,10> pack_psd_inputs(Vector4f data) {
+	Matrix<float,1,10> R;
+
+	// Offset
+	R[0] = 1;
 
 	// First order
-	R[0] = data[0];			// Vx
-	R[1] = data[1];			// Vy
-	R[2] = -data[2] + data[3];	// Vsum = Vsum_x + Vsum_y
+	R[1] = data[0];			// Vx
+	R[2] = data[1];			// Vy
+	R[3] = -data[2] + data[3];	// Vsum = Vsum_x + Vsum_y
 	
 	// Second order
-	R[3] = R[0]*R[0];		// Vx^2
-	R[4] = R[1]*R[1];		// Vy^2
-	R[5] = R[2]*R[2];		// Vsum^2
+	R[4] = R[1]*R[1];		// Vx^2
+	R[5] = R[2]*R[2];		// Vy^2
+	R[6] = R[3]*R[3];		// Vsum^2
 
 	// Cross terms
-	R[6] = R[0]*R[1];		// Vx*Vy
-	R[7] = R[0]*R[2];		// Vx*Vsum
-	R[8] = R[1]*R[2];		// Vy*Vsum
+	R[7] = R[1]*R[2];		// Vx*Vy
+	R[8] = R[1]*R[3];		// Vx*Vsum
+	R[9] = R[2]*R[3];		// Vy*Vsum
+
 	return R;
 }
 
-static Matrix<float, 3,9> fine_calibrate(Vector3f rough_pos,
+static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 		input_channels<4>& psd_inputs,
 		stage& stage,
 		input_channels<3>& fb_inputs)
@@ -337,7 +341,7 @@ static Matrix<float, 3,9> fine_calibrate(Vector3f rough_pos,
 	execute_route(stage, rt, {&psd_collect, &fb_collect}, 100000);
 
 	// Fill R and S matricies with collected data
-	Matrix<float, Dynamic,9> R(fine_cal_pts, 9);
+	Matrix<float, Dynamic,10> R(fine_cal_pts, 10);
         Matrix<float, Dynamic,3> S(fine_cal_pts, 3);
 	for (unsigned int i=0; i < fine_cal_pts; i++) {
 		R.row(i) = pack_psd_inputs(psd_collect.data[i].values);
@@ -360,12 +364,12 @@ static Matrix<float, 3,9> fine_calibrate(Vector3f rough_pos,
 	return solve_response_matrix(R, S);
 }
 
-void feedback(Matrix<float,3,9> R, input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_inputs)
+void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_inputs)
 {
 	while (true) {
 		Vector4f psd = psd_inputs.get();
 		Vector3f fb = fb_inputs.get();
-		Matrix<float, 9,1> psd_in = pack_psd_inputs(psd);
+		Matrix<float, 10,1> psd_in = pack_psd_inputs(psd);
 		Vector3f delta = R * psd_in;
 
 		printf("delta %f\t%f\t%f\n", delta[0], delta[1], delta[2]);

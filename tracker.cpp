@@ -74,7 +74,8 @@ void stage::calibrate(unsigned int n_pts) {
 	typedef boost::mt19937 engine;
 	typedef boost::uniform_real<float> distribution;
 	engine e;
-	boost::variate_generator<engine&, distribution> vg(e, distribution(0.5-stage_cal_range, 0.5+stage_cal_range));
+	boost::variate_generator<engine&, distribution> vg(e,
+			distribution(0.5-stage_cal_range, 0.5+stage_cal_range));
 	
 	for (unsigned int i=0; i<n_pts; i++) {
 		Vector3f out_pos;
@@ -132,8 +133,9 @@ static void smooth_move(stage& stage,
 	stage.move(to);
 }
 
-static void execute_route(stage& stage,
-		route& route, vector<point_callback*> cbs=vector<point_callback*>(), unsigned int point_delay=1000)
+static void execute_route(stage& stage, route& route,
+		vector<point_callback*> cbs=vector<point_callback*>(),
+		unsigned int point_delay=1000)
 {
 	for (; route.has_more(); ++route) {
 		Vector3f pos = route.get_pos();
@@ -152,7 +154,8 @@ struct random_route : route {
 	unsigned int n_pts;
 	Vector3f a;
 
-	random_route(array<boost::variate_generator<Engine&, Distribution>,3>& rngs, unsigned int n_pts) :
+	random_route(array<boost::variate_generator<Engine&, Distribution>,3>& rngs,
+			unsigned int n_pts) :
 		rngs(rngs), n_pts(n_pts)
 	{
 		for (int i=0; i<3; i++)
@@ -231,8 +234,10 @@ bool compare_position(collect_cb<4>::point a, collect_cb<4>::point b)
 template<unsigned int axis>
 static Vector3f find_bead(vector<collect_cb<4>::point> data) {
 	Eigen::IOFormat fmt = Eigen::IOFormat(4, Eigen::Raw, " ", "\t");
-	collect_cb<4>::point min = * min_element(data.begin(), data.end(), compare_position<axis>);
-	collect_cb<4>::point max = * max_element(data.begin(), data.end(), compare_position<axis>);
+	collect_cb<4>::point min = * min_element(data.begin(), data.end(),
+			compare_position<axis>);
+	collect_cb<4>::point max = * max_element(data.begin(), data.end(),
+			compare_position<axis>);
 
 	std::cerr << "extrema(" << axis << ")\t";
 	std::cerr << min.position.format(fmt) << "\t" << min.values.format(fmt) << "\t";
@@ -285,7 +290,8 @@ static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage)
 	return laser_pos;
 }
 
-static Matrix<float, 3,10> solve_response_matrix(Matrix<float, Dynamic,10> R, Matrix<float, Dynamic,3> S)
+static Matrix<float, 3,10> solve_response_matrix(Matrix<float, Dynamic,10> R,
+		Matrix<float, Dynamic,3> S)
 {
 	Matrix<float, 10,10> RRi = (R.transpose() * R).inverse();
 	Matrix<float, 10,3> beta = RRi * R.transpose() * S;
@@ -364,7 +370,8 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 	return solve_response_matrix(R, S);
 }
 
-void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_inputs)
+void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
+		stage& stage, input_channels<3>& fb_inputs)
 {
 	while (true) {
 		Vector4f psd = psd_inputs.get();

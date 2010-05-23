@@ -84,6 +84,7 @@ struct max1302_inputs : input_channels<N> {
 			cmds.push_back(new max1302::start_conversion_cmd(channels[i], &int_vals[i]));
 		dev.submit(cmds);
 		for (unsigned int i=0; i<N; i++) {
+			int_vals[i] *= 2; // HACK: Hardware seems to be off by factor of two
 			values[i] = scale * int_vals[i] / 0xffff + offset;
 			delete cmds[i];
 		}
@@ -115,9 +116,10 @@ struct max5134_outputs : output_channels<N> {
 		std::vector<max5134::command*> cmds;
 		cmds.reserve(N+1);
 		for (unsigned int i=0; i<N; i++) {
-			assert(0.0 < values[i] && values[i] < 1.0);
-			if (values[i] < 0.0 || values[i] > 1.0)
-				fprintf(stderr, "Warning: Clamped output\n");
+			if (values[i] < 0.0 || values[i] > 1.0) {
+				std::cerr << "Warning: Clamped output\n  (output=" << values << ")\n";
+				abort();
+			}
 			uint16_t out_val = values[i]*0xffff;
 			cmds.push_back(new max5134::write_cmd(channels[i], out_val));
 			all_mask |= channels[i];
@@ -154,6 +156,7 @@ int main(int argc, char** argv)
 
 #define TRACK
 #ifdef TRACK
+	std::cerr << "PSD: " << psd_inputs.get() << "\n";
 	stage stage(stage_outputs, fb_inputs);
 	stage.calibrate();
 	stage.move({0.5, 0.5, 0.5});

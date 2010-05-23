@@ -28,6 +28,7 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <time.h>
 #include <cstdio>
+#include <iostream>
 #include <Eigen/Array>
 #include <Eigen/LU>
 
@@ -83,10 +84,10 @@ void stage::calibrate(unsigned int n_pts) {
 		Vector3f fb_pos = fb.get();
 
 		X.row(i)[0] = 1; // constant
-		X.row(i).end(3) = out_pos.transpose();
-		Yx[i] = fb_pos.x();
-		Yy[i] = fb_pos.y();
-		Yz[i] = fb_pos.z();
+		X.row(i).end(3) = fb_pos.transpose();
+		Yx[i] = out_pos.x();
+		Yy[i] = out_pos.y();
+		Yz[i] = out_pos.z();
 	}
 	Matrix<float,4,Dynamic> tmp = (X.transpose() * X).inverse() * X.transpose();
 	Rx = tmp * Yx;
@@ -214,7 +215,7 @@ struct collect_cb : point_callback {
 
 	collect_cb(input_channels<N>& inputs) : inputs(inputs) { }
 
-	bool operator()(Vector3f& pos) {
+bool operator()(Vector3f& pos) {
 		point p = { pos, inputs.get() };
 		data.push_back(p);
 		return true;
@@ -225,6 +226,19 @@ template<unsigned int axis>
 bool compare_position(collect_cb<4>::point a, collect_cb<4>::point b)
 {
 	return a.values[axis] < b.values[axis];
+}
+
+template<unsigned int axis>
+static Vector3f find_bead(vector<collect_cb<4>::point> data) {
+	Eigen::IOFormat fmt = Eigen::IOFormat(4, Eigen::Raw, " ", "\t");
+	collect_cb<4>::point min = * min_element(data.begin(), data.end(), compare_position<axis>);
+	collect_cb<4>::point max = * max_element(data.begin(), data.end(), compare_position<axis>);
+
+	std::cerr << "extrema(" << axis << ")\t";
+	std::cerr << min.position.format(fmt) << "\t" << min.values.format(fmt) << "\t";
+	std::cerr << max.position.format(fmt) << "\t" << max.values.format(fmt) << "\n";
+
+	return (min.position + max.position) / 2;
 }
 
 static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage)
@@ -242,43 +256,32 @@ static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage)
 	printf("Rough calibrate\n");
 	execute_route(stage, route_xy, {&xy_data});
 
+#define DUMP_ROUGH_CAL
+#ifdef DUMP_ROUGH_CAL
 	FILE* f = fopen("rough", "w");
+	fprintf(f, "# pos_x pos_y pos_z\tpsd_x psd_y sum_x sum_y\n");
 	for (auto i = xy_data.data.begin(); i != xy_data.data.end(); i++)
-		fprintf(f, "%f %f %f\t%f %f %f %f\n", i->position[0], i->position[1], i->position[2],
+		fprintf(f, "%f %f %f\t%f %f %f %f\n",
+				i->position[0], i->position[1], i->position[2],
 				i->values[0], i->values[1], i->values[2], i->values[3]);
 	fclose(f);
-
-	// Find extrema of Vx
-	Vector3f min_x_pos = min_element(xy_data.data.begin(), xy_data.data.end(), compare_position<0>)->position;
-	Vector3f max_x_pos = max_element(xy_data.data.begin(), xy_data.data.end(), compare_position<0>)->position;
-	// Find extrema of Vy
-	Vector3f min_y_pos = min_element(xy_data.data.begin(), xy_data.data.end(), compare_position<1>)->position;
-	Vector3f max_y_pos = max_element(xy_data.data.begin(), xy_data.data.end(), compare_position<1>)->position;
-
-	printf("Min X: %f, %f\n", min_x_pos.x(), min_x_pos.y());
-	printf("Max X: %f, %f\n", max_x_pos.x(), max_x_pos.y());
-	printf("Min Y: %f, %f\n", min_y_pos.x(), min_y_pos.y());
-	printf("Max Y: %f, %f\n", max_y_pos.x(), max_y_pos.y());
+#endif
 
 	Vector3f laser_pos;
-        laser_pos.x() = (min_x_pos.x() + max_x_pos.x()) / 2;
-	laser_pos.y() = (min_y_pos.y() + max_y_pos.y()) / 2;
-	laser_pos.z() = 0.5 - rough_cal_z_step * rough_cal_z_pts/2;
+	// Find extrema of Vx, Vy
+	laser_pos.x() = find_bead<0>(xy_data.data).x();
+	laser_pos.y() = find_bead<1>(xy_data.data).y();
 
 	// Scan in Z direction
+	laser_pos.z() = 0.5 - rough_cal_z_step * rough_cal_z_pts/2;
 	step = (Vector3f() << 0, 0, rough_cal_z_step).finished();
 	pts = (Vector3i() << 1, 1, rough_cal_z_pts).finished();
 	raster_route route_z(laser_pos, step, pts);
 	collect_cb<4> z_data(psd_inputs);
 	execute_route(stage, route_z, {&z_data});
-
 	// Find extrema of Vz
-	Vector3f min_z_pos = min_element(z_data.data.begin(), z_data.data.end(), compare_position<2>)->position;
-	Vector3f max_z_pos = max_element(z_data.data.begin(), z_data.data.end(), compare_position<2>)->position;
-	printf("Min Z: %f, %f, %f\n", min_z_pos.x(), min_z_pos.y(), min_z_pos.z());
-	printf("Max Z: %f, %f, %f\n", max_z_pos.x(), max_z_pos.y(), max_z_pos.z());
-	
-	laser_pos.z() = (max_z_pos.z() + min_z_pos.z()) / 2;
+	laser_pos.z() = find_bead<2>(z_data.data).z();
+
 	return laser_pos;
 }
 
@@ -291,25 +294,25 @@ static Matrix<float, 3,9> solve_response_matrix(Matrix<float, Dynamic,9> R, Matr
 }
 
 /*
- * pack_inputs(): Pack input data into vector with higher order terms
+ * pack_psd_inputs(): Pack input data into vector with higher order terms
  */
-static Matrix<float,1,9> pack_inputs(Vector4f data) {
+static Matrix<float,1,9> pack_psd_inputs(Vector4f data) {
 	Matrix<float,1,9> R;
 
 	// First order
-	R(0) = data[0];
-	R(1) = data[1];
-	R(2) = data[2];
+	R[0] = data[0];			// Vx
+	R[1] = data[1];			// Vy
+	R[2] = -data[2] + data[3];	// Vsum = Vsum_x + Vsum_y
 	
 	// Second order
-	R(3) = R(0)*R(0);
-	R(4) = R(1)*R(1);
-	R(5) = R(2)*R(2);
+	R[3] = R[0]*R[0];		// Vx^2
+	R[4] = R[1]*R[1];		// Vy^2
+	R[5] = R[2]*R[2];		// Vsum^2
 
 	// Cross terms
-	R(6) = R(0)*R(1);
-	R(7) = R(0)*R(2);
-	R(8) = R(1)*R(2);
+	R[6] = R[0]*R[1];		// Vx*Vy
+	R[7] = R[0]*R[2];		// Vx*Vsum
+	R[8] = R[1]*R[2];		// Vy*Vsum
 	return R;
 }
 
@@ -337,26 +340,39 @@ static Matrix<float, 3,9> fine_calibrate(Vector3f rough_pos,
 	Matrix<float, Dynamic,9> R(fine_cal_pts, 9);
         Matrix<float, Dynamic,3> S(fine_cal_pts, 3);
 	for (unsigned int i=0; i < fine_cal_pts; i++) {
-		R.row(i) = pack_inputs(psd_collect.data[i].values);
-		printf("%f %f %f\t%f %f %f\n", fb_collect.data[i].position.x(), fb_collect.data[i].position.y(), fb_collect.data[i].position.z(),
-				fb_collect.data[i].values.x(), fb_collect.data[i].values.y(), fb_collect.data[i].values.z());
+		R.row(i) = pack_psd_inputs(psd_collect.data[i].values);
 		S.row(i) = fb_collect.data[i].values - rough_pos.transpose();
 	}
-	return solve_response_matrix(R, S);
-}
 
-static Vector3f calculate_delta(Matrix<float, 3,9> R, Vector4f psd_datum) {
-	Matrix<float, 9,1> v = pack_inputs(psd_datum);
-	return R*v;
+#define DUMP_FINE_CAL
+#ifdef DUMP_FINE_CAL
+	FILE* f = fopen("fine", "w");
+	fprintf(f, "# pos_x pos_y pos_z\tfb_x fb_y fb_z\tpsd_x psd_y sum_x sum_y\n");
+	for (unsigned int i=0; i < fine_cal_pts; i++) {
+		fprintf(f, "%f %f %f\t%f %f %f\t%f %f %f %f\n",
+				fb_collect.data[i].position.x(), fb_collect.data[i].position.y(), fb_collect.data[i].position.z(),
+				fb_collect.data[i].values.x(), fb_collect.data[i].values.y(), fb_collect.data[i].values.z(),
+				psd_collect.data[i].values[0], psd_collect.data[i].values[1], psd_collect.data[i].values[2], psd_collect.data[i].values[3]);
+	}
+	fclose(f);
+#endif
+
+	return solve_response_matrix(R, S);
 }
 
 void feedback(Matrix<float,3,9> R, input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_inputs)
 {
 	while (true) {
-		Vector4f in = psd_inputs.get();
-		Vector3f delta = calculate_delta(R, in);
-		printf("%f\t%f\t%f\n", delta[0], delta[1], delta[2]);
+		Vector4f psd = psd_inputs.get();
+		Vector3f fb = fb_inputs.get();
+		Matrix<float, 9,1> psd_in = pack_psd_inputs(psd);
+		Vector3f delta = R * psd_in;
+
+		printf("delta %f\t%f\t%f\n", delta[0], delta[1], delta[2]);
+		delta += fb;
 		delta.z() = 0.5; // TODO
+		printf("dest %f\t%f\t%f\n", delta[0], delta[1], delta[2]);
+
 		stage.move(delta);
 		usleep(feedback_delay);
 	}

@@ -29,6 +29,9 @@
 #include <time.h>
 #include <cstdio>
 #include <iostream>
+#include <fstream>
+
+#include <Eigen/Core>
 #include <Eigen/Array>
 #include <Eigen/LU>
 
@@ -49,6 +52,12 @@ const unsigned int fine_cal_pts = 100;
 
 const unsigned int feedback_delay = 1000;	// us
 
+void dump_matrix(MatrixXf A, const char* filename) {
+	Eigen::IOFormat fmt = Eigen::IOFormat(14, Eigen::Raw, "\t", "\n");
+        std::ofstream os(filename);
+        os << A.format(fmt);
+        os.close();
+}
 
 struct point_callback {
 	/*
@@ -258,7 +267,7 @@ static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage)
 	collect_cb<4> xy_data(psd_inputs);
 	
 	printf("Rough calibrate\n");
-	execute_route(stage, route_xy, {&xy_data});
+	execute_route(stage, route_xy, {&xy_data}, 1000);
 
 #define DUMP_ROUGH_CAL
 #ifdef DUMP_ROUGH_CAL
@@ -301,7 +310,7 @@ static Matrix<float,1,10> pack_psd_inputs(Vector4f data) {
 	// First order
 	R[1] = data[0];			// Vx
 	R[2] = data[1];			// Vy
-	R[3] = -data[2] + data[3];	// Vsum = Vsum_x + Vsum_y
+	R[3] = -data[2] + data[3];	// Vsum = -Vsum_x + Vsum_y
 	
 	// Second order
 	R[4] = R[1]*R[1];		// Vx^2
@@ -357,7 +366,19 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 #endif
 
 	// Solve regression coefficients
-	Matrix<float, 10,10> RRi = (R.transpose() * R).inverse();
+        dump_matrix(R, "R");
+        Matrix<float, 10,10> RR = R.transpose() * R;
+        dump_matrix(RR, "RtR");
+
+	//Matrix<float, 10,10> RRi = RR.lu().inverse();
+        Eigen::LU<Matrix<float, 10,10> > lu(RR);
+        if (!lu.isInvertible()) {
+                fprintf(stderr, "Error: Regression matrix not invertible.\n");
+                abort();
+        }
+        Matrix<float, 10,10> RRi = lu.inverse();
+        dump_matrix(RRi, "RRi");
+
 	Matrix<float, 10,3> beta = RRi * R.transpose() * S;
 	Matrix<float, 3,10> bt = beta.transpose();
 	return bt;
@@ -420,9 +441,15 @@ void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_in
 	stage.move(rough_pos);
 	fprintf(stderr, "Rough Cal: %f %f %f\n", rough_pos[0], rough_pos[1], rough_pos[2]);
 	getchar();
-	auto coeffs = fine_calibrate(rough_pos, psd_inputs, stage, fb_inputs);
+	Matrix<float, 3,10> coeffs = fine_calibrate(rough_pos, psd_inputs, stage, fb_inputs);
+
+#define DUMP_COEFFS
+#ifdef DUMP_COEFFS
+        dump_matrix(coeffs, "coeffs");
+#endif
+
 	getchar();
-	feedback(coeffs, psd_inputs, stage, fb_inputs);
+	//feedback(coeffs, psd_inputs, stage, fb_inputs);
 }
 #endif
 

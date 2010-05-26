@@ -3,7 +3,8 @@ CXXFLAGS = -lrt -O0 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
 
 all : tracker
 
-tracker : main.o spi_device.o max5590.o max1270.o
+tracker : main.o spi_device.o max5590.o max1270.o tracker.o
+	$(CXX) $(CXXFLAGS) -o $@ $+
 
 clean :
 	rm -f *.o

@@ -20,6 +20,7 @@
 
 
 #include <cstdint>
+#include <iostream>
 #include "bitfield.h"
 #include "max5134.h"
 #include "max1302.h"

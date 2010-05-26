@@ -25,7 +25,7 @@
 #include <tr1/array>
 #include <Eigen/Core>
 
-USING_PART_OF_NAMESPACE_EIGEN
+using namespace Eigen;
 
 template<unsigned int N>
 struct input_channels {

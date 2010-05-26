@@ -30,10 +30,7 @@
 #include <cstdio>
 #include <iostream>
 #include <fstream>
-
-#include <Eigen/Core>
-#include <Eigen/Array>
-#include <Eigen/LU>
+#include <Eigen/Eigen>
 
 
 using std::vector;
@@ -48,15 +45,23 @@ const unsigned int rough_cal_z_step = 0.01;
 const unsigned int rough_cal_z_pts = 40;
 
 const float fine_cal_range = 0.01;
-const unsigned int fine_cal_pts = 100;
+const unsigned int fine_cal_pts = 1000;
 
-const unsigned int feedback_delay = 1000;	// us
+const unsigned int feedback_delay = 100;	// us
 
-void dump_matrix(MatrixXf A, const char* filename) {
-	Eigen::IOFormat fmt = Eigen::IOFormat(14, Eigen::Raw, "\t", "\n");
+void dump_matrix(MatrixXf A, const char* filename)
+{
+	Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
         std::ofstream os(filename);
         os << A.format(fmt);
         os.close();
+}
+
+Vector4f scale_psd_position(Vector4f in)
+{
+        in.x() /= in[2];
+        in.y() /= in[3];
+        return in;
 }
 
 struct point_callback {
@@ -94,7 +99,7 @@ void stage::calibrate(unsigned int n_pts) {
 		Vector3f fb_pos = fb.get();
 
 		X.row(i)[0] = 1; // constant
-		X.row(i).end(3) = fb_pos.transpose();
+		X.row(i).tail<3>() = fb_pos.transpose();
 		Yx[i] = out_pos.x();
 		Yy[i] = out_pos.y();
 		Yz[i] = out_pos.z();
@@ -112,7 +117,7 @@ void stage::move(Vector3f pos)
 {
 	Vector4f npos; // position with constant component
 	npos[0] = 1;
-	npos.end(3) = pos;
+	npos.tail<3>() = pos;
 
 	Vector3f p;
 	p << npos.dot(Rx), npos.dot(Ry), npos.dot(Rz);
@@ -200,7 +205,7 @@ struct raster_route : route {
 			pos[i] = m % points[i];
 			m /= points[i];
 		}
-		return start + step.cwise() * pos.cast<float>();
+		return start.array() + step.array() * pos.cast<float>().array();
 	}
 
 	void operator++() {
@@ -241,7 +246,7 @@ bool compare_position(collect_cb<4>::point a, collect_cb<4>::point b)
 
 template<unsigned int axis>
 static Vector3f find_bead(vector<collect_cb<4>::point> data) {
-	Eigen::IOFormat fmt = Eigen::IOFormat(4, Eigen::Raw, " ", "\t");
+	Eigen::IOFormat fmt = Eigen::IOFormat(4, 0, " ", "\t");
 	collect_cb<4>::point min = * min_element(data.begin(), data.end(),
 			compare_position<axis>);
 	collect_cb<4>::point max = * max_element(data.begin(), data.end(),
@@ -348,7 +353,8 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 	Matrix<float, Dynamic,10> R(fine_cal_pts, 10);
         Matrix<float, Dynamic,3> S(fine_cal_pts, 3);
 	for (unsigned int i=0; i < fine_cal_pts; i++) {
-		R.row(i) = pack_psd_inputs(psd_collect.data[i].values);
+                Vector4f values = scale_psd_position(psd_collect.data[i].values);
+		R.row(i) = pack_psd_inputs(values);
 		S.row(i) = fb_collect.data[i].values - rough_pos.transpose();
 	}
 
@@ -366,41 +372,33 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 #endif
 
 	// Solve regression coefficients
+        SVD<Matrix<float, Dynamic,10> > svd(R);
+        Matrix<float, 10,3> bt = svd.solve(S);
         dump_matrix(R, "R");
-        Matrix<float, 10,10> RR = R.transpose() * R;
-        dump_matrix(RR, "RtR");
-
-	//Matrix<float, 10,10> RRi = RR.lu().inverse();
-        Eigen::LU<Matrix<float, 10,10> > lu(RR);
-        if (!lu.isInvertible()) {
-                fprintf(stderr, "Error: Regression matrix not invertible.\n");
-                abort();
-        }
-        Matrix<float, 10,10> RRi = lu.inverse();
-        dump_matrix(RRi, "RRi");
-
-	Matrix<float, 10,3> beta = RRi * R.transpose() * S;
-	Matrix<float, 3,10> bt = beta.transpose();
-	return bt;
+        dump_matrix(S, "S");
+        dump_matrix(bt, "beta");
+	return bt.transpose();
 }
 
 void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
 		stage& stage, input_channels<3>& fb_inputs)
 {
+        FILE* f = fopen("pos", "w");
 	while (true) {
-		Vector4f psd = psd_inputs.get();
+                Vector4f psd = psd_inputs.get();
+                psd = scale_psd_position(psd);
 		Vector3f fb = fb_inputs.get();
 		Matrix<float, 10,1> psd_in = pack_psd_inputs(psd);
 		Vector3f delta = R * psd_in;
 
-		printf("delta %f\t%f\t%f\n", delta[0], delta[1], delta[2]);
-		delta += fb;
-		//delta.z() = 0.5; // TODO
-		printf("dest %f\t%f\t%f\n", delta[0], delta[1], delta[2]);
+                Vector3f new_pos = fb - delta;
+		new_pos.z() = 0.5; // TODO
+		fprintf(f, "%f\t%f\t%f\n", new_pos.x(), new_pos.y(), new_pos.z());
 
-		stage.move(delta);
+		stage.move(new_pos);
 		usleep(feedback_delay);
 	}
+        fclose(f);
 }
 
 template<unsigned int N>
@@ -442,6 +440,7 @@ void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_in
 	fprintf(stderr, "Rough Cal: %f %f %f\n", rough_pos[0], rough_pos[1], rough_pos[2]);
 	getchar();
 	Matrix<float, 3,10> coeffs = fine_calibrate(rough_pos, psd_inputs, stage, fb_inputs);
+        fprintf(stderr, "Fine calibration complete\n");
 
 #define DUMP_COEFFS
 #ifdef DUMP_COEFFS
@@ -449,7 +448,8 @@ void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_in
 #endif
 
 	getchar();
-	//feedback(coeffs, psd_inputs, stage, fb_inputs);
+        fprintf(stderr, "Tracking...\n");
+	feedback(coeffs, psd_inputs, stage, fb_inputs);
 }
 #endif
 

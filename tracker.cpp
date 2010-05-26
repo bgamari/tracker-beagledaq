@@ -41,8 +41,8 @@ const float stage_cal_range = 0.2;
 
 const float rough_cal_xy_step = 0.01;
 const unsigned int rough_cal_xy_pts = 20;
-const unsigned int rough_cal_z_step = 0.01;
-const unsigned int rough_cal_z_pts = 40;
+const float rough_cal_z_step = 0.05;
+const unsigned int rough_cal_z_pts = 20;
 
 const float fine_cal_range = 0.01;
 const unsigned int fine_cal_pts = 1000;
@@ -149,11 +149,11 @@ static void smooth_move(stage& stage,
 
 static void execute_route(stage& stage, route& route,
 		vector<point_callback*> cbs=vector<point_callback*>(),
-		unsigned int point_delay=1000)
+		unsigned int point_delay=1000, unsigned int move_time=100)
 {
 	for (; route.has_more(); ++route) {
 		Vector3f pos = route.get_pos();
-		smooth_move(stage, pos);
+		smooth_move(stage, pos, move_time);
 		usleep(point_delay);
 		for (auto cb = cbs.begin(); cb != cbs.end(); cb++)
 			if (! (**cb)(pos))
@@ -272,7 +272,7 @@ static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage)
 	collect_cb<4> xy_data(psd_inputs);
 	
 	printf("Rough calibrate\n");
-	execute_route(stage, route_xy, {&xy_data}, 1000);
+	execute_route(stage, route_xy, {&xy_data}, 100);
 
 #define DUMP_ROUGH_CAL
 #ifdef DUMP_ROUGH_CAL
@@ -296,7 +296,7 @@ static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage)
 	pts = (Vector3i() << 1, 1, rough_cal_z_pts).finished();
 	raster_route route_z(laser_pos, step, pts);
 	collect_cb<4> z_data(psd_inputs);
-	execute_route(stage, route_z, {&z_data});
+	execute_route(stage, route_z, {&z_data}, 10);
 	// Find extrema of Vz
 	laser_pos.z() = find_bead<2>(z_data.data).z();
 
@@ -347,7 +347,7 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 	collect_cb<4> psd_collect(psd_inputs);
 	collect_cb<3> fb_collect(fb_inputs);
 
-	execute_route(stage, rt, {&psd_collect, &fb_collect});
+	execute_route(stage, rt, {&psd_collect, &fb_collect}, 10);
 
 	// Fill R and S matricies with collected data
 	Matrix<float, Dynamic,10> R(fine_cal_pts, 10);
@@ -383,6 +383,7 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
 		stage& stage, input_channels<3>& fb_inputs)
 {
+        const float max_delta = 0.5;
         FILE* f = fopen("pos", "w");
 	while (true) {
                 Vector4f psd = psd_inputs.get();
@@ -390,9 +391,13 @@ void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
 		Vector3f fb = fb_inputs.get();
 		Matrix<float, 10,1> psd_in = pack_psd_inputs(psd);
 		Vector3f delta = R * psd_in;
+                if (delta.norm() > max_delta) {
+                        fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");
+                        continue;
+                }
 
                 Vector3f new_pos = fb - delta;
-		new_pos.z() = 0.5; // TODO
+		//new_pos.z() = 0.5; // TODO
 		fprintf(f, "%f\t%f\t%f\n", new_pos.x(), new_pos.y(), new_pos.z());
 
 		stage.move(new_pos);
@@ -438,7 +443,8 @@ void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_in
 	Vector3f rough_pos = rough_calibrate(psd_inputs, stage);
 	stage.move(rough_pos);
 	fprintf(stderr, "Rough Cal: %f %f %f\n", rough_pos[0], rough_pos[1], rough_pos[2]);
-	getchar();
+	//getchar();
+        fprintf(stderr, "Starting fine calibration...\n");
 	Matrix<float, 3,10> coeffs = fine_calibrate(rough_pos, psd_inputs, stage, fb_inputs);
         fprintf(stderr, "Fine calibration complete\n");
 
@@ -447,7 +453,7 @@ void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_in
         dump_matrix(coeffs, "coeffs");
 #endif
 
-	getchar();
+	//getchar();
         fprintf(stderr, "Tracking...\n");
 	feedback(coeffs, psd_inputs, stage, fb_inputs);
 }

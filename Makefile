@@ -1,5 +1,5 @@
 INCLUDES = -Ieigen
-CXXFLAGS = -lrt -O0 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
+CXXFLAGS = -lrt -O2 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
 
 all : tracker
 

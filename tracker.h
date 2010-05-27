@@ -41,7 +41,7 @@ class stage {
 	output_channels<3>& out;
 	input_channels<3>& fb;
 	Vector3f last_pos;
-	Vector4f Rx, Ry, Rz;
+	Matrix<float, 4,3> R;
 
 public:
 	stage(output_channels<3>& out, input_channels<3>& fb)

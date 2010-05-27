@@ -83,7 +83,7 @@ struct route {
 		
 void stage::calibrate(unsigned int n_pts) {
 	Matrix<float, Dynamic,4> X(n_pts, 4);
-	VectorXf Yx(n_pts), Yy(n_pts), Yz(n_pts);
+        Matrix<float, Dynamic,3> Y(n_pts, 3);
 
 	typedef boost::mt19937 engine;
 	typedef boost::uniform_real<float> distribution;
@@ -100,17 +100,9 @@ void stage::calibrate(unsigned int n_pts) {
 
 		X.row(i)[0] = 1; // constant
 		X.row(i).tail<3>() = fb_pos.transpose();
-		Yx[i] = out_pos.x();
-		Yy[i] = out_pos.y();
-		Yz[i] = out_pos.z();
+                Y.row(i) = out_pos;
 	}
-	Matrix<float,4,Dynamic> tmp = (X.transpose() * X).inverse() * X.transpose();
-	Rx = tmp * Yx;
-	Ry = tmp * Yy;
-	Rz = tmp * Yz;
-	std::cout << Rx.format(Eigen::IOFormat()) << "\n\n";
-	std::cout << Ry.format(Eigen::IOFormat()) << "\n\n";
-	std::cout << Rz.format(Eigen::IOFormat()) << "\n\n";
+        R = X.svd().solve(Y);
 }
 
 void stage::move(Vector3f pos)
@@ -119,8 +111,7 @@ void stage::move(Vector3f pos)
 	npos[0] = 1;
 	npos.tail<3>() = pos;
 
-	Vector3f p;
-	p << npos.dot(Rx), npos.dot(Ry), npos.dot(Rz);
+	Vector3f p = R.transpose() * npos;
 	out.set(p);
 	last_pos = pos;
 }

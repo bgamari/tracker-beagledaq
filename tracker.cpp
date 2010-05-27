@@ -192,10 +192,20 @@ struct raster_route : route {
 	Vector3f get_pos() {
 		Vector3i pos;
 		unsigned int m = n;
-		for (int i=0; i<3; i++) {
+		for (int i=0; i < 3; i++) {
 			pos[i] = m % points[i];
 			m /= points[i];
+                }
+#define BIDIR_SCAN
+#ifdef BIDIR_SCAN
+                int dir = 1;
+                for (int i=2; i >= 0; i--) {
+                        if (dir < 0)
+                                pos[i] = points[i] - pos[i] - 1;
+                        if (pos[i] % 2)
+                                dir *= -1;
 		}
+#endif
 		return start.array() + step.array() * pos.cast<float>().array();
 	}
 

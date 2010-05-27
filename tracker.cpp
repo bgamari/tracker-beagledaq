@@ -69,14 +69,14 @@ Vector4f scale_psd_position(Vector4f in)
 
 struct point_callback {
 	/*
-	 * operator()
-	 *
-	 * Returns: false to abort route. true otherwise.
-	 *
+	 * Return false to abort route. true otherwise.
 	 */
 	virtual bool operator()(Vector3f& pos) = 0;
 };
 
+/*
+ * route: Represents a path of points through 3-space
+ */
 struct route {
 	virtual Vector3f get_pos() = 0;
 	virtual void operator++() = 0;

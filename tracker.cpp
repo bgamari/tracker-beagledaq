@@ -59,8 +59,11 @@ void dump_matrix(MatrixXf A, const char* filename)
 
 Vector4f scale_psd_position(Vector4f in)
 {
+#define SCALE_INPUTS 0
+#if SCALE_INPUTS
         in.x() /= in[2];
         in.y() /= in[3];
+#endif
         return in;
 }
 
@@ -121,7 +124,7 @@ Vector3f stage::get_last_pos() {
 }
 
 static void smooth_move(stage& stage,
-		Vector3f to, unsigned int move_time=100)
+		Vector3f to, unsigned int move_time)
 {
 	// How long to wait in between smoothed position updates
 	const unsigned int smooth_delay = 10; // us
@@ -266,13 +269,12 @@ static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage)
         Vector3i pts;
 
 	float tmp = 0.5 - rough_cal_xy_step * rough_cal_xy_pts / 2;
-	start = (Vector3f() << tmp, tmp, 0.5).finished();
-	step = (Vector3f() << rough_cal_xy_step, rough_cal_xy_step, 0).finished();
-	pts = (Vector3i() << rough_cal_xy_pts, rough_cal_xy_pts, 1).finished();
+	start << tmp, tmp, 0.5;
+	step << rough_cal_xy_step, rough_cal_xy_step, 0;
+	pts << rough_cal_xy_pts, rough_cal_xy_pts, 1;
 	raster_route route_xy(start, step, pts);
 	collect_cb<4> xy_data(psd_inputs);
 	
-	printf("Rough calibrate\n");
 	execute_route(stage, route_xy, {&xy_data}, 100);
 
 #define DUMP_ROUGH_CAL

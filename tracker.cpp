@@ -249,21 +249,25 @@ bool compare_position(collect_cb<4>::point a, collect_cb<4>::point b)
 }
 
 template<unsigned int axis>
-static Vector3f find_bead(vector<collect_cb<4>::point> data) {
-	Eigen::IOFormat fmt = Eigen::IOFormat(4, 0, " ", "\t");
-	collect_cb<4>::point min = * min_element(data.begin(), data.end(),
-			compare_position<axis>);
-	collect_cb<4>::point max = * max_element(data.begin(), data.end(),
-			compare_position<axis>);
-
-	std::cerr << "extrema(" << axis << ")\t";
-	std::cerr << min.position.format(fmt) << "\t" << min.values.format(fmt) << "\t";
-	std::cerr << max.position.format(fmt) << "\t" << max.values.format(fmt) << "\n";
-
-	return (min.position + max.position) / 2;
+static Vector3f find_bead(vector<collect_cb<4>::point> psd_data, vector<collect_cb<3>::point> fb_data) {
+        unsigned int min=0, max=0;
+        for (unsigned int i=0; i < psd_data.size(); i++) {
+                if (psd_data[i].values[axis] < psd_data[min].values[axis])
+                        min = i;
+                if (psd_data[i].values[axis] > psd_data[max].values[axis])
+                        max = i;
+        }
+        fprintf(stderr, "Axis=%d\n", axis);
+        fprintf(stderr, "  Minimum: pos=(%f, %f, %f), fb=(%f, %f, %f)\n",
+                        fb_data[min].position[0], fb_data[min].position[1], fb_data[min].position[2], 
+                        fb_data[min].values[0], fb_data[min].values[1], fb_data[min].values[2]);
+        fprintf(stderr, "  Maximum: pos=(%f, %f, %f), fb=(%f, %f, %f)\n",
+                        fb_data[max].position[0], fb_data[max].position[1], fb_data[max].position[2], 
+                        fb_data[max].values[0], fb_data[max].values[1], fb_data[max].values[2]);
+	return (fb_data[min].values + fb_data[max].values) / 2;
 }
 
-static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage)
+static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_inputs)
 {
 	Vector3f start, step;
         Vector3i pts;
@@ -273,35 +277,43 @@ static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage)
 	step << rough_cal_xy_step, rough_cal_xy_step, 0;
 	pts << rough_cal_xy_pts, rough_cal_xy_pts, 1;
 	raster_route route_xy(start, step, pts);
-	collect_cb<4> xy_data(psd_inputs);
+	collect_cb<4> psd_data(psd_inputs);
+        collect_cb<3> fb_data(fb_inputs);
 	
-	execute_route(stage, route_xy, {&xy_data}, 100);
+	execute_route(stage, route_xy, {&psd_data, &fb_data}, 10);
+
+        for (auto i=psd_data.data.begin(); i != psd_data.data.end(); i++)
+                i->values = scale_psd_position(i->values);
 
 #define DUMP_ROUGH_CAL
 #ifdef DUMP_ROUGH_CAL
 	FILE* f = fopen("rough", "w");
 	fprintf(f, "# pos_x pos_y pos_z\tpsd_x psd_y sum_x sum_y\n");
-	for (auto i = xy_data.data.begin(); i != xy_data.data.end(); i++)
-		fprintf(f, "%f %f %f\t%f %f %f %f\n",
-				i->position[0], i->position[1], i->position[2],
-				i->values[0], i->values[1], i->values[2], i->values[3]);
+        for (unsigned int i=0; i < psd_data.data.size(); i++)
+		fprintf(f, "%f %f %f\t%f %f %f\t%f %f %f %f\n",
+				psd_data.data[i].position[0], psd_data.data[i].position[1], psd_data.data[i].position[2],
+
+                                fb_data.data[i].values[0], fb_data.data[i].values[1], fb_data.data[i].values[2],
+				psd_data.data[i].values[0], psd_data.data[i].values[1], psd_data.data[i].values[2], psd_data.data[i].values[3]);
 	fclose(f);
 #endif
 
 	Vector3f laser_pos;
 	// Find extrema of Vx, Vy
-	laser_pos.x() = find_bead<0>(xy_data.data).x();
-	laser_pos.y() = find_bead<1>(xy_data.data).y();
+	laser_pos.x() = find_bead<0>(psd_data.data, fb_data.data).x();
+	laser_pos.y() = find_bead<1>(psd_data.data, fb_data.data).y();
 
 	// Scan in Z direction
 	laser_pos.z() = 0.5 - rough_cal_z_step * rough_cal_z_pts/2;
 	step = (Vector3f() << 0, 0, rough_cal_z_step).finished();
 	pts = (Vector3i() << 1, 1, rough_cal_z_pts).finished();
 	raster_route route_z(laser_pos, step, pts);
-	collect_cb<4> z_data(psd_inputs);
-	execute_route(stage, route_z, {&z_data}, 10);
+        psd_data.data.clear();
+        fb_data.data.clear();
+	execute_route(stage, route_z, {&psd_data, &fb_data}, 100);
 	// Find extrema of Vz
-	laser_pos.z() = find_bead<2>(z_data.data).z();
+	laser_pos.z() = find_bead<2>(psd_data.data, fb_data.data).z();
+        laser_pos.z() = 0.5;
 
 	return laser_pos;
 }
@@ -443,7 +455,7 @@ void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_in
 #else
 void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_inputs)
 {
-	Vector3f rough_pos = rough_calibrate(psd_inputs, stage);
+	Vector3f rough_pos = rough_calibrate(psd_inputs, stage, fb_inputs);
 	stage.move(rough_pos);
 	fprintf(stderr, "Rough Cal: %f %f %f\n", rough_pos[0], rough_pos[1], rough_pos[2]);
 	//getchar();

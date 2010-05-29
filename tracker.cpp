@@ -24,6 +24,7 @@
 
 #include <time.h>
 #include <utility>
+#include <array>
 #include <boost/random.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <time.h>
@@ -34,14 +35,14 @@
 
 
 using std::vector;
-using std::tr1::array;
+using std::array;
 using Eigen::Dynamic;
 
 const float stage_cal_range = 0.2;
 
 const float rough_cal_xy_step = 0.01;
 const unsigned int rough_cal_xy_pts = 20;
-const float rough_cal_z_step = 0.05;
+const float rough_cal_z_step = 0.02;
 const unsigned int rough_cal_z_pts = 20;
 
 const float fine_cal_range = 0.01;

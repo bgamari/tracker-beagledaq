@@ -22,7 +22,7 @@
 #pragma once
 
 #include <cstdint>
-#include <tr1/array>
+#include <array>
 #include <Eigen/Core>
 
 using namespace Eigen;
@@ -34,7 +34,7 @@ struct input_channels {
 
 template<unsigned int N>
 struct output_channels {
-	virtual void set(Matrix<float,1,N> values) = 0;
+	virtual void set(const Matrix<float,1,N> values) = 0;
 };
 
 class stage {
@@ -53,7 +53,7 @@ public:
 	 * space to stage input space
 	 */
 	void calibrate(unsigned int n_pts=10);
-	void move(Vector3f pos);
+	void move(const Vector3f pos);
 	Vector3f get_last_pos();
 };
 

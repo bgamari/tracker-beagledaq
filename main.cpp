@@ -21,16 +21,14 @@
 
 #include <cstdint>
 #include <iostream>
+#include <array>
 #include "bitfield.h"
 #include "max5134.h"
 #include "max1302.h"
 #include "tracker.h"
+#include "config.h"
 
-static const char* psd_adc_dev = "/dev/spidev3.0";
-static const char* fb_adc_dev = "/dev/spidev3.1";
-static const char* stage_pos_dac_dev = "/dev/spidev4.0";
-
-using std::tr1::array;
+using std::array;
 
 template<unsigned int N>
 struct test_inputs : input_channels<N> {
@@ -48,7 +46,7 @@ struct max1302_inputs : input_channels<N> {
 	float scale; // Full-scale range, in units of Vref
 	float offset; // Offset, in units of Vref
 
-	max1302_inputs(max1302& dev, array<int,N> channels,
+	max1302_inputs(max1302& dev, const array<int,N> channels,
 			max1302::input_range range) :
 		dev(dev), channels(channels)
 	{
@@ -95,7 +93,7 @@ struct max1302_inputs : input_channels<N> {
 
 template<unsigned int N>
 struct test_outputs : output_channels<N> {
-	void set(Matrix<float,1,N> values) {
+	void set(const Matrix<float,1,N> values) {
 		printf("stage_pos: ");
 		for (unsigned int i=0; i<N; i++)
 			printf(" %f", values[i]);
@@ -108,10 +106,10 @@ struct max5134_outputs : output_channels<N> {
 	max5134& dev;
 	array<max5134::chan_mask,N> channels;
 
-	max5134_outputs(max5134& dev, array<max5134::chan_mask,N> channels) :
+	max5134_outputs(max5134& dev, const array<max5134::chan_mask,N> channels) :
 		dev(dev), channels(channels) { }
 
-	void set(Matrix<float,1,N> values)
+	void set(const Matrix<float,1,N> values)
 	{
 		max5134::chan_mask all_mask;
 		std::vector<max5134::command*> cmds;
@@ -135,11 +133,6 @@ struct max5134_outputs : output_channels<N> {
 
 int main(int argc, char** argv)
 {
-	using std::tr1::array;
-	array<int,4> psd_chans = {{0,1,2,3}};
-	array<int,3> fb_chans = {{0,1,2}};
-	array<max5134::chan_mask,3> stage_chans = {{ 0x1, 0x2, 0x4 }};
-
 //#define TEST
 #ifndef TEST
 	max1302 psd_adc(psd_adc_dev);

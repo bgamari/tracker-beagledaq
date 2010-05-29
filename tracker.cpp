@@ -146,6 +146,8 @@ static void execute_route(stage& stage, route& route,
 		vector<point_callback*> cbs=vector<point_callback*>(),
 		unsigned int point_delay=1000, unsigned int move_time=100)
 {
+        stage.move(route.get_pos());
+        usleep(10*1000);
 	for (; route.has_more(); ++route) {
 		Vector3f pos = route.get_pos();
 		smooth_move(stage, pos, move_time);

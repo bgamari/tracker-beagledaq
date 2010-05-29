@@ -206,8 +206,7 @@ struct raster_route : route {
                 for (int i=2; i >= 0; i--) {
                         if (dir < 0)
                                 pos[i] = points[i] - pos[i] - 1;
-                        if (pos[i] % 2)
-                                dir *= -1;
+                        dir = pos[i]%2 ? -1 : +1;
 		}
 #endif
 		return start.array() + step.array() * pos.cast<float>().array();

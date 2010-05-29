@@ -139,6 +139,7 @@ int main(int argc, char** argv)
 	max1302 fb_adc(fb_adc_dev);
 	max1302_inputs<4> psd_inputs(psd_adc, psd_chans, max1302::SE_MINUS_VREF_PLUS_VREF);
 	max1302_inputs<3> fb_inputs(fb_adc, fb_chans, max1302::SE_ZERO_PLUS_VREF);
+        max1302_inputs<1> pd_input(fb_adc, pd_chans, max1302::SE_ZERO_PLUS_VREF);
 
 	max5134 dac(stage_pos_dac_dev);
 	max5134_outputs<3> stage_outputs(dac, stage_chans);
@@ -163,17 +164,27 @@ int main(int argc, char** argv)
 			psd[0], psd[1], psd[2], psd[3]);
 	track(psd_inputs, stage, fb_inputs);
 #else
-	printf("# psd_x psd_y\tpsd_sum\tfb_x fb_y fb_z\n");
-	int n=0;
+	printf("# psd_x psd_y sum_x sum_y\tfb_x fb_y fb_z\tpd\n");
+	unsigned int n=0;
 	while (true) {
 		Vector4f psd = psd_inputs.get();
+#define SCALE_INPUTS 1
+#if SCALE_INPUTS
+                psd.x() /= psd[2];
+                psd.y() /= psd[3];
+#endif
 		Vector3f fb = fb_inputs.get();
+                Matrix<float,1,1> pd = pd_input.get();
 		for (int i=0; i<4; i++) printf("%f ", psd[i]);
 		printf("\t");
 		for (int i=0; i<3; i++) printf("%f ", fb[i]);
-		printf("\n");
-		usleep(1000*100);
+		printf("\t%f\n", pd[0]);
+
+		usleep(1000*10);
 		n++;
+                Vector3f pos;
+                pos << 0.5 + 0.2*sin(0.01*n), 0.5, 0.5;
+                //stage.move(pos);
 	}
 #endif
 	return 0;

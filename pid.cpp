@@ -27,8 +27,10 @@ float pid_loop::get_response() {
         for (unsigned int i=1; i < points.size(); i++)
                 I += points[i].y * (points[i].x - points[i-1].x);
         // Derivative
-        float D = (points[0].y - points[1].y) / (points[0].x - points[1].x);
-        return prop_gain*points.back().y + int_gain*I + diff_gain*D;
+        float D;
+        if (points.size() > 2)
+               D = (points[0].y - points[1].y) / (points[0].x - points[1].x);
+        return prop_gain*points.front().y + int_gain*I + diff_gain*D;
 }
 
 void pid_loop::add_point(float x, float y) {

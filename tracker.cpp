@@ -400,7 +400,7 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 
 void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
 		stage& stage, input_channels<3>& fb_inputs,
-                array<pid_loop,3> pids)
+                array<pid_loop,3>& pids)
 {
         const float max_delta = 0.5;
         FILE* f = fopen("pos", "w");
@@ -486,7 +486,11 @@ void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_in
 
 	//getchar();
         fprintf(stderr, "Tracking...\n");
-        array<pid_loop,3> pids;
+        array<pid_loop,3> pids = {{
+                pid_loop(1, 0, 0, 1),
+                pid_loop(1, 0, 0, 1),
+                pid_loop(1, 0, 0, 1)
+        }};
 	feedback(coeffs, psd_inputs, stage, fb_inputs, pids);
 }
 #endif

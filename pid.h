@@ -36,7 +36,6 @@ public:
         {
                 assert(tau >= 1);
                 points.set_capacity(tau);
-                fprintf(stderr, "Points capacity %d\n", points.capacity());
         }
 
         void add_point(float x, float y);

@@ -21,6 +21,7 @@
 
 
 #include "tracker.h"
+#include "pid.h"
 
 #include <time.h>
 #include <utility>
@@ -398,16 +399,30 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 }
 
 void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
-		stage& stage, input_channels<3>& fb_inputs)
+		stage& stage, input_channels<3>& fb_inputs,
+                array<pid_loop,3> pids)
 {
         const float max_delta = 0.5;
         FILE* f = fopen("pos", "w");
+        struct timespec start_time;
+        clock_gettime(CLOCK_REALTIME, &start_time);
+
 	while (true) {
                 Vector4f psd = psd_inputs.get();
                 psd = scale_psd_position(psd);
 		Vector3f fb = fb_inputs.get();
 		Matrix<float, 10,1> psd_in = pack_psd_inputs(psd);
 		Vector3f delta = R * psd_in;
+
+                struct timespec ts;
+                clock_gettime(CLOCK_REALTIME, &ts);
+                float t = (ts.tv_sec - start_time.tv_sec) +
+                        (ts.tv_nsec - start_time.tv_nsec)*1e-9;
+                for (int i=0; i<3; i++) {
+                        pids[i].add_point(t, delta[i]);
+                        delta[i] = pids[i].get_response();
+                }
+
                 if (delta.norm() > max_delta) {
                         fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");
                         continue;
@@ -416,7 +431,6 @@ void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
                 Vector3f new_pos = fb - delta;
 		//new_pos.z() = 0.5; // TODO
 		fprintf(f, "%f\t%f\t%f\n", new_pos.x(), new_pos.y(), new_pos.z());
-
 		stage.move(new_pos);
 		usleep(feedback_delay);
 	}
@@ -472,7 +486,8 @@ void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_in
 
 	//getchar();
         fprintf(stderr, "Tracking...\n");
-	feedback(coeffs, psd_inputs, stage, fb_inputs);
+        array<pid_loop,3> pids;
+	feedback(coeffs, psd_inputs, stage, fb_inputs, pids);
 }
 #endif
 

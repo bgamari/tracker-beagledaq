@@ -45,7 +45,10 @@ void sample(max1302 adc) {
 }
 
 int main(int argc, char** argv) {
-	max1302 adc("/dev/spidev3.1");
+        const char* device = "/dev/spidev3.0";
+        if (argc > 1)
+                device = argv[1];
+	max1302 adc(device);
 	vector<max1302::command*> cmds;
 	
 	sched_param sp;

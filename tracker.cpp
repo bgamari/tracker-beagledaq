@@ -39,18 +39,26 @@ using std::vector;
 using std::array;
 using Eigen::Dynamic;
 
+// Stage calibration parameters
 const float stage_cal_range = 0.2;
 
+// Rough calibration parameters
 const float rough_cal_xy_step = 0.01;
 const unsigned int rough_cal_xy_pts = 20;
 const float rough_cal_z_step = 0.02;
 const unsigned int rough_cal_z_pts = 20;
 
-const float fine_cal_range = 0.01;
+// Fine calibration parameters
+const float fine_cal_range = 0.02;
 const unsigned int fine_cal_pts = 1000;
 
-const unsigned int feedback_delay = 100;	// us
+// On-the-fly calibration parameters
+const array<float,3> otf_freqs = {{ 67, 61, 53 }};
 
+// Feedback parameters
+const unsigned int feedback_delay = 100;	// us
+const float max_delta = 0.5;                    // Maximum allowed delta
+bool show_rate = false;                         // Show periodic messages with the update rate of the feedback loop
 array<pid_loop,3> pids = {{
         pid_loop(0.60, 1e-2, 0e-5, 10),
         pid_loop(0.55, 1e-3, 0e-5, 10),
@@ -67,7 +75,7 @@ void dump_matrix(MatrixXf A, const char* filename)
 
 Vector4f scale_psd_position(Vector4f in)
 {
-#define SCALE_INPUTS 0
+#define SCALE_INPUTS 1
 #if SCALE_INPUTS
         in.x() /= in[2];
         in.y() /= in[3];
@@ -408,10 +416,12 @@ void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
 		stage& stage, input_channels<3>& fb_inputs,
                 array<pid_loop,3>& pids)
 {
-        const float max_delta = 0.5;
+        unsigned int n = 0;
         FILE* f = fopen("pos", "w");
         struct timespec start_time;
         clock_gettime(CLOCK_REALTIME, &start_time);
+        struct timespec last_rate_update = start_time;
+        unsigned int rate_update_period = 10000;
 
 	while (true) {
                 Vector4f psd = psd_inputs.get();
@@ -439,6 +449,15 @@ void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
 		fprintf(f, "%f\t%f\t%f\n", new_pos.x(), new_pos.y(), new_pos.z());
 		stage.move(new_pos);
 		usleep(feedback_delay);
+
+                n++;
+                if (n % rate_update_period == 0) {
+                        struct timespec ts;
+                        clock_gettime(CLOCK_REALTIME, &ts);
+                        float rate = rate_update_period / ((ts.tv_sec - start_time.tv_sec) +
+                                (ts.tv_nsec - start_time.tv_nsec)*1e-9);
+                        fprintf(stderr, "Feedback loop rate: %f updates/sec\n", rate);
+                }
 	}
         fclose(f);
 }

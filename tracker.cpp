@@ -54,6 +54,7 @@ const unsigned int fine_cal_pts = 1000;
 
 // On-the-fly calibration parameters
 const array<float,3> otf_freqs = {{ 67, 61, 53 }};
+const float otf_amp = 0.01;
 
 // Feedback parameters
 const unsigned int feedback_delay = 100;	// us
@@ -450,6 +451,7 @@ void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
                 for (int i=0; i<3; i++) {
                         pids[i].add_point(t, delta[i]);
                         delta[i] = pids[i].get_response();
+                        delta[i] += otf_amp * sin(2*M_PI/otf_freqs[i]*t);
                 }
 
                 if (delta.norm() > max_delta) {

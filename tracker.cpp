@@ -83,6 +83,9 @@ Vector4f scale_psd_position(Vector4f in)
         return in;
 }
 
+/*
+ * point_callback: A callback function called on every point of a route
+ */
 struct point_callback {
 	/*
 	 * Return false to abort route. true otherwise.
@@ -139,6 +142,11 @@ Vector3f stage::get_last_pos() {
 	return last_pos;
 }
 
+/*
+ * smooth_move: Linearly interpolate position over time to smooth stage motion..
+ *
+ * TODO: Acceleration?
+ */
 static void smooth_move(stage& stage,
 		Vector3f to, unsigned int move_time)
 {
@@ -157,6 +165,11 @@ static void smooth_move(stage& stage,
 	stage.move(to);
 }
 
+/*
+ * execute_route: Execute a route, calling the given callback for every pont.
+ *
+ * Waits point_delay between moving to point and calling callback.
+ */
 static void execute_route(stage& stage, route& route,
 		vector<point_callback*> cbs=vector<point_callback*>(),
 		unsigned int point_delay=1000, unsigned int move_time=100)

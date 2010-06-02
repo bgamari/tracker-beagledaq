@@ -51,6 +51,12 @@ const unsigned int fine_cal_pts = 1000;
 
 const unsigned int feedback_delay = 100;	// us
 
+array<pid_loop,3> pids = {{
+        pid_loop(0.60, 1e-2, 0e-5, 10),
+        pid_loop(0.55, 1e-3, 0e-5, 10),
+        pid_loop(1, 0, 0, 1)
+}};
+
 void dump_matrix(MatrixXf A, const char* filename)
 {
 	Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
@@ -486,11 +492,6 @@ void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_in
 
 	//getchar();
         fprintf(stderr, "Tracking...\n");
-        array<pid_loop,3> pids = {{
-                pid_loop(1, 0, 0, 1),
-                pid_loop(1, 0, 0, 1),
-                pid_loop(1, 0, 0, 1)
-        }};
 	feedback(coeffs, psd_inputs, stage, fb_inputs, pids);
 }
 #endif

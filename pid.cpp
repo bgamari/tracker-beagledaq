@@ -37,7 +37,6 @@ float pid_loop::get_response() {
         if (points.size() > 2)
                D = (points[0].y - points[1].y) / (points[0].x - points[1].x);
 
-        printf("PID\t%f\t%f\t%f\n", P, I, D);
         return prop_gain*P + int_gain*I + diff_gain*D;
 }
 

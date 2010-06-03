@@ -1,10 +1,11 @@
 INCLUDES = -Ieigen
-CXXFLAGS = -lrt -O2 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
+CXXFLAGS = -O0 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
+LDFLAGS = -lrt -lboost_program_options-mt
 
 all : tracker
 
-tracker : main.o spi_device.o max5590.o max1270.o tracker.o pid.o
-	$(CXX) $(CXXFLAGS) -o $@ $+
+tracker : main.o spi_device.o max5590.o max1270.o tracker.o pid.o parameters.o
+	$(CXX) $(LDFLAGS) -o $@ $+
 
 clean :
 	rm -f *.o

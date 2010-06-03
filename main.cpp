@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <iostream>
 #include <array>
+#include <boost/tokenizer.hpp>
 #include "bitfield.h"
 #include "max5134.h"
 #include "max1302.h"
@@ -29,6 +30,7 @@
 #include "config.h"
 
 using std::array;
+using std::string;
 
 struct clamped_output {
 	Vector3f values;
@@ -160,6 +162,39 @@ int main(int argc, char** argv)
 	usleep(100*1000);
 	Vector3f fb = fb_inputs.get();
 	fprintf(stderr, "Feedback position: %f %f %f\n", fb.x(), fb.y(), fb.z());
+
+	init_parameters();
+	while (true) {
+		std::cout << "> ";
+		string line;
+	        std::getline(std::cin, line);
+		boost::tokenizer<> tokens(line);
+		boost::tokenizer<>::iterator tok = tokens.begin();
+
+		string cmd = *tok; tok++;
+		if (cmd == "set") {
+			string param = *tok; tok++;
+			string value = *tok;
+			parameter* p = find_parameter(parameters, param);
+			if (!p)
+				abort();
+
+			*p = value;
+		} else if (cmd == "get") {
+			string param = *tok;
+			parameter* p = find_parameter(parameters, param);
+			if (!p)
+				abort();
+			std::cout << param << " = " << *p << "\n";
+		} else if (cmd == "list") {
+			for (auto p=parameters.begin(); p != parameters.end(); p++)
+				std::cout << (**p).name << " = " << **p << "\n";
+		} else
+			std::cout << "Invalid command\n";
+	}
+
+#define TRACK
+#ifdef TRACK
 	fprintf(stderr, "Position bead. Press any key.\n");
 	getchar();
 	Vector4f psd = psd_inputs.get();

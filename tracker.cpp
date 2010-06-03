@@ -32,39 +32,97 @@
 #include <cstdio>
 #include <iostream>
 #include <fstream>
-#include <Eigen/Eigen>
-
 
 using std::vector;
 using std::array;
 using Eigen::Dynamic;
 
 // Stage calibration parameters
-const float stage_cal_range = 0.2;
+float stage_cal_range = 0.2;
 
 // Rough calibration parameters
-const float rough_cal_xy_step = 0.01;
-const unsigned int rough_cal_xy_pts = 20;
-const float rough_cal_z_step = 0.02;
-const unsigned int rough_cal_z_pts = 20;
+float rough_cal_xy_step = 0.01;
+unsigned int rough_cal_xy_pts = 20;
+float rough_cal_z_step = 0.02;
+unsigned int rough_cal_z_pts = 20;
 
 // Fine calibration parameters
-const float fine_cal_range = 0.02;
-const unsigned int fine_cal_pts = 1000;
+float fine_cal_range = 0.02;
+unsigned int fine_cal_pts = 1000;
 
 // On-the-fly calibration parameters
-const array<float,3> otf_freqs = {{ 67, 61, 53 }};
-const float otf_amp = 0.01;
+array<float,3> otf_freqs = {{ 67, 61, 53 }};
+float otf_amp = 0.01;
 
 // Feedback parameters
-const unsigned int feedback_delay = 100;	// us
-const float max_delta = 0.5;                    // Maximum allowed delta
+unsigned int feedback_delay = 100;	// us
+float max_delta = 0.5;                    // Maximum allowed delta
 bool show_rate = false;                         // Show periodic messages with the update rate of the feedback loop
 array<pid_loop,3> pids = {{
         pid_loop(0.60, 1e-2, 0e-5, 10),
         pid_loop(0.55, 1e-3, 0e-5, 10),
         pid_loop(1, 0, 0, 1)
 }};
+
+template<typename T>
+void def_param(string name, T& value, string description) {
+        parameter* p = new typed_value<T>(name, description, value);
+        parameters.push_back(p);
+}
+
+void init_parameters() {
+        def_param("stage_cal.range", stage_cal_range,
+                        "Amplitude of stage calibration perturbations");
+
+        def_param("rough_cal.xy_step", rough_cal_xy_step,
+                        "Step size of rough calibration raster scan (X and Y axes)");
+        def_param("rough_cal.xy_points", rough_cal_xy_pts,
+                        "Number of points in rough calibration raster scan (X and Y axes)");
+        def_param("rough_cal.z_step", rough_cal_z_step,
+                        "Step size of rough calibration raster scan (X and Y axes)");
+        def_param("rough_cal.xy_points", rough_cal_xy_pts,
+                        "Number of points in rough calibration raster scan (X and Y axes)");
+
+        def_param("fine_cal.range", fine_cal_range,
+                        "Amplitude of fine calibration perturbations");
+        def_param("fine_cal.points", fine_cal_pts,
+                        "Number of points in fine calibration scan");
+
+        def_param("otf.freq-x", otf_freqs[0],
+                        "Frequencies of on-the-fly calibration perturbations (X axis)");
+        def_param("otf.freq-y", otf_freqs[1],
+                        "Frequencies of on-the-fly calibration perturbations (Y axis)");
+        def_param("otf.freq-z", otf_freqs[2],
+                        "Frequencies of on-the-fly calibration perturbations (Z axis)");
+        def_param("otf.amp", otf_amp,
+                        "Amplitude of on-the-fly calibration perturbations");
+
+        def_param("feedback.delay", feedback_delay,
+                        "Delay between feedback loop iterations");
+        def_param("feedback.max_delta", max_delta,
+                        "Maximum allowed position change during feedback");
+        def_param("feedback.show_rate", show_rate,
+                        "Report on feedback loop iteration rate");
+
+        def_param("pids.x_prop", pids[0].prop_gain,
+                        "X axis proportional gain");
+        def_param("pids.y_prop", pids[1].prop_gain,
+                        "Y axis proportional gain");
+        def_param("pids.z_prop", pids[2].prop_gain,
+                        "Z axis proportional gain");
+        def_param("pids.x_int", pids[0].int_gain,
+                        "X axis integral gain");
+        def_param("pids.y_int", pids[1].int_gain,
+                        "Y axis integral gain");
+        def_param("pids.z_int", pids[2].int_gain,
+                        "Z axis integral gain");
+        def_param("pids.x_diff", pids[0].diff_gain,
+                        "X axis derivative gain");
+        def_param("pids.y_diff", pids[1].diff_gain,
+                        "Y axis derivative gain");
+        def_param("pids.z_diff", pids[2].diff_gain,
+                        "Z axis derivative gain");
+};
 
 void dump_matrix(MatrixXf A, const char* filename)
 {

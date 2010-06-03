@@ -21,9 +21,14 @@
 
 #pragma once
 
+#include "parameters.h"
 #include <cstdint>
 #include <array>
-#include <Eigen/Core>
+#include <Eigen/Eigen>
+#include <boost/program_options.hpp>
+
+static std::vector<parameter*> parameters;
+void init_parameters();
 
 using namespace Eigen;
 

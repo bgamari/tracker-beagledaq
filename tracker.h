@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include "channels.h"
 #include "parameters.h"
 #include <cstdint>
 #include <array>
@@ -31,16 +32,6 @@ static std::vector<parameter*> parameters;
 void init_parameters();
 
 using namespace Eigen;
-
-template<unsigned int N>
-struct input_channels {
-	virtual Matrix<float,1,N> get() = 0;
-};
-
-template<unsigned int N>
-struct output_channels {
-	virtual void set(const Matrix<float,1,N> values) = 0;
-};
 
 class stage {
 	output_channels<3>& out;

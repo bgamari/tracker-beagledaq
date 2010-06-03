@@ -19,6 +19,7 @@
  */
 
 
+#pragma once
 #include "spi_device.h"
 #include <cstdio>
 

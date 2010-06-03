@@ -31,11 +31,11 @@ public:
         float prop_gain, int_gain, diff_gain;
 
 public:
+        pid_loop() : points(1), prop_gain(1), int_gain(0), diff_gain(0) { }
         pid_loop(float prop_gain, float int_gain, float diff_gain, unsigned int tau) :
-                prop_gain(prop_gain), int_gain(int_gain), diff_gain(diff_gain)
+                points(tau), prop_gain(prop_gain), int_gain(int_gain), diff_gain(diff_gain)
         {
                 assert(tau >= 1);
-                points.set_capacity(tau);
         }
 
         void add_point(float x, float y);

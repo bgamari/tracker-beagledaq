@@ -23,25 +23,25 @@
 
 #include "channels.h"
 #include "parameters.h"
+#include "pid.h"
+
 #include <cstdint>
 #include <array>
 #include <Eigen/Eigen>
 #include <boost/program_options.hpp>
-
-static std::vector<parameter*> parameters;
-void init_parameters();
 
 using namespace Eigen;
 
 class stage {
 	output_channels<3>& out;
 	input_channels<3>& fb;
+        float cal_range;
 	Vector3f last_pos;
 	Matrix<float, 4,3> R;
 
 public:
-	stage(output_channels<3>& out, input_channels<3>& fb)
-		: out(out), fb(fb) { }
+	stage(output_channels<3>& out, input_channels<3>& fb, float cal_range=0.2)
+		: out(out), fb(fb), cal_range(cal_range) { }
 
 	/*
 	 * calibrate():
@@ -53,6 +53,72 @@ public:
 	Vector3f get_last_pos();
 };
 
-void track(input_channels<4>& psd_inputs,
-		stage& stage_outputs, input_channels<3>& fb_inputs);
+struct tracker {
+        // General parameters
+        bool scale_psd_inputs;
+
+        // Rough calibration parameters
+        float rough_cal_xy_step, rough_cal_z_step;
+        unsigned int rough_cal_xy_pts, rough_cal_z_pts;
+
+        // Fine calibration parameters
+        float fine_cal_range;
+        unsigned int fine_cal_pts;
+
+        // On-the-fly calibration parameters
+        array<float,3> otf_freqs;
+        float otf_amp;
+
+        // Feedback parameters
+        unsigned int fb_delay;  	// us
+        float fb_max_delta;             // Maximum allowed delta
+        bool fb_show_rate;              // Show periodic messages reporting the update rate of the feedback loop
+        array<pid_loop,3> fb_pids;
+        
+        input_channels<4>& psd_inputs;
+        stage& stage_outputs;
+        input_channels<3>& fb_inputs;
+        std::vector<parameter*> parameters;
+
+private:
+        template<typename T>
+        void def_param(string name, T& value, string description) {
+                parameter* p = new typed_value<T>(name, description, value);
+                parameters.push_back(p);
+        }
+        void init_parameters();
+
+        Vector4f scale_psd_position(Vector4f in);
+
+        Vector3f rough_calibrate();
+        Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos);
+        void feedback(Matrix<float,3,10> R);
+
+public:
+        tracker(input_channels<4>& psd_inputs,
+		stage& stage_outputs, input_channels<3>& fb_inputs) :
+                scale_psd_inputs(false),
+                rough_cal_xy_step(0.01), rough_cal_z_step(0.02),
+                rough_cal_xy_pts(20), rough_cal_z_pts(20),
+                fine_cal_range(0.02), fine_cal_pts(1000),
+                otf_amp(0.01),
+                fb_delay(100), fb_max_delta(0.5), fb_show_rate(false),
+                psd_inputs(psd_inputs),
+                stage_outputs(stage_outputs),
+                fb_inputs(fb_inputs)
+        {
+                // Work around apparent gcc bug concerning initializer lists
+                otf_freqs[0] = 67;
+                otf_freqs[1] = 61;
+                otf_freqs[2] = 53;
+
+                fb_pids[0] = pid_loop(0.6, 1e-2, 0, 10);
+                fb_pids[1] = pid_loop(0.55, 1e-3, 0e-5, 10);
+                fb_pids[2] = pid_loop(1, 0, 0, 1);
+
+                init_parameters();              
+        }
+
+        void track();
+};
 

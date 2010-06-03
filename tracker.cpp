@@ -21,7 +21,6 @@
 
 
 #include "tracker.h"
-#include "pid.h"
 
 #include <time.h>
 #include <utility>
@@ -37,42 +36,9 @@ using std::vector;
 using std::array;
 using Eigen::Dynamic;
 
-// Stage calibration parameters
-float stage_cal_range = 0.2;
-
-// Rough calibration parameters
-float rough_cal_xy_step = 0.01;
-unsigned int rough_cal_xy_pts = 20;
-float rough_cal_z_step = 0.02;
-unsigned int rough_cal_z_pts = 20;
-
-// Fine calibration parameters
-float fine_cal_range = 0.02;
-unsigned int fine_cal_pts = 1000;
-
-// On-the-fly calibration parameters
-array<float,3> otf_freqs = {{ 67, 61, 53 }};
-float otf_amp = 0.01;
-
-// Feedback parameters
-unsigned int feedback_delay = 100;	// us
-float max_delta = 0.5;                    // Maximum allowed delta
-bool show_rate = false;                         // Show periodic messages with the update rate of the feedback loop
-array<pid_loop,3> pids = {{
-        pid_loop(0.60, 1e-2, 0e-5, 10),
-        pid_loop(0.55, 1e-3, 0e-5, 10),
-        pid_loop(1, 0, 0, 1)
-}};
-
-template<typename T>
-void def_param(string name, T& value, string description) {
-        parameter* p = new typed_value<T>(name, description, value);
-        parameters.push_back(p);
-}
-
-void init_parameters() {
-        def_param("stage_cal.range", stage_cal_range,
-                        "Amplitude of stage calibration perturbations");
+void tracker::init_parameters() {
+        def_param("scale_psd_inputs", scale_psd_inputs,
+                        "Scale PSD positions by sums");
 
         def_param("rough_cal.xy_step", rough_cal_xy_step,
                         "Step size of rough calibration raster scan (X and Y axes)");
@@ -97,30 +63,30 @@ void init_parameters() {
         def_param("otf.amp", otf_amp,
                         "Amplitude of on-the-fly calibration perturbations");
 
-        def_param("feedback.delay", feedback_delay,
+        def_param("feedback.delay", fb_delay,
                         "Delay between feedback loop iterations");
-        def_param("feedback.max_delta", max_delta,
+        def_param("feedback.max_delta", fb_max_delta,
                         "Maximum allowed position change during feedback");
-        def_param("feedback.show_rate", show_rate,
+        def_param("feedback.show_rate", fb_show_rate,
                         "Report on feedback loop iteration rate");
 
-        def_param("pids.x_prop", pids[0].prop_gain,
+        def_param("pids.x_prop", fb_pids[0].prop_gain,
                         "X axis proportional gain");
-        def_param("pids.y_prop", pids[1].prop_gain,
+        def_param("pids.y_prop", fb_pids[1].prop_gain,
                         "Y axis proportional gain");
-        def_param("pids.z_prop", pids[2].prop_gain,
+        def_param("pids.z_prop", fb_pids[2].prop_gain,
                         "Z axis proportional gain");
-        def_param("pids.x_int", pids[0].int_gain,
+        def_param("pids.x_int", fb_pids[0].int_gain,
                         "X axis integral gain");
-        def_param("pids.y_int", pids[1].int_gain,
+        def_param("pids.y_int", fb_pids[1].int_gain,
                         "Y axis integral gain");
-        def_param("pids.z_int", pids[2].int_gain,
+        def_param("pids.z_int", fb_pids[2].int_gain,
                         "Z axis integral gain");
-        def_param("pids.x_diff", pids[0].diff_gain,
+        def_param("pids.x_diff", fb_pids[0].diff_gain,
                         "X axis derivative gain");
-        def_param("pids.y_diff", pids[1].diff_gain,
+        def_param("pids.y_diff", fb_pids[1].diff_gain,
                         "Y axis derivative gain");
-        def_param("pids.z_diff", pids[2].diff_gain,
+        def_param("pids.z_diff", fb_pids[2].diff_gain,
                         "Z axis derivative gain");
 };
 
@@ -132,13 +98,12 @@ void dump_matrix(MatrixXf A, const char* filename)
         os.close();
 }
 
-Vector4f scale_psd_position(Vector4f in)
+Vector4f tracker::scale_psd_position(Vector4f in)
 {
-#define SCALE_INPUTS 1
-#if SCALE_INPUTS
-        in.x() /= in[2];
-        in.y() /= in[3];
-#endif
+        if (scale_psd_inputs) {
+                in.x() /= in[2];
+                in.y() /= in[3];
+        }
         return in;
 }
 
@@ -170,7 +135,7 @@ void stage::calibrate(unsigned int n_pts) {
 	typedef boost::uniform_real<float> distribution;
 	engine e;
 	boost::variate_generator<engine&, distribution> vg(e,
-			distribution(0.5-stage_cal_range, 0.5+stage_cal_range));
+			distribution(0.5-cal_range, 0.5+cal_range));
 	
 	for (unsigned int i=0; i<n_pts; i++) {
 		Vector3f out_pos;
@@ -324,7 +289,7 @@ struct collect_cb : point_callback {
 
 	collect_cb(input_channels<N>& inputs) : inputs(inputs) { }
 
-bool operator()(Vector3f& pos) {
+        bool operator()(Vector3f& pos) {
 		point p = { pos, inputs.get() };
 		data.push_back(p);
 		return true;
@@ -332,7 +297,7 @@ bool operator()(Vector3f& pos) {
 };
 
 template<unsigned int axis>
-bool compare_position(collect_cb<4>::point a, collect_cb<4>::point b)
+static bool compare_position(collect_cb<4>::point a, collect_cb<4>::point b)
 {
 	return a.values[axis] < b.values[axis];
 }
@@ -356,7 +321,7 @@ static Vector3f find_bead(vector<collect_cb<4>::point> psd_data, vector<collect_
 	return (fb_data[min].values + fb_data[max].values) / 2;
 }
 
-static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_inputs)
+Vector3f tracker::rough_calibrate()
 {
 	Vector3f start, step;
         Vector3i pts;
@@ -369,7 +334,7 @@ static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage, inp
 	collect_cb<4> psd_data(psd_inputs);
         collect_cb<3> fb_data(fb_inputs);
 	
-	execute_route(stage, route_xy, {&psd_data, &fb_data}, 10);
+	execute_route(stage_outputs, route_xy, {&psd_data, &fb_data}, 10);
 
         for (auto i=psd_data.data.begin(); i != psd_data.data.end(); i++)
                 i->values = scale_psd_position(i->values);
@@ -399,7 +364,7 @@ static Vector3f rough_calibrate(input_channels<4>& psd_inputs, stage& stage, inp
 	raster_route route_z(laser_pos, step, pts);
         psd_data.data.clear();
         fb_data.data.clear();
-	execute_route(stage, route_z, {&psd_data, &fb_data}, 100);
+	execute_route(stage_outputs, route_z, {&psd_data, &fb_data}, 100);
 	// Find extrema of Vz
 	laser_pos.z() = find_bead<2>(psd_data.data, fb_data.data).z();
         laser_pos.z() = 0.5;
@@ -434,9 +399,7 @@ static Matrix<float,1,10> pack_psd_inputs(Vector4f data) {
 	return R;
 }
 
-static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
-		input_channels<4>& psd_inputs, stage& stage,
-		input_channels<3>& fb_inputs)
+Matrix<float, 3,10> tracker::fine_calibrate(Vector3f rough_pos)
 {
 	typedef boost::mt19937 engine;
 	typedef boost::uniform_real<float> distribution;
@@ -451,7 +414,7 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 	collect_cb<4> psd_collect(psd_inputs);
 	collect_cb<3> fb_collect(fb_inputs);
 
-	execute_route(stage, rt, {&psd_collect, &fb_collect}, 10);
+	execute_route(stage_outputs, rt, {&psd_collect, &fb_collect}, 1000);
 
 	// Fill R and S matricies with collected data
 	Matrix<float, Dynamic,10> R(fine_cal_pts, 10);
@@ -484,9 +447,7 @@ static Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos,
 	return bt.transpose();
 }
 
-void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
-		stage& stage, input_channels<3>& fb_inputs,
-                array<pid_loop,3>& pids)
+void tracker::feedback(Matrix<float,3,10> R)
 {
         unsigned int n = 0;
         FILE* f = fopen("pos", "w");
@@ -507,21 +468,21 @@ void feedback(Matrix<float,3,10> R, input_channels<4>& psd_inputs,
                 float t = (ts.tv_sec - start_time.tv_sec) +
                         (ts.tv_nsec - start_time.tv_nsec)*1e-9;
                 for (int i=0; i<3; i++) {
-                        pids[i].add_point(t, delta[i]);
-                        delta[i] = pids[i].get_response();
+                        fb_pids[i].add_point(t, delta[i]);
+                        delta[i] = fb_pids[i].get_response();
                         delta[i] += otf_amp * sin(2*M_PI/otf_freqs[i]*t);
                 }
 
-                if (delta.norm() > max_delta) {
+                if (delta.norm() > fb_max_delta) {
                         fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");
                         continue;
                 }
 
                 Vector3f new_pos = fb - delta;
-		//new_pos.z() = 0.5; // TODO
+		new_pos.z() = 0.5; // TESTING
 		fprintf(f, "%f\t%f\t%f\n", new_pos.x(), new_pos.y(), new_pos.z());
-		stage.move(new_pos);
-		usleep(feedback_delay);
+		stage_outputs.move(new_pos);
+		usleep(fb_delay);
 
                 n++;
                 if (n % rate_update_period == 0) {
@@ -550,9 +511,7 @@ struct dump_inputs_cb : point_callback {
 	}
 };
 
-//#define RASTER_TEST
-#ifdef RASTER_TEST
-void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_inputs)
+void raster_test(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_inputs)
 {
 	float step_sz = 0.005;
 	unsigned int npts = 40;
@@ -566,15 +525,16 @@ void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_in
 	printf("# pos_x\tpos_y\tpos_z\tpsd_x\tpsd_y\tpsd_sum_x\tpsd_sum_y\n");
 	execute_route(stage, route, {&cb});
 }
-#else
-void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_inputs)
+
+void tracker::track()
 {
-	Vector3f rough_pos = rough_calibrate(psd_inputs, stage, fb_inputs);
-	stage.move(rough_pos);
-	fprintf(stderr, "Rough Cal: %f %f %f\n", rough_pos[0], rough_pos[1], rough_pos[2]);
-	//getchar();
+	Vector3f rough_pos = rough_calibrate();
+	stage_outputs.move(rough_pos);
+	fprintf(stderr, "Rough Cal: %f %f %f\n",
+                        rough_pos[0], rough_pos[1], rough_pos[2]);
+	getchar();
         fprintf(stderr, "Starting fine calibration...\n");
-	Matrix<float, 3,10> coeffs = fine_calibrate(rough_pos, psd_inputs, stage, fb_inputs);
+	Matrix<float, 3,10> coeffs = fine_calibrate(rough_pos);
         fprintf(stderr, "Fine calibration complete\n");
 
 #define DUMP_COEFFS
@@ -582,9 +542,8 @@ void track(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_in
         dump_matrix(coeffs, "coeffs");
 #endif
 
-	//getchar();
+	getchar();
         fprintf(stderr, "Tracking...\n");
-	feedback(coeffs, psd_inputs, stage, fb_inputs, pids);
+	feedback(coeffs);
 }
-#endif
 

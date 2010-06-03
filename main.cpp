@@ -50,16 +50,14 @@ int main(int argc, char** argv)
 	test_outputs<3> stage_outputs;
 #endif
 
-#define TRACK
-#ifdef TRACK
 	stage stage(stage_outputs, fb_inputs);
 	stage.calibrate();
 	stage.move({0.5, 0.5, 0.5});
-	usleep(100*1000);
+        tracker tracker(psd_inputs, stage, fb_inputs);
+	usleep(10*1000);
 	Vector3f fb = fb_inputs.get();
 	fprintf(stderr, "Feedback position: %f %f %f\n", fb.x(), fb.y(), fb.z());
 
-	init_parameters();
 	while (true) {
 		std::cout << "> ";
 		string line;
@@ -71,19 +69,19 @@ int main(int argc, char** argv)
 		if (cmd == "set") {
 			string param = *tok; tok++;
 			string value = *tok;
-			parameter* p = find_parameter(parameters, param);
+			parameter* p = find_parameter(tracker.parameters, param);
 			if (!p)
 				abort();
 
 			*p = value;
 		} else if (cmd == "get") {
 			string param = *tok;
-			parameter* p = find_parameter(parameters, param);
+			parameter* p = find_parameter(tracker.parameters, param);
 			if (!p)
 				abort();
 			std::cout << param << " = " << *p << "\n";
 		} else if (cmd == "list") {
-			for (auto p=parameters.begin(); p != parameters.end(); p++)
+			for (auto p=tracker.parameters.begin(); p != tracker.parameters.end(); p++)
 				std::cout << (**p).name << " = " << **p << "\n";
 		} else
 			std::cout << "Invalid command\n";
@@ -121,6 +119,7 @@ int main(int argc, char** argv)
                 //stage.move(pos);
 	}
 #endif
+	tracker.track();
 	return 0;
 }
 

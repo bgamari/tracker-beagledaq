@@ -20,6 +20,8 @@
 
 
 #include <cstdint>
+#include <readline/readline.h>
+#include <readline/history.h>
 #include <iostream>
 #include <array>
 #include <boost/tokenizer.hpp>
@@ -86,8 +88,11 @@ int main(int argc, char** argv)
 	fprintf(stderr, "Feedback position: %f %f %f\n", fb.x(), fb.y(), fb.z());
 
 	while (true) {
-		std::cout << "> ";
-		string line;
+                char* tmp = readline("> ");
+                string line = tmp;
+                if (line != "")
+                        add_history(tmp);
+                free(tmp);
 	        std::getline(std::cin, line);
 		boost::tokenizer<> tokens(line);
 		boost::tokenizer<>::iterator tok = tokens.begin();

@@ -485,7 +485,7 @@ void tracker::feedback(Matrix<float,3,10> R)
 		usleep(fb_delay);
 
                 n++;
-                if (n % rate_update_period == 0) {
+                if (fb_show_rate && n % rate_update_period == 0) {
                         struct timespec ts;
                         clock_gettime(CLOCK_REALTIME, &ts);
                         float rate = rate_update_period / ((ts.tv_sec - start_time.tv_sec) +

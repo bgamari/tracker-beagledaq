@@ -36,60 +36,6 @@ using std::vector;
 using std::array;
 using Eigen::Dynamic;
 
-void tracker::init_parameters() {
-        def_param("scale_psd_inputs", scale_psd_inputs,
-                        "Scale PSD positions by sums");
-
-        def_param("rough_cal.xy_step", rough_cal_xy_step,
-                        "Step size of rough calibration raster scan (X and Y axes)");
-        def_param("rough_cal.xy_points", rough_cal_xy_pts,
-                        "Number of points in rough calibration raster scan (X and Y axes)");
-        def_param("rough_cal.z_step", rough_cal_z_step,
-                        "Step size of rough calibration raster scan (X and Y axes)");
-        def_param("rough_cal.xy_points", rough_cal_xy_pts,
-                        "Number of points in rough calibration raster scan (X and Y axes)");
-
-        def_param("fine_cal.range", fine_cal_range,
-                        "Amplitude of fine calibration perturbations");
-        def_param("fine_cal.points", fine_cal_pts,
-                        "Number of points in fine calibration scan");
-
-        def_param("otf.freq-x", otf_freqs[0],
-                        "Frequencies of on-the-fly calibration perturbations (X axis)");
-        def_param("otf.freq-y", otf_freqs[1],
-                        "Frequencies of on-the-fly calibration perturbations (Y axis)");
-        def_param("otf.freq-z", otf_freqs[2],
-                        "Frequencies of on-the-fly calibration perturbations (Z axis)");
-        def_param("otf.amp", otf_amp,
-                        "Amplitude of on-the-fly calibration perturbations");
-
-        def_param("feedback.delay", fb_delay,
-                        "Delay between feedback loop iterations");
-        def_param("feedback.max_delta", fb_max_delta,
-                        "Maximum allowed position change during feedback");
-        def_param("feedback.show_rate", fb_show_rate,
-                        "Report on feedback loop iteration rate");
-
-        def_param("pids.x_prop", fb_pids[0].prop_gain,
-                        "X axis proportional gain");
-        def_param("pids.y_prop", fb_pids[1].prop_gain,
-                        "Y axis proportional gain");
-        def_param("pids.z_prop", fb_pids[2].prop_gain,
-                        "Z axis proportional gain");
-        def_param("pids.x_int", fb_pids[0].int_gain,
-                        "X axis integral gain");
-        def_param("pids.y_int", fb_pids[1].int_gain,
-                        "Y axis integral gain");
-        def_param("pids.z_int", fb_pids[2].int_gain,
-                        "Z axis integral gain");
-        def_param("pids.x_diff", fb_pids[0].diff_gain,
-                        "X axis derivative gain");
-        def_param("pids.y_diff", fb_pids[1].diff_gain,
-                        "Y axis derivative gain");
-        def_param("pids.z_diff", fb_pids[2].diff_gain,
-                        "Z axis derivative gain");
-};
-
 void dump_matrix(MatrixXf A, const char* filename)
 {
 	Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");

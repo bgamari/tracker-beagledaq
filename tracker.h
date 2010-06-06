@@ -78,16 +78,8 @@ struct tracker {
         input_channels<4>& psd_inputs;
         stage& stage_outputs;
         input_channels<3>& fb_inputs;
-        std::vector<parameter*> parameters;
 
 private:
-        template<typename T>
-        void def_param(string name, T& value, string description) {
-                parameter* p = new typed_value<T>(name, description, value);
-                parameters.push_back(p);
-        }
-        void init_parameters();
-
         Vector4f scale_psd_position(Vector4f in);
 
         Vector3f rough_calibrate();
@@ -115,8 +107,6 @@ public:
                 fb_pids[0] = pid_loop(0.6, 1e-2, 0, 10);
                 fb_pids[1] = pid_loop(0.55, 1e-3, 0e-5, 10);
                 fb_pids[2] = pid_loop(1, 0, 0, 1);
-
-                init_parameters();              
         }
 
         void track();

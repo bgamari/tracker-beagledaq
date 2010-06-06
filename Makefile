@@ -1,6 +1,6 @@
 INCLUDES = -Ieigen
-CXXFLAGS = -O0 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
-LDFLAGS = -lrt -lboost_program_options-mt -lreadline
+CXXFLAGS = -O3 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
+LDFLAGS = -lrt -lboost_program_options-mt -lboost_thread-mt -lreadline
 
 all : tracker
 

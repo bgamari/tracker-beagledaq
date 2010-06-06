@@ -18,6 +18,11 @@
  * Author: Ben Gamari <bgamari@physics.umass.edu>
  */
 
+#include "bitfield.h"
+#include "max5134.h"
+#include "max1302.h"
+#include "tracker.h"
+#include "config.h"
 
 #include <cstdint>
 #include <readline/readline.h>
@@ -25,11 +30,7 @@
 #include <iostream>
 #include <array>
 #include <boost/tokenizer.hpp>
-#include "bitfield.h"
-#include "max5134.h"
-#include "max1302.h"
-#include "tracker.h"
-#include "config.h"
+#include <boost/thread.hpp>
 
 using std::array;
 using std::string;
@@ -61,6 +62,74 @@ void dump_data_test(input_channels<4>& psd_inputs, input_channels<1>& pd_input,
 	}
 }
 
+void start_tracker(tracker& tracker)
+{
+        tracker.track();
+}
+
+std::vector<parameter*> parameters;
+
+template<typename T>
+void def_param(string name, T& value, string description) {
+        parameter* p = new typed_value<T>(name, description, value);
+        parameters.push_back(p);
+}
+
+void add_tracker_params(tracker& tracker)
+{
+        def_param("scale_psd_inputs", tracker.scale_psd_inputs,
+                        "Scale PSD positions by sums");
+
+        def_param("rough_cal.xy_step", tracker.rough_cal_xy_step,
+                        "Step size of rough calibration raster scan (X and Y axes)");
+        def_param("rough_cal.xy_points", tracker.rough_cal_xy_pts,
+                        "Number of points in rough calibration raster scan (X and Y axes)");
+        def_param("rough_cal.z_step", tracker.rough_cal_z_step,
+                        "Step size of rough calibration raster scan (X and Y axes)");
+        def_param("rough_cal.xy_points", tracker.rough_cal_xy_pts,
+                        "Number of points in rough calibration raster scan (X and Y axes)");
+
+        def_param("fine_cal.range", tracker.fine_cal_range,
+                        "Amplitude of fine calibration perturbations");
+        def_param("fine_cal.points", tracker.fine_cal_pts,
+                        "Number of points in fine calibration scan");
+
+        def_param("otf.freq-x", tracker.otf_freqs[0],
+                        "Frequencies of on-the-fly calibration perturbations (X axis)");
+        def_param("otf.freq-y", tracker.otf_freqs[1],
+                        "Frequencies of on-the-fly calibration perturbations (Y axis)");
+        def_param("otf.freq-z", tracker.otf_freqs[2],
+                        "Frequencies of on-the-fly calibration perturbations (Z axis)");
+        def_param("otf.amp", tracker.otf_amp,
+                        "Amplitude of on-the-fly calibration perturbations");
+
+        def_param("feedback.delay", tracker.fb_delay,
+                        "Delay between feedback loop iterations");
+        def_param("feedback.max_delta", tracker.fb_max_delta,
+                        "Maximum allowed position change during feedback");
+        def_param("feedback.show_rate", tracker.fb_show_rate,
+                        "Report on feedback loop iteration rate");
+
+        def_param("pids.x_prop", tracker.fb_pids[0].prop_gain,
+                        "X axis proportional gain");
+        def_param("pids.y_prop", tracker.fb_pids[1].prop_gain,
+                        "Y axis proportional gain");
+        def_param("pids.z_prop", tracker.fb_pids[2].prop_gain,
+                        "Z axis proportional gain");
+        def_param("pids.x_int", tracker.fb_pids[0].int_gain,
+                        "X axis integral gain");
+        def_param("pids.y_int", tracker.fb_pids[1].int_gain,
+                        "Y axis integral gain");
+        def_param("pids.z_int", tracker.fb_pids[2].int_gain,
+                        "Z axis integral gain");
+        def_param("pids.x_diff", tracker.fb_pids[0].diff_gain,
+                        "X axis derivative gain");
+        def_param("pids.y_diff", tracker.fb_pids[1].diff_gain,
+                        "Y axis derivative gain");
+        def_param("pids.z_diff", tracker.fb_pids[2].diff_gain,
+                        "Z axis derivative gain");
+}
+
 int main(int argc, char** argv)
 {
 //#define TEST
@@ -83,10 +152,13 @@ int main(int argc, char** argv)
 	stage.calibrate();
 	stage.move({0.5, 0.5, 0.5});
         tracker tracker(psd_inputs, stage, fb_inputs);
+        add_tracker_params(tracker);
 	usleep(10*1000);
 	Vector3f fb = fb_inputs.get();
 	fprintf(stderr, "Feedback position: %f %f %f\n", fb.x(), fb.y(), fb.z());
 
+        boost::thread* tracker_thread = NULL;
+        boost::char_separator<char> sep("\t ");
 	while (true) {
                 char* tmp = readline("> ");
                 string line = tmp;
@@ -94,27 +166,45 @@ int main(int argc, char** argv)
                         add_history(tmp);
                 free(tmp);
 	        std::getline(std::cin, line);
-		boost::tokenizer<> tokens(line);
-		boost::tokenizer<>::iterator tok = tokens.begin();
+                typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
+		tokenizer tokens(line);
+		tokenizer::iterator tok = tokens.begin();
 
 		string cmd = *tok; tok++;
 		if (cmd == "set") {
 			string param = *tok; tok++;
 			string value = *tok;
-			parameter* p = find_parameter(tracker.parameters, param);
+			parameter* p = find_parameter(parameters, param);
 			if (!p)
-				abort();
-
-			*p = value;
+                                std::cout << "Unknown parameter\n";
+                        else
+                                *p = value;
 		} else if (cmd == "get") {
 			string param = *tok;
-			parameter* p = find_parameter(tracker.parameters, param);
+			parameter* p = find_parameter(parameters, param);
 			if (!p)
-				abort();
-			std::cout << param << " = " << *p << "\n";
+                                std::cout << "Unknown parameter\n";
+                        else
+                                std::cout << param << " = " << *p << "\n";
 		} else if (cmd == "list") {
-			for (auto p=tracker.parameters.begin(); p != tracker.parameters.end(); p++)
+			for (auto p=parameters.begin(); p != parameters.end(); p++)
 				std::cout << (**p).name << " = " << **p << "\n";
+                } else if (cmd == "start-tracking") {
+                        if (tracker_thread)
+                                std::cout << "Already tracking\n";
+                        else
+                                tracker_thread = new boost::thread(start_tracker,tracker);
+                } else if (cmd == "stop-tracking") {
+                        if (!tracker_thread)
+                                std::cout << "Not tracking\n";
+                        else {
+                                tracker_thread->interrupt();
+                                tracker_thread = NULL;
+                        }
+                } else if (cmd == "exit" || cmd == "quit") {
+                        exit(0);
+                } else if (cmd == "help") {
+                        std::cout << "Valid Commands:\n";
 		} else
 			std::cout << "Invalid command\n";
 	}

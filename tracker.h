@@ -34,12 +34,12 @@ using namespace Eigen;
 class stage {
 	output_channels<3>& out;
 	input_channels<3>& fb;
-        float cal_range;
 	Vector3f last_pos;
 	Matrix<float, 4,3> R;
 
 public:
-	stage(output_channels<3>& out, input_channels<3>& fb, float cal_range=0.2)
+        float cal_range;
+	stage(output_channels<3>& out, input_channels<3>& fb, float cal_range=0.4)
 		: out(out), fb(fb), cal_range(cal_range) { }
 
 	/*

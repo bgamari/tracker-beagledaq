@@ -429,8 +429,9 @@ void tracker::feedback(Matrix<float,3,10> R)
                 }
 
                 Vector3f new_pos = fb - delta;
-		new_pos.z() = 0.5; // TESTING
-		fprintf(f, "%f\t%f\t%f\n", new_pos.x(), new_pos.y(), new_pos.z());
+		fprintf(f, "%f\t%f\t%f\t%f\t%f\t%f\n", 
+				delta.x(), delta.y(), delta.z(),
+				new_pos.x(), new_pos.y(), new_pos.z());
 		stage_outputs.move(new_pos);
 		usleep(fb_delay);
 

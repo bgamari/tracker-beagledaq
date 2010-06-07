@@ -88,11 +88,11 @@ public:
 
         tracker(input_channels<4>& psd_inputs,
 		stage& stage_outputs, input_channels<3>& fb_inputs) :
-                scale_psd_inputs(false),
+                scale_psd_inputs(true),
                 rough_cal_xy_step(0.01), rough_cal_z_step(0.02),
                 rough_cal_xy_pts(20), rough_cal_z_pts(20),
                 fine_cal_range(0.02), fine_cal_pts(1000),
-                otf_amp(0.01),
+                otf_amp(0),
                 fb_delay(100), fb_max_delta(0.5), fb_show_rate(false),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),
@@ -103,8 +103,8 @@ public:
                 otf_freqs[1] = 61;
                 otf_freqs[2] = 53;
 
-                fb_pids[0] = pid_loop(0.6, 1e-2, 0, 10);
-                fb_pids[1] = pid_loop(0.55, 1e-3, 0e-5, 10);
+                fb_pids[0] = pid_loop(0.6, 1e-3, 0, 10);
+                fb_pids[1] = pid_loop(0.6, 1e-3, 0, 10);
                 fb_pids[2] = pid_loop(1, 0, 0, 1);
         }
 

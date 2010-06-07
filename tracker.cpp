@@ -36,6 +36,8 @@ using std::vector;
 using std::array;
 using Eigen::Dynamic;
 
+static bool rough_cal_debug = false;
+
 void dump_matrix(MatrixXf A, const char* filename)
 {
 	Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
@@ -257,13 +259,15 @@ static Vector3f find_bead(vector<collect_cb<4>::point> psd_data, vector<collect_
                 if (psd_data[i].values[axis] > psd_data[max].values[axis])
                         max = i;
         }
-        fprintf(stderr, "Axis=%d\n", axis);
-        fprintf(stderr, "  Minimum: pos=(%f, %f, %f), fb=(%f, %f, %f)\n",
-                        fb_data[min].position[0], fb_data[min].position[1], fb_data[min].position[2], 
-                        fb_data[min].values[0], fb_data[min].values[1], fb_data[min].values[2]);
-        fprintf(stderr, "  Maximum: pos=(%f, %f, %f), fb=(%f, %f, %f)\n",
-                        fb_data[max].position[0], fb_data[max].position[1], fb_data[max].position[2], 
-                        fb_data[max].values[0], fb_data[max].values[1], fb_data[max].values[2]);
+	if (rough_cal_debug) {
+		fprintf(stderr, "Axis=%d\n", axis);
+		fprintf(stderr, "  Minimum: pos=(%f, %f, %f), fb=(%f, %f, %f)\n",
+				fb_data[min].position[0], fb_data[min].position[1], fb_data[min].position[2], 
+				fb_data[min].values[0], fb_data[min].values[1], fb_data[min].values[2]);
+		fprintf(stderr, "  Maximum: pos=(%f, %f, %f), fb=(%f, %f, %f)\n",
+				fb_data[max].position[0], fb_data[max].position[1], fb_data[max].position[2], 
+				fb_data[max].values[0], fb_data[max].values[1], fb_data[max].values[2]);
+	}
 	return (fb_data[min].values + fb_data[max].values) / 2;
 }
 

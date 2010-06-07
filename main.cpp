@@ -82,9 +82,9 @@ void add_tracker_params(tracker& tracker)
         def_param("rough_cal.xy_points", tracker.rough_cal_xy_pts,
                         "Number of points in rough calibration raster scan (X and Y axes)");
         def_param("rough_cal.z_step", tracker.rough_cal_z_step,
-                        "Step size of rough calibration raster scan (X and Y axes)");
-        def_param("rough_cal.xy_points", tracker.rough_cal_xy_pts,
-                        "Number of points in rough calibration raster scan (X and Y axes)");
+                        "Step size of rough calibration raster scan (Z axis)");
+        def_param("rough_cal.z_points", tracker.rough_cal_z_pts,
+                        "Number of points in rough calibration raster scan (Z axis)");
 
         def_param("fine_cal.range", tracker.fine_cal_range,
                         "Amplitude of fine calibration perturbations");
@@ -257,6 +257,12 @@ int main(int argc, char** argv)
                                 tracker_thread->interrupt();
                                 std::cout << "OK\tFeedback stopped\n";
                         }
+                } else if (cmd == "pause") {
+                        std::cout << "Press enter when ready\n";
+                        getchar();
+                } else if (cmd == "wait") {
+                        float time = boost::lexical_cast<float>(*tok);
+                        usleep(time * 1e6);
                 } else if (cmd == "exit" || cmd == "quit") {
                         return 0;
                 } else if (cmd == "help") {

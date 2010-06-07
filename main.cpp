@@ -173,6 +173,7 @@ int main(int argc, char** argv)
 	stage stage(stage_outputs, fb_inputs);
 	stage.calibrate();
 	stage.move({0.5, 0.5, 0.5});
+        def_param("stage.cal_range", stage.cal_range, "Stage calibration range");
 	usleep(10*1000);
         tracker tracker(psd_inputs, stage, fb_inputs);
         add_tracker_params(tracker);
@@ -234,6 +235,9 @@ int main(int argc, char** argv)
                         pos.y() = lexical_cast<float>(*tok); tok++;
                         pos.z() = lexical_cast<float>(*tok);
                         stage.move(pos);
+                        std::cout << "OK\n";
+                } else if (cmd == "stage-cal") {
+                        stage.calibrate();
                         std::cout << "OK\n";
                 } else if (cmd == "rough-cal") {
                         rough_pos = tracker.rough_calibrate();

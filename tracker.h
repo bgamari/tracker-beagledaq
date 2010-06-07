@@ -22,7 +22,6 @@
 #pragma once
 
 #include "channels.h"
-#include "parameters.h"
 #include "pid.h"
 
 #include <cstdint>
@@ -82,11 +81,11 @@ struct tracker {
 private:
         Vector4f scale_psd_position(Vector4f in);
 
+public:
         Vector3f rough_calibrate();
         Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos);
         void feedback(Matrix<float,3,10> R);
 
-public:
         tracker(input_channels<4>& psd_inputs,
 		stage& stage_outputs, input_channels<3>& fb_inputs) :
                 scale_psd_inputs(false),

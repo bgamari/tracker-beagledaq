@@ -23,6 +23,7 @@
 #include "max1302.h"
 #include "tracker.h"
 #include "config.h"
+#include "parameters.h"
 
 #include <cstdint>
 #include <readline/readline.h>
@@ -31,6 +32,7 @@
 #include <array>
 #include <boost/tokenizer.hpp>
 #include <boost/thread.hpp>
+#include <boost/lexical_cast.hpp>
 
 using std::array;
 using std::string;
@@ -60,11 +62,6 @@ void dump_data_test(input_channels<4>& psd_inputs, input_channels<1>& pd_input,
                 pos << 0.5 + 0.2*sin(0.01*n), 0.5, 0.5;
                 //stage.move(pos);
 	}
-}
-
-void start_tracker(tracker& tracker)
-{
-        tracker.track();
 }
 
 std::vector<parameter*> parameters;
@@ -130,6 +127,31 @@ void add_tracker_params(tracker& tracker)
                         "Z axis derivative gain");
 }
 
+std::string cmd_help =
+"Valid commands:\n"
+"  set [parameter] [value]      Set a parameter value"
+"  get [parameter]              Get the value of a parameter\n"
+"  list                         List all parameters and their values\n"
+"  read-psd                     Read PSD values\n"
+"  read-fb                      Read stage feedback sensor values\n"
+"  move [x] [y]                 Move stage to position (x,y)\n"
+"  rough-cal                    Run rough calibration\n"
+"  fine-cal                     Run fine calibration (requires rough-cal)\n"
+"  show-coeffs                  Show fine calibration regression matrix\n"
+"  feedback-start               Start feedback (requires fine-cal)\n"
+"  feedback-stop                Stop feedback loop\n"
+"  exit                         Exit\n"
+"  help                         This help message\n";
+
+void feedback_worker(tracker* tracker, Matrix<float, 3, 10> coeffs, bool* feedback_running) {
+        *feedback_running = true;
+        try {
+                tracker->feedback(coeffs);
+        } catch (clamped_output_error e) { }
+        std::cout << "FB-ERR\n";
+        *feedback_running = false;
+}
+
 int main(int argc, char** argv)
 {
 //#define TEST
@@ -151,23 +173,28 @@ int main(int argc, char** argv)
 	stage stage(stage_outputs, fb_inputs);
 	stage.calibrate();
 	stage.move({0.5, 0.5, 0.5});
+	usleep(10*1000);
         tracker tracker(psd_inputs, stage, fb_inputs);
         add_tracker_params(tracker);
-	usleep(10*1000);
-	Vector3f fb = fb_inputs.get();
-	fprintf(stderr, "Feedback position: %f %f %f\n", fb.x(), fb.y(), fb.z());
 
         boost::thread* tracker_thread = NULL;
         boost::char_separator<char> sep("\t ");
+	Eigen::IOFormat mat_fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
+        Matrix<float, 3,10> coeffs = Matrix<float,3,10>::Zero();
+        Vector3f rough_pos = Vector3f::Zero();
+        bool feedback_running = false;
 	while (true) {
                 char* tmp = readline("> ");
+                if (!tmp) break;
                 string line = tmp;
-                if (line != "")
-                        add_history(tmp);
+                if (line == "") {
+                        free(tmp);
+                        continue;
+                }
+                add_history(tmp);
                 free(tmp);
-	        std::getline(std::cin, line);
                 typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
-		tokenizer tokens(line);
+		tokenizer tokens(line, sep);
 		tokenizer::iterator tok = tokens.begin();
 
 		string cmd = *tok; tok++;
@@ -189,32 +216,51 @@ int main(int argc, char** argv)
 		} else if (cmd == "list") {
 			for (auto p=parameters.begin(); p != parameters.end(); p++)
 				std::cout << (**p).name << " = " << **p << "\n";
-                } else if (cmd == "start-tracking") {
-                        if (tracker_thread)
-                                std::cout << "Already tracking\n";
-                        else
-                                tracker_thread = new boost::thread(start_tracker,tracker);
-                } else if (cmd == "stop-tracking") {
-                        if (!tracker_thread)
-                                std::cout << "Not tracking\n";
+                } else if (cmd == "read-psd") {
+                        Vector4f psd = psd_inputs.get();
+                        std::cout << psd.transpose().format(mat_fmt) << "\n";
+                } else if (cmd == "read-fb") {
+                        Vector3f fb = fb_inputs.get();
+                        std::cout << fb.transpose().format(mat_fmt) << "\n";
+                } else if (cmd == "move") {
+                        using boost::lexical_cast;
+                        Vector3f pos;
+                        pos.x() = lexical_cast<float>(*tok); tok++;
+                        pos.y() = lexical_cast<float>(*tok); tok++;
+                        pos.z() = lexical_cast<float>(*tok);
+                        stage.move(pos);
+                        std::cout << "OK\n";
+                } else if (cmd == "rough-cal") {
+                        rough_pos = tracker.rough_calibrate();
+                        stage.move(rough_pos);
+                        std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
+                } else if (cmd == "fine-cal") {
+                        coeffs = tracker.fine_calibrate(rough_pos);
+                } else if (cmd == "show-coeffs") {
+                        std::cout << coeffs.format(mat_fmt) << "\n";
+                } else if (cmd == "feedback-start") {
+                        if (feedback_running)
+                                std::cout << "ERR\tAlready running\n";
+                        else {
+                                tracker_thread = new boost::thread(feedback_worker, &tracker, coeffs, &feedback_running);
+                                std::cout << "OK\tFeedback running\n";
+                        }
+                } else if (cmd == "feedback-stop") {
+                        if (!feedback_running)
+                                std::cout << "ERR\tNot running\n";
                         else {
                                 tracker_thread->interrupt();
-                                tracker_thread = NULL;
+                                std::cout << "OK\tFeedback stopped\n";
                         }
                 } else if (cmd == "exit" || cmd == "quit") {
-                        exit(0);
+                        return 0;
                 } else if (cmd == "help") {
                         std::cout << "Valid Commands:\n";
+                        std::cout << cmd_help << "\n";
 		} else
-			std::cout << "Invalid command\n";
+			std::cout << "ERR\tInvalid command\n";
 	}
 
-	fprintf(stderr, "Position bead. Press any key.\n");
-	getchar();
-	Vector4f psd = psd_inputs.get();
-	fprintf(stderr, "PSD: pos=(%f, %f); sum=(%f, %f)\n",
-			psd[0], psd[1], psd[2], psd[3]);
-	tracker.track();
 	return 0;
 }
 

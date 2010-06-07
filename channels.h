@@ -55,7 +55,6 @@ struct test_inputs : input_channels<N> {
 template<unsigned int N>
 struct test_outputs : output_channels<N> {
 	void set(const Matrix<float,1,N> values) {
-		printf("stage_pos: ");
 		for (unsigned int i=0; i<N; i++)
 			printf(" %f", values[i]);
 		printf("\n");

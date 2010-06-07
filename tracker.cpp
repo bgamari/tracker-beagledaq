@@ -478,17 +478,13 @@ void tracker::track()
 	stage_outputs.move(rough_pos);
 	fprintf(stderr, "Rough Cal: %f %f %f\n",
                         rough_pos[0], rough_pos[1], rough_pos[2]);
-	getchar();
         fprintf(stderr, "Starting fine calibration...\n");
 	Matrix<float, 3,10> coeffs = fine_calibrate(rough_pos);
         fprintf(stderr, "Fine calibration complete\n");
-
 #define DUMP_COEFFS
 #ifdef DUMP_COEFFS
         dump_matrix(coeffs, "coeffs");
 #endif
-
-	getchar();
         fprintf(stderr, "Tracking...\n");
 	feedback(coeffs);
 }

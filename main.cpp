@@ -204,8 +204,13 @@ int main(int argc, char** argv)
 			parameter* p = find_parameter(parameters, param);
 			if (!p)
                                 std::cout << "Unknown parameter\n";
-                        else
-                                *p = value;
+                        else {
+                                try {
+                                        *p = value;
+                                } catch (std::exception e) {
+                                        std::cout << "ERR\tInvalid value\n";
+                                }
+                        }
 		} else if (cmd == "get") {
 			string param = *tok;
 			parameter* p = find_parameter(parameters, param);

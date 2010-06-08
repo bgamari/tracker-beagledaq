@@ -38,7 +38,8 @@ using Eigen::Dynamic;
 
 static bool rough_cal_debug = false;
 
-void dump_matrix(MatrixXf A, const char* filename)
+template<typename Matrix>
+void dump_matrix(Matrix A, const char* filename)
 {
 	Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
         std::ofstream os(filename);
@@ -389,12 +390,14 @@ Matrix<float, 3,10> tracker::fine_calibrate(Vector3f rough_pos)
 #endif
 
 	// Solve regression coefficients
-        SVD<Matrix<float, Dynamic,10> > svd(R);
-        Matrix<float, 10,3> bt = svd.solve(S);
+	Matrix<double, Dynamic,10> Rd = R.cast<double>();
+	Matrix<double, Dynamic,3> Sd = S.cast<double>();
+        SVD<Matrix<double, Dynamic,10> > svd(Rd);
+        Matrix<double, 10,3> bt = svd.solve(Sd);
         dump_matrix(R, "R");
         dump_matrix(S, "S");
         dump_matrix(bt, "beta");
-	return bt.transpose();
+	return bt.transpose().cast<float>();
 }
 
 void tracker::feedback(Matrix<float,3,10> R)

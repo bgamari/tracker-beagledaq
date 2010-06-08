@@ -416,9 +416,9 @@ void tracker::feedback(Matrix<float,3,10> R)
         unsigned int rate_update_period = 10000;
 
 	while (true) {
+		Vector3f fb = fb_inputs.get();
                 Vector4f psd = psd_inputs.get();
                 psd = scale_psd_position(psd);
-		Vector3f fb = fb_inputs.get();
 		Matrix<float, 10,1> psd_in = pack_psd_inputs(psd);
 		Vector3f delta = R * psd_in;
 

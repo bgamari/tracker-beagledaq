@@ -72,6 +72,18 @@ void def_param(string name, T& value, string description) {
         parameters.push_back(p);
 }
 
+struct pid_tau_param : parameter {
+        pid_loop& pid;
+        pid_tau_param(string name, pid_loop& pid, string description) :
+                parameter(name, description), pid(pid) { }
+        void operator=(string s) {
+                pid.set_tau(boost::lexical_cast<unsigned int>(s));
+        }
+        void put(std::ostream& os) const {
+                os << pid.tau();
+        }
+};
+
 void add_tracker_params(tracker& tracker)
 {
         def_param("scale_psd_inputs", tracker.scale_psd_inputs,
@@ -119,6 +131,12 @@ void add_tracker_params(tracker& tracker)
                         "Y axis integral gain");
         def_param("pids.z_int", tracker.fb_pids[2].int_gain,
                         "Z axis integral gain");
+        parameters.push_back(new pid_tau_param("pids.x_tau", tracker.fb_pids[0],
+                                "X axis integral time constant"));
+        parameters.push_back(new pid_tau_param("pids.y_tau", tracker.fb_pids[1],
+                                "Y axis integral time constant"));
+        parameters.push_back(new pid_tau_param("pids.z_tau", tracker.fb_pids[2],
+                                "Z axis integral time constant"));
         def_param("pids.x_diff", tracker.fb_pids[0].diff_gain,
                         "X axis derivative gain");
         def_param("pids.y_diff", tracker.fb_pids[1].diff_gain,

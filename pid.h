@@ -38,6 +38,13 @@ public:
                 assert(tau >= 1);
         }
 
+	void set_tau(unsigned int tau) {
+		points.set_capacity(tau);
+	}
+	unsigned int tau() {
+		return points.capacity();
+	}
+
         void add_point(float x, float y);
         float get_response();
 };

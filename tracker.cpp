@@ -86,6 +86,7 @@ void stage::calibrate(unsigned int n_pts) {
 	boost::variate_generator<engine&, distribution> vg(e,
 			distribution(0.5-cal_range, 0.5+cal_range));
 	
+	FILE* f = fopen("stage-cal", "w");
 	for (unsigned int i=0; i<n_pts; i++) {
 		Vector3f out_pos;
 		out_pos << vg(), vg(), vg();
@@ -96,7 +97,12 @@ void stage::calibrate(unsigned int n_pts) {
 		X.row(i)[0] = 1; // constant
 		X.row(i).tail<3>() = fb_pos.transpose();
                 Y.row(i) = out_pos;
+		
+		fprintf(f, "%f %f %f\t%f %f %f\n",
+				out_pos.x(), out_pos.y(), out_pos.z(),
+				fb_pos.x(), fb_pos.y(), fb_pos.z());
 	}
+	fclose(f);
         R = X.svd().solve(Y);
 }
 

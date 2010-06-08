@@ -451,6 +451,7 @@ void tracker::feedback(Matrix<float,3,10> R)
                         float rate = rate_update_period / ((ts.tv_sec - start_time.tv_sec) +
                                 (ts.tv_nsec - start_time.tv_nsec)*1e-9);
                         fprintf(stderr, "Feedback loop rate: %f updates/sec\n", rate);
+			start_time = ts;
                 }
 	}
         fclose(f);

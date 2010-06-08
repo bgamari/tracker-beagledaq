@@ -263,6 +263,7 @@ int main(int argc, char** argv)
                         std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "fine-cal") {
                         coeffs = tracker.fine_calibrate(rough_pos);
+                        stage.move(rough_pos);
                 } else if (cmd == "show-coeffs") {
                         std::cout << coeffs.format(mat_fmt) << "\n";
                 } else if (cmd == "feedback-start") {

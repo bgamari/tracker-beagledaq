@@ -206,7 +206,7 @@ int main(int argc, char** argv)
                 char* tmp = readline("> ");
                 if (!tmp) break;
                 string line = tmp;
-                if (line == "") {
+                if (line == "" || line[0] == '#') {
                         free(tmp);
                         continue;
                 }

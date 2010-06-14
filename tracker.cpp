@@ -351,14 +351,14 @@ static Matrix<float,9,1> pack_psd_inputs(Vector4f data) {
 	R[2] = -data[2] + data[3];	// Vsum = -Vsum_x + Vsum_y
 	
 	// Second order
-	R[3] = R[1]*R[1];		// Vx^2
-	R[4] = R[2]*R[2];		// Vy^2
-	R[5] = R[3]*R[3];		// Vsum^2
+	R[3] = R[0]*R[0];		// Vx^2
+	R[4] = R[1]*R[1];		// Vy^2
+	R[5] = R[2]*R[2];		// Vsum^2
 
 	// Cross terms
-	R[6] = R[1]*R[2];		// Vx*Vy
-	R[7] = R[1]*R[3];		// Vx*Vsum
-	R[8] = R[2]*R[3];		// Vy*Vsum
+	R[6] = R[0]*R[1];		// Vx*Vy
+	R[7] = R[0]*R[2];		// Vx*Vsum
+	R[8] = R[1]*R[2];		// Vy*Vsum
 
 	return R;
 }

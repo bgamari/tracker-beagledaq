@@ -27,11 +27,13 @@
 #include <array>
 #include <boost/random.hpp>
 #include <boost/random/mersenne_twister.hpp>
+#include <boost/format.hpp>
 #include <time.h>
 #include <cstdio>
 #include <iostream>
 #include <fstream>
 
+using std::string;
 using std::vector;
 using std::array;
 using Eigen::Dynamic;
@@ -278,6 +280,19 @@ static Vector3f find_bead(vector<collect_cb<4>::point> psd_data, vector<collect_
 	return (fb_data[min].values + fb_data[max].values) / 2;
 }
 
+static void dump_data(std::string file, vector<collect_cb<3>::point> fb_data,
+                vector<collect_cb<4>::point> psd_data, string comment="") {
+        std::ofstream f(file);
+        if (comment.length())
+                f << "# " << comment << "\n";
+	f << "# pos_x pos_y pos_z\tfb_x fb_y fb_z\tpsd_x psd_y sum_x sum_y\n";
+        for (unsigned int i=0; i < psd_data.size(); i++)
+		f << boost::format("%f %f %f\t%f %f %f\t%f %f %f %f\n") %
+				fb_data[i].position[0] % fb_data[i].position[1] % fb_data[i].position[2] %
+                                fb_data[i].values[0] % fb_data[i].values[1] % fb_data[i].values[2] %
+				psd_data[i].values[0] % psd_data[i].values[1] % psd_data[i].values[2] % psd_data[i].values[3];
+}
+
 Vector3f tracker::rough_calibrate()
 {
 	Vector3f start, step;
@@ -291,28 +306,17 @@ Vector3f tracker::rough_calibrate()
 	collect_cb<4> psd_data(psd_inputs);
         collect_cb<3> fb_data(fb_inputs);
 	
+        // Run X/Y scan and preprocess data
 	execute_route(stage_outputs, route_xy, {&psd_data, &fb_data}, 10);
-
         for (auto i=psd_data.data.begin(); i != psd_data.data.end(); i++)
                 i->values = scale_psd_position(i->values);
 
-#define DUMP_ROUGH_CAL
-#ifdef DUMP_ROUGH_CAL
-	FILE* f = fopen("rough", "w");
-	fprintf(f, "# pos_x pos_y pos_z\tpsd_x psd_y sum_x sum_y\n");
-        for (unsigned int i=0; i < psd_data.data.size(); i++)
-		fprintf(f, "%f %f %f\t%f %f %f\t%f %f %f %f\n",
-				psd_data.data[i].position[0], psd_data.data[i].position[1], psd_data.data[i].position[2],
-
-                                fb_data.data[i].values[0], fb_data.data[i].values[1], fb_data.data[i].values[2],
-				psd_data.data[i].values[0], psd_data.data[i].values[1], psd_data.data[i].values[2], psd_data.data[i].values[3]);
-	fclose(f);
-#endif
-
-	Vector3f laser_pos;
 	// Find extrema of Vx, Vy
+	Vector3f laser_pos;
 	laser_pos.x() = find_bead<0>(psd_data.data, fb_data.data).x();
 	laser_pos.y() = find_bead<1>(psd_data.data, fb_data.data).y();
+        dump_data("rough", fb_data.data, psd_data.data,
+                        (boost::format("Center %f %f") % laser_pos.x() % laser_pos.y()).str());
 
 	// Scan in Z direction
 	laser_pos.z() = 0.5 - rough_cal_z_step * rough_cal_z_pts/2;
@@ -321,9 +325,15 @@ Vector3f tracker::rough_calibrate()
 	raster_route route_z(laser_pos, step, pts);
         psd_data.data.clear();
         fb_data.data.clear();
+
+        // Run Z scan and preprocess data
 	execute_route(stage_outputs, route_z, {&psd_data, &fb_data}, 100);
+        for (auto i=psd_data.data.begin(); i != psd_data.data.end(); i++)
+                i->values = scale_psd_position(i->values);
+
 	// Find extrema of Vz
 	laser_pos.z() = find_bead<2>(psd_data.data, fb_data.data).z();
+        dump_data("rough_z", fb_data.data, psd_data.data);
         laser_pos.z() = 0.5;
 
 	return laser_pos;
@@ -387,18 +397,7 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 		S.row(i) = fb_collect.data[i].values - rough_pos;
 	}
 
-#define DUMP_FINE_CAL
-#ifdef DUMP_FINE_CAL
-	FILE* f = fopen("fine", "w");
-	fprintf(f, "# pos_x pos_y pos_z\tfb_x fb_y fb_z\tpsd_x psd_y sum_x sum_y\n");
-	for (unsigned int i=0; i < fine_cal_pts; i++) {
-		fprintf(f, "%f %f %f\t%f %f %f\t%f %f %f %f\n",
-				fb_collect.data[i].position.x(), fb_collect.data[i].position.y(), fb_collect.data[i].position.z(),
-				fb_collect.data[i].values.x(), fb_collect.data[i].values.y(), fb_collect.data[i].values.z(),
-				psd_collect.data[i].values[0], psd_collect.data[i].values[1], psd_collect.data[i].values[2], psd_collect.data[i].values[3]);
-	}
-	fclose(f);
-#endif
+        dump_data("fine", fb_collect.data, psd_collect.data);
 
 	// Solve regression coefficients
 	Matrix<double, Dynamic,9> Rd = R.cast<double>();

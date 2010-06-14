@@ -409,8 +409,13 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
         bool compute_residuals = true;
         if (compute_residuals) {
                 Vector3f resid = Vector3f::Zero();
+                std::ofstream of("fine-resid");
                 for (unsigned int i=0; i < fine_cal_pts; i++) {
                         Vector3f r = res.beta * R.row(i).transpose() - S.row(i).transpose();
+                        Vector3f fb = fb_collect.data[i].values;
+                        of << boost::format("%f %f %f\t%f %f %f\n") %
+                                fb.x() % fb.y() % fb.z() %
+                                r.x() % r.y() % r.z();
                         resid += r.cwiseProduct(r);
                 }
                 resid = resid.cwiseSqrt();

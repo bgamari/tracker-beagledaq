@@ -404,10 +404,24 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 	Matrix<double, Dynamic,3> Sd = S.cast<double>();
         SVD<Matrix<double, Dynamic,9> > svd(Rd);
         Matrix<double, 9,3> bt = svd.solve(Sd);
+        res.beta = bt.transpose().cast<float>();
+
+        bool compute_residuals = true;
+        if (compute_residuals) {
+                Vector3f resid = Vector3f::Zero();
+                for (unsigned int i=0; i < fine_cal_pts; i++) {
+                        Vector3f r = res.beta * R.row(i).transpose() - S.row(i).transpose();
+                        resid += r.cwiseProduct(r);
+                }
+                resid = resid.cwiseSqrt();
+                fprintf(stderr, "RMS Residuals: %f %f %f\n", resid.x(), resid.y(), resid.z());
+        }
+
+#ifdef DUMP_MATRICIES
         dump_matrix(R, "R");
         dump_matrix(S, "S");
         dump_matrix(bt, "beta");
-        res.beta = bt.transpose().cast<float>();
+#endif
         return res;
 }
 

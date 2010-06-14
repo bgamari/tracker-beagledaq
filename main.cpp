@@ -161,10 +161,10 @@ std::string cmd_help =
 "  exit                         Exit\n"
 "  help                         This help message\n";
 
-void feedback_worker(tracker* tracker, Matrix<float, 3, 10> coeffs, bool* feedback_running) {
+void feedback_worker(tracker* tracker, tracker::fine_cal_result fine_cal, bool* feedback_running) {
         *feedback_running = true;
         try {
-                tracker->feedback(coeffs);
+                tracker->feedback(fine_cal);
         } catch (clamped_output_error e) { }
         std::cout << "FB-ERR\n";
         *feedback_running = false;
@@ -199,7 +199,7 @@ int main(int argc, char** argv)
         boost::thread* tracker_thread = NULL;
         boost::char_separator<char> sep("\t ");
 	Eigen::IOFormat mat_fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
-        Matrix<float, 3,10> coeffs = Matrix<float,3,10>::Zero();
+        tracker::fine_cal_result fine_cal;
         Vector3f rough_pos = Vector3f::Zero();
         bool feedback_running = false;
 	while (true) {
@@ -262,15 +262,15 @@ int main(int argc, char** argv)
                         stage.move(rough_pos);
                         std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "fine-cal") {
-                        coeffs = tracker.fine_calibrate(rough_pos);
+                        fine_cal = tracker.fine_calibrate(rough_pos);
                         stage.move(rough_pos);
                 } else if (cmd == "show-coeffs") {
-                        std::cout << coeffs.format(mat_fmt) << "\n";
+                        std::cout << fine_cal.beta.format(mat_fmt) << "\n";
                 } else if (cmd == "feedback-start") {
                         if (feedback_running)
                                 std::cout << "ERR\tAlready running\n";
                         else {
-                                tracker_thread = new boost::thread(feedback_worker, &tracker, coeffs, &feedback_running);
+                                tracker_thread = new boost::thread(feedback_worker, &tracker, fine_cal, &feedback_running);
                                 std::cout << "OK\tFeedback running\n";
                         }
                 } else if (cmd == "feedback-stop") {

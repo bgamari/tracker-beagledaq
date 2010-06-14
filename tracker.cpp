@@ -238,7 +238,7 @@ struct collect_cb : point_callback {
 	input_channels<N>& inputs;
 	struct point {
 		Vector3f position;
-		Matrix<float,1,N> values;
+		Matrix<float,N,1> values;
 	};
 	std::vector<point> data;
 
@@ -332,31 +332,28 @@ Vector3f tracker::rough_calibrate()
 /*
  * pack_psd_inputs(): Pack input data into vector with higher order terms
  */
-static Matrix<float,1,10> pack_psd_inputs(Vector4f data) {
-	Matrix<float,1,10> R;
-
-	// Offset
-	R[0] = 1;
+static Matrix<float,9,1> pack_psd_inputs(Vector4f data) {
+	Matrix<float,9,1> R;
 
 	// First order
-	R[1] = data[0];			// Vx
-	R[2] = data[1];			// Vy
-	R[3] = -data[2] + data[3];	// Vsum = -Vsum_x + Vsum_y
+	R[0] = data[0];			// Vx
+	R[1] = data[1];			// Vy
+	R[2] = -data[2] + data[3];	// Vsum = -Vsum_x + Vsum_y
 	
 	// Second order
-	R[4] = R[1]*R[1];		// Vx^2
-	R[5] = R[2]*R[2];		// Vy^2
-	R[6] = R[3]*R[3];		// Vsum^2
+	R[3] = R[1]*R[1];		// Vx^2
+	R[4] = R[2]*R[2];		// Vy^2
+	R[5] = R[3]*R[3];		// Vsum^2
 
 	// Cross terms
-	R[7] = R[1]*R[2];		// Vx*Vy
-	R[8] = R[1]*R[3];		// Vx*Vsum
-	R[9] = R[2]*R[3];		// Vy*Vsum
+	R[6] = R[1]*R[2];		// Vx*Vy
+	R[7] = R[1]*R[3];		// Vx*Vsum
+	R[8] = R[2]*R[3];		// Vy*Vsum
 
 	return R;
 }
 
-Matrix<float, 3,10> tracker::fine_calibrate(Vector3f rough_pos)
+tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 {
 	typedef boost::mt19937 engine;
 	typedef boost::uniform_real<float> distribution;
@@ -370,16 +367,24 @@ Matrix<float, 3,10> tracker::fine_calibrate(Vector3f rough_pos)
 	random_route<engine, distribution> rt(rngs, fine_cal_pts);
 	collect_cb<4> psd_collect(psd_inputs);
 	collect_cb<3> fb_collect(fb_inputs);
+        fine_cal_result res;
 
 	execute_route(stage_outputs, rt, {&psd_collect, &fb_collect}, 1000);
 
+        // Scale data and find mean
+        res.psd_mean = Vector4f::Zero();
+        for (unsigned int i=0; i < fine_cal_pts; i++) {
+                psd_collect.data[i].values = scale_psd_position(psd_collect.data[i].values);
+                res.psd_mean += psd_collect.data[i].values;
+        }
+        res.psd_mean /= 1.0 * fine_cal_pts;
+
 	// Fill R and S matricies with collected data
-	Matrix<float, Dynamic,10> R(fine_cal_pts, 10);
+	Matrix<float, Dynamic,9> R(fine_cal_pts, 9);
         Matrix<float, Dynamic,3> S(fine_cal_pts, 3);
 	for (unsigned int i=0; i < fine_cal_pts; i++) {
-                Vector4f values = scale_psd_position(psd_collect.data[i].values);
-		R.row(i) = pack_psd_inputs(values);
-		S.row(i) = fb_collect.data[i].values - rough_pos.transpose();
+		R.row(i) = pack_psd_inputs(psd_collect.data[i].values - res.psd_mean);
+		S.row(i) = fb_collect.data[i].values - rough_pos;
 	}
 
 #define DUMP_FINE_CAL
@@ -396,17 +401,18 @@ Matrix<float, 3,10> tracker::fine_calibrate(Vector3f rough_pos)
 #endif
 
 	// Solve regression coefficients
-	Matrix<double, Dynamic,10> Rd = R.cast<double>();
+	Matrix<double, Dynamic,9> Rd = R.cast<double>();
 	Matrix<double, Dynamic,3> Sd = S.cast<double>();
-        SVD<Matrix<double, Dynamic,10> > svd(Rd);
-        Matrix<double, 10,3> bt = svd.solve(Sd);
+        SVD<Matrix<double, Dynamic,9> > svd(Rd);
+        Matrix<double, 9,3> bt = svd.solve(Sd);
         dump_matrix(R, "R");
         dump_matrix(S, "S");
         dump_matrix(bt, "beta");
-	return bt.transpose().cast<float>();
+        res.beta = bt.transpose().cast<float>();
+        return res;
 }
 
-void tracker::feedback(Matrix<float,3,10> R)
+void tracker::feedback(fine_cal_result cal)
 {
         unsigned int n = 0;
         FILE* f = fopen("pos", "w");
@@ -418,9 +424,9 @@ void tracker::feedback(Matrix<float,3,10> R)
 	while (true) {
 		Vector3f fb = fb_inputs.get();
                 Vector4f psd = psd_inputs.get();
-                psd = scale_psd_position(psd);
-		Matrix<float, 10,1> psd_in = pack_psd_inputs(psd);
-		Vector3f delta = R * psd_in;
+                psd = scale_psd_position(psd) - cal.psd_mean;
+		Matrix<float, 9,1> psd_in = pack_psd_inputs(psd);
+		Vector3f delta = cal.beta * psd_in;
 
                 struct timespec ts;
                 clock_gettime(CLOCK_REALTIME, &ts);
@@ -438,6 +444,7 @@ void tracker::feedback(Matrix<float,3,10> R)
                 }
 
                 Vector3f new_pos = fb - delta;
+		new_pos.z() = 0.5;
 		fprintf(f, "%f\t%f\t%f\t%f\t%f\t%f\n", 
 				delta.x(), delta.y(), delta.z(),
 				new_pos.x(), new_pos.y(), new_pos.z());
@@ -494,13 +501,13 @@ void tracker::track()
 	fprintf(stderr, "Rough Cal: %f %f %f\n",
                         rough_pos[0], rough_pos[1], rough_pos[2]);
         fprintf(stderr, "Starting fine calibration...\n");
-	Matrix<float, 3,10> coeffs = fine_calibrate(rough_pos);
+	fine_cal_result fine_cal = fine_calibrate(rough_pos);
         fprintf(stderr, "Fine calibration complete\n");
 #define DUMP_COEFFS
 #ifdef DUMP_COEFFS
-        dump_matrix(coeffs, "coeffs");
+        dump_matrix(fine_cal.beta, "coeffs");
 #endif
         fprintf(stderr, "Tracking...\n");
-	feedback(coeffs);
+	feedback(fine_cal);
 }
 

@@ -82,9 +82,14 @@ private:
         Vector4f scale_psd_position(Vector4f in);
 
 public:
+        struct fine_cal_result {
+                Matrix<float, 3,9> beta;
+                Vector4f psd_mean;
+        };
+
         Vector3f rough_calibrate();
-        Matrix<float, 3,10> fine_calibrate(Vector3f rough_pos);
-        void feedback(Matrix<float,3,10> R);
+        fine_cal_result fine_calibrate(Vector3f rough_pos);
+        void feedback(fine_cal_result cal);
 
         tracker(input_channels<4>& psd_inputs,
 		stage& stage_outputs, input_channels<3>& fb_inputs) :

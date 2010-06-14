@@ -147,12 +147,13 @@ void add_tracker_params(tracker& tracker)
 
 std::string cmd_help =
 "Valid commands:\n"
-"  set [parameter] [value]      Set a parameter value"
+"  set [parameter] [value]      Set a parameter value\n"
 "  get [parameter]              Get the value of a parameter\n"
 "  list                         List all parameters and their values\n"
 "  read-psd                     Read PSD values\n"
 "  read-fb                      Read stage feedback sensor values\n"
-"  move [x] [y]                 Move stage to position (x,y)\n"
+"  move [x] [y] [z]             Move stage to position (x, y, z)\n"
+"  center                       Move stage to position (0.5, 0.5, 0.5)\n"
 "  rough-cal                    Run rough calibration\n"
 "  fine-cal                     Run fine calibration (requires rough-cal)\n"
 "  show-coeffs                  Show fine calibration regression matrix\n"
@@ -252,6 +253,10 @@ int main(int argc, char** argv)
                         pos.x() = lexical_cast<float>(*tok); tok++;
                         pos.y() = lexical_cast<float>(*tok); tok++;
                         pos.z() = lexical_cast<float>(*tok);
+                        stage.move(pos);
+                        std::cout << "OK\n";
+                } else if (cmd == "center") {
+                        Vector3f pos = 0.5 * Vector3f::Ones();
                         stage.move(pos);
                         std::cout << "OK\n";
                 } else if (cmd == "stage-cal") {

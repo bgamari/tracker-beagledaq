@@ -414,7 +414,8 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 void tracker::feedback(fine_cal_result cal)
 {
         unsigned int n = 0;
-        FILE* f = fopen("pos", "w");
+        unsigned int bad_pts = 0, good_pts = 0;
+        std::ofstream f("pos");
         struct timespec start_time;
         clock_gettime(CLOCK_REALTIME, &start_time);
         struct timespec last_rate_update = start_time;
@@ -439,14 +440,23 @@ void tracker::feedback(fine_cal_result cal)
 
                 if (delta.norm() > fb_max_delta) {
                         fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");
+                        bad_pts++;
                         continue;
+                } else
+                        good_pts++;
+
+                if (good_pts > 10)
+                        good_pts = bad_pts = 0;
+                if (bad_pts > 100) {
+                        fprintf(stderr, "Lost tracking\n");
+                        return;
                 }
 
                 Vector3f new_pos = fb - delta;
 		new_pos.z() = 0.5;
-		fprintf(f, "%f\t%f\t%f\t%f\t%f\t%f\n", 
-				delta.x(), delta.y(), delta.z(),
-				new_pos.x(), new_pos.y(), new_pos.z());
+		f << boost::format("%f\t%f\t%f\t%f\t%f\t%f\n") %
+				delta.x() % delta.y() % delta.z() %
+				new_pos.x() % new_pos.y() % new_pos.z();
 		stage_outputs.move(new_pos);
 		usleep(fb_delay);
 
@@ -460,7 +470,6 @@ void tracker::feedback(fine_cal_result cal)
 			start_time = ts;
                 }
 	}
-        fclose(f);
 }
 
 template<unsigned int N>

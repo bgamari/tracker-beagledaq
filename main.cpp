@@ -102,6 +102,8 @@ void add_tracker_params(tracker& tracker)
                         "Amplitude of fine calibration perturbations");
         def_param("fine_cal.points", tracker.fine_cal_pts,
                         "Number of points in fine calibration scan");
+        def_param("fine_cal.point_delay", tracker.fine_cal_pt_delay,
+                        "Delay in usec between fine calibration points");
 
         def_param("otf.freq-x", tracker.otf_freqs[0],
                         "Frequencies of on-the-fly calibration perturbations (X axis)");

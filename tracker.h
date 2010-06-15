@@ -63,6 +63,7 @@ struct tracker {
         // Fine calibration parameters
         float fine_cal_range;
         unsigned int fine_cal_pts;
+        unsigned int fine_cal_pt_delay;
 
         // On-the-fly calibration parameters
         array<float,3> otf_freqs;
@@ -96,7 +97,7 @@ public:
                 scale_psd_inputs(true),
                 rough_cal_xy_step(0.01), rough_cal_z_step(0.02),
                 rough_cal_xy_pts(20), rough_cal_z_pts(20),
-                fine_cal_range(0.02), fine_cal_pts(1000),
+                fine_cal_range(0.02), fine_cal_pts(1000), fine_cal_pt_delay(1000),
                 otf_amp(0),
                 fb_delay(100), fb_max_delta(0.5), fb_show_rate(false),
                 psd_inputs(psd_inputs),

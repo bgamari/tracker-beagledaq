@@ -379,7 +379,7 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 	collect_cb<3> fb_collect(fb_inputs);
         fine_cal_result res;
 
-	execute_route(stage_outputs, rt, {&psd_collect, &fb_collect}, 1000);
+	execute_route(stage_outputs, rt, {&psd_collect, &fb_collect}, fine_cal_pt_delay);
 
         // Scale data and find mean
         res.psd_mean = Vector4f::Zero();

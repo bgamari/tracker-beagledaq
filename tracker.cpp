@@ -408,18 +408,20 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 
         bool compute_residuals = true;
         if (compute_residuals) {
-                Vector3f resid = Vector3f::Zero();
                 std::ofstream of("fine-resid");
+                of << "# fb_x fb_y fb_z\tP_Lx P_Ly P_Lz\tresid_x resid_y resid_z\n";
+                Vector3f rms = Vector3f::Zero();
                 for (unsigned int i=0; i < fine_cal_pts; i++) {
-                        Vector3f r = res.beta * R.row(i).transpose() - S.row(i).transpose();
-                        Vector3f fb = fb_collect.data[i].values;
-                        of << boost::format("%f %f %f\t%f %f %f\n") %
+                        Vector3f fb = fb_collect.data[i].values, s = S.row(i).transpose();
+                        Vector3f resid = res.beta * R.row(i).transpose() - s;
+                        of << boost::format("%f %f %f\t%f %f %f\t%f %f %f\n") %
                                 fb.x() % fb.y() % fb.z() %
-                                r.x() % r.y() % r.z();
-                        resid += r.cwiseProduct(r);
+                                s.x() % s.y() % s.z() %
+                                resid.x() % resid.y() % resid.z();
+                        rms += resid.cwiseProduct(resid);
                 }
-                resid = resid.cwiseSqrt();
-                fprintf(stderr, "RMS Residuals: %f %f %f\n", resid.x(), resid.y(), resid.z());
+                rms = (rms / fine_cal_pts).cwiseSqrt();
+                fprintf(stderr, "RMS Residuals: %f %f %f\n", rms.x(), rms.y(), rms.z());
         }
 
 #ifdef DUMP_MATRICIES

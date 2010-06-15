@@ -321,7 +321,18 @@ Vector3f tracker::rough_calibrate()
                 i->values = scale_psd_position(i->values);
 
 	// Find extrema of Vz
-	laser_pos.z() = find_bead<2>(psd_data.data, fb_data.data).z();
+        float max_deriv = 0;
+        for (unsigned int i=1; i < rough_cal_z_pts-1; i++) {
+                float sum1 = psd_data.data[i+1].values[2];
+                float z1 = fb_data.data[i+1].values[2];
+                float sum2 = psd_data.data[i-1].values[2];
+                float z2 = fb_data.data[i-1].values[2];
+                float deriv = (sum1 - sum2) / (z1 - z2);
+                if (deriv > max_deriv) {
+                        max_deriv = deriv;
+                        laser_pos.z() = fb_data.data[i].values[2];
+                }
+        }
         dump_data("rough_z", fb_data.data, psd_data.data);
         laser_pos.z() = 0.5;
 

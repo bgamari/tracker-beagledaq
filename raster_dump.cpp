@@ -54,11 +54,9 @@ struct multi_dump_cb : point_callback {
 
 int main(int argc, char** argv)
 {
-	unsigned int nsamps = 100;
-	unsigned int delay = 0;
-	Matrix<unsigned int,3,1> npts;
+	unsigned int nsamps, delay;
+	Vector3u npts;
 	Vector3f size, center;
-	center << 0.5, 0.5, 0.5;
 
 	namespace po = boost::program_options;
 	po::options_description desc("Allowed options");
@@ -70,9 +68,11 @@ int main(int argc, char** argv)
 		("s-x", po::value<float>(&size.x()), "Size of scan in X axis")
 		("s-y", po::value<float>(&size.y()), "Size of scan in Y axis")
 		("s-z", po::value<float>(&size.z()), "Size of scan in Z axis")
-		("size,s", po::value<std::vector<float> >(), "Scan size")
-		("nsamps,n", po::value<unsigned int>(&nsamps), "Number of samples per point")
-		("delay,d", po::value<unsigned int>(&delay), "Delay between samples in usec");
+		("c-x", po::value<float>(&center.x())->default_value(0.5), "Center of scan in X axis")
+		("c-y", po::value<float>(&center.y())->default_value(0.5), "Center of scan in Y axis")
+		("c-z", po::value<float>(&center.z())->default_value(0.5), "Center of scan in Z axis")
+		("nsamps,n", po::value<unsigned int>(&nsamps)->default_value(1), "Number of samples per point")
+		("delay,d", po::value<unsigned int>(&delay)->default_value(0), "Delay between samples in usec");
 
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);

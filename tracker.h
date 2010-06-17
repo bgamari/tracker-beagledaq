@@ -23,6 +23,7 @@
 
 #include "channels.h"
 #include "pid.h"
+#include "stage.h"
 
 #include <cstdint>
 #include <array>
@@ -30,27 +31,6 @@
 #include <boost/program_options.hpp>
 
 using namespace Eigen;
-
-class stage {
-	output_channels<3>& out;
-	input_channels<3>& fb;
-	Vector3f last_pos;
-	Matrix<float, 4,3> R;
-
-public:
-        float cal_range;
-	stage(output_channels<3>& out, input_channels<3>& fb, float cal_range=0.4)
-		: out(out), fb(fb), cal_range(cal_range) { }
-
-	/*
-	 * calibrate():
-	 * Perform basic first-order OLS regression to map feedback coordinate
-	 * space to stage input space
-	 */
-	void calibrate(unsigned int n_pts=10);
-	void move(const Vector3f pos);
-	Vector3f get_last_pos();
-};
 
 struct tracker {
         // General parameters

@@ -4,7 +4,7 @@ LDFLAGS = -lrt -lboost_program_options-mt -lboost_thread-mt -lreadline
 
 all : tracker
 
-tracker : main.o spi_device.o max5590.o max1270.o tracker.o pid.o parameters.o
+tracker : main.o spi_device.o max5590.o max1270.o tracker.o pid.o parameters.o stage.o
 	$(CXX) $(LDFLAGS) -o $@ $+
 
 clean :

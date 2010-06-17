@@ -296,21 +296,6 @@ void tracker::feedback(fine_cal_result cal)
 	}
 }
 
-void raster_test(input_channels<4>& psd_inputs, stage& stage, input_channels<3>& fb_inputs)
-{
-	float step_sz = 0.005;
-	unsigned int npts = 40;
-	float tmp = 0.5 - step_sz * npts / 2;
-
-	Vector3f start = (Vector3f() << tmp, tmp, 0.5).finished();
-	Vector3f step = (Vector3f() << step_sz, step_sz, 0).finished();
-        Vector3i pts = (Vector3i() << npts, npts, 1).finished();
-	raster_route route(start, step, pts);
-	dump_inputs_cb<4> cb(psd_inputs);
-	printf("# pos_x\tpos_y\tpos_z\tpsd_x\tpsd_y\tpsd_sum_x\tpsd_sum_y\n");
-	execute_route(stage, route, {&cb});
-}
-
 void tracker::track()
 {
 	Vector3f rough_pos = rough_calibrate();

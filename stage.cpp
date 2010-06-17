@@ -20,7 +20,16 @@
 
 #include "stage.h"
 
-void stage::calibrate(unsigned int n_pts) {
+void stage::move(const Vector3f pos) {
+        out.set(pos);
+        last_pos = pos;
+}
+
+Vector3f stage::get_last_pos() const {
+	return last_pos;
+}
+
+void fb_stage::calibrate(unsigned int n_pts) {
 	Matrix<float, Dynamic,4> X(n_pts, 4);
         Matrix<float, Dynamic,3> Y(n_pts, 3);
 
@@ -30,11 +39,13 @@ void stage::calibrate(unsigned int n_pts) {
 	boost::variate_generator<engine&, distribution> vg(e,
 			distribution(0.5-cal_range, 0.5+cal_range));
 	
+        stage raw_stage(out);
+        raw_stage.move({0.5, 0.5, 0.5});
 	FILE* f = fopen("stage-cal", "w");
 	for (unsigned int i=0; i<n_pts; i++) {
 		Vector3f out_pos;
 		out_pos << vg(), vg(), vg();
-		out.set(out_pos);
+                smooth_move(raw_stage, out_pos, 4*1000);
 		usleep(100*1000);
 		Vector3f fb_pos = fb.get();
 
@@ -50,7 +61,7 @@ void stage::calibrate(unsigned int n_pts) {
         R = X.svd().solve(Y);
 }
 
-void stage::move(Vector3f pos)
+void fb_stage::move(const Vector3f pos)
 {
 	Vector4f npos; // position with constant component
 	npos[0] = 1;
@@ -59,10 +70,6 @@ void stage::move(Vector3f pos)
 	Vector3f p = R.transpose() * npos;
 	out.set(p);
 	last_pos = pos;
-}
-
-Vector3f stage::get_last_pos() {
-	return last_pos;
 }
 
 /*

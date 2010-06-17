@@ -32,15 +32,22 @@ using std::vector;
 typedef Matrix<unsigned int,3,1> Vector3u;
 
 class stage {
-	output_channels<3>& out;
-	input_channels<3>& fb;
-	Vector3f last_pos;
-	Matrix<float, 4,3> R;
-
+protected:
+        Vector3f last_pos;
 public:
+        const output_channels<3>& out;
+        stage(const output_channels<3>& out) : out(out) { }
+	virtual void move(const Vector3f pos);
+	Vector3f get_last_pos() const;
+};
+
+class fb_stage : public stage {
+	Matrix<float, 4,3> R;
+public:
+	const input_channels<3>& fb;
         float cal_range;
-	stage(output_channels<3>& out, input_channels<3>& fb, float cal_range=0.4)
-		: out(out), fb(fb), cal_range(cal_range) { }
+	fb_stage(const output_channels<3>& out, const input_channels<3>& fb, float cal_range=0.4)
+		: stage(out), fb(fb), cal_range(cal_range) { }
 
 	/*
 	 * calibrate():
@@ -49,7 +56,6 @@ public:
 	 */
 	void calibrate(unsigned int n_pts=10);
 	void move(const Vector3f pos);
-	Vector3f get_last_pos();
 };
 
 void smooth_move(stage& stage, Vector3f to, unsigned int move_time);

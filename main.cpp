@@ -164,7 +164,7 @@ int main(int argc, char** argv)
 	test_outputs<3> stage_outputs;
 #endif
 
-	stage stage(stage_outputs, fb_inputs);
+	fb_stage stage(stage_outputs, fb_inputs);
 	stage.calibrate();
 	stage.move({0.5, 0.5, 0.5});
         def_param("stage.cal_range", stage.cal_range, "Stage calibration range");

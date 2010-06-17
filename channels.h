@@ -31,12 +31,12 @@ using std::array;
 
 template<unsigned int N>
 struct input_channels {
-	virtual Matrix<float,1,N> get() = 0;
+	virtual Matrix<float,1,N> get() const = 0;
 };
 
 template<unsigned int N>
 struct output_channels {
-	virtual void set(const Matrix<float,1,N> values) = 0;
+	virtual void set(const Matrix<float,1,N> values) const = 0;
 };
 
 struct clamped_output_error {
@@ -46,7 +46,8 @@ struct clamped_output_error {
 
 template<unsigned int N>
 struct test_inputs : input_channels<N> {
-	Matrix<float,1,N> get() {
+	Matrix<float,1,N> get() const
+	{
 		Matrix<float,1,N> v = Matrix<float,1,N>::Zero();
 		return v;
 	}
@@ -54,7 +55,8 @@ struct test_inputs : input_channels<N> {
 
 template<unsigned int N>
 struct test_outputs : output_channels<N> {
-	void set(const Matrix<float,1,N> values) {
+	void set(const Matrix<float,1,N> values) const
+	{
 		for (unsigned int i=0; i<N; i++)
 			printf(" %f", values[i]);
 		printf("\n");
@@ -96,7 +98,8 @@ struct max1302_inputs : input_channels<N> {
 			delete *c;
 	}
 
-	Matrix<float,1,N> get() {
+	Matrix<float,1,N> get() const
+	{
 		array<uint16_t,N> int_vals;
 		Matrix<float,1,N> values;
 		std::vector<max1302::command*> cmds;
@@ -122,7 +125,7 @@ struct max5134_outputs : output_channels<N> {
 	max5134_outputs(max5134& dev, const array<max5134::chan_mask,N> channels) :
 		dev(dev), channels(channels) { }
 
-	void set(const Matrix<float,1,N> values)
+	void set(const Matrix<float,1,N> values) const
 	{
 		max5134::chan_mask all_mask;
 		std::vector<max5134::command*> cmds;

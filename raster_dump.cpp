@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 	max5134 dac(stage_pos_dac_dev);
 	max5134_outputs<3> stage_outputs(dac, stage_chans);
 
-	stage stage(stage_outputs, fb_inputs);
+	fb_stage stage(stage_outputs, fb_inputs);
 	stage.calibrate();
 	stage.move(center);
 

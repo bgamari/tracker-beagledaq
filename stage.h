@@ -29,6 +29,8 @@
 
 using std::vector;
 
+typedef Matrix<unsigned int,3,1> Vector3u;
+
 class stage {
 	output_channels<3>& out;
 	input_channels<3>& fb;
@@ -105,11 +107,11 @@ struct random_route : route {
 struct raster_route : route {
 	const Vector3f start;
 	const Vector3f step;
-	const Vector3i points;
+	const Vector3u points;
 
 	unsigned int n;
 
-	raster_route(Vector3f start, Vector3f step, Vector3i points) :
+	raster_route(Vector3f start, Vector3f step, Vector3u points) :
 		start(start), step(step), points(points), n(0) {  }
 
         Vector3f get_pos();

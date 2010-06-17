@@ -89,7 +89,7 @@ static Vector3f find_bead(vector<collect_cb<4>::point> psd_data, vector<collect_
 Vector3f tracker::rough_calibrate()
 {
 	Vector3f start, step;
-        Vector3i pts;
+        Vector3u pts;
 
 	float tmp = 0.5 - rough_cal_xy_step * rough_cal_xy_pts / 2;
 	start << tmp, tmp, 0.5;
@@ -114,7 +114,7 @@ Vector3f tracker::rough_calibrate()
 	// Scan in Z direction
 	laser_pos.z() = 0.5 - rough_cal_z_step * rough_cal_z_pts/2;
 	step = (Vector3f() << 0, 0, rough_cal_z_step).finished();
-	pts = (Vector3i() << 1, 1, rough_cal_z_pts).finished();
+	pts = (Vector3u() << 1, 1, rough_cal_z_pts).finished();
 	raster_route route_z(laser_pos, step, pts);
         psd_data.data.clear();
         fb_data.data.clear();

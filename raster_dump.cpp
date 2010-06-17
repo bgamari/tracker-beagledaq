@@ -28,37 +28,55 @@
 #include <iostream>
 #include <boost/program_options.hpp>
 
-template<typename T>
-Matrix<T,3,1> create_vector(std::vector<T> v) {
-	Matrix<T,3,1> vec;
-	if (v.size() != 3)
-		throw std::runtime_error("Vector arguments must have three elements\n");
-	vec << v[0], v[1], v[2];
-	return vec;
-}
+template<unsigned int N>
+struct multi_dump_cb : point_callback {
+	input_channels<N>& inputs;
+	struct point {
+		Vector3f position;
+		vector<Matrix<float,N,1>> values;
+	};
+        unsigned int n_pts, delay;
+
+	multi_dump_cb(input_channels<N>& inputs,
+                        unsigned int n_pts, unsigned int delay=0) :
+                inputs(inputs), n_pts(n_pts), delay(delay) { }
+
+        bool operator()(Vector3f& pos) {
+		Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, " ", " ");
+                for (unsigned int i=0; i < n_pts; i++) {
+                        Matrix<float,N,1> v = inputs.get();
+			std::cout << pos.format(fmt) << "\t" << v.format(fmt) << "\n";
+                        usleep(delay);
+                }
+		return true;
+	}
+};
 
 int main(int argc, char** argv)
 {
 	unsigned int nsamps = 100;
 	unsigned int delay = 0;
+	Matrix<unsigned int,3,1> npts;
+	Vector3f size, center;
+	center << 0.5, 0.5, 0.5;
 
 	namespace po = boost::program_options;
 	po::options_description desc("Allowed options");
 	desc.add_options()
 		("help", "produce help message")
-		("npts,N", po::value<std::vector<unsigned int> >(), "Number of points in scan (comma-separated)")
-		("nsamps,n", po::value<unsigned int>(&nsamps), "Number of samples per point")
+		("n-x", po::value<unsigned int>(&npts.x()), "Number of points in X axis")
+		("n-y", po::value<unsigned int>(&npts.y()), "Number of points in Y axis")
+		("n-z", po::value<unsigned int>(&npts.z()), "Number of points in Z axis")
+		("s-x", po::value<float>(&size.x()), "Size of scan in X axis")
+		("s-y", po::value<float>(&size.y()), "Size of scan in Y axis")
+		("s-z", po::value<float>(&size.z()), "Size of scan in Z axis")
 		("size,s", po::value<std::vector<float> >(), "Scan size")
+		("nsamps,n", po::value<unsigned int>(&nsamps), "Number of samples per point")
 		("delay,d", po::value<unsigned int>(&delay), "Delay between samples in usec");
 
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
 	po::notify(vm);
-
-	Vector3f center;
-	center << 0.5, 0.5, 0.5;
-	Vector3i npts = create_vector(vm["npts"].as<std::vector<int> >());
-	Vector3f size = create_vector(vm["size"].as<std::vector<float> >());
 
 	max1302 psd_adc(psd_adc_dev);
 	max1302 fb_adc(fb_adc_dev);
@@ -77,7 +95,7 @@ int main(int argc, char** argv)
 	Vector3f step = size.array() / npts.array().cast<float>();
 	raster_route route(start, step, npts);
 
-	multi_collect_cb<4> psd_collect(psd_inputs, nsamps, delay);
+	multi_dump_cb<4> psd_collect(psd_inputs, nsamps, delay);
 
 	execute_route(stage, route, {&psd_collect});
 }

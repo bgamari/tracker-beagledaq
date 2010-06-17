@@ -63,7 +63,7 @@ int main(int argc, char** argv)
 	namespace po = boost::program_options;
 	po::options_description desc("Allowed options");
 	desc.add_options()
-		("help", "produce help message")
+		("help,h", "produce help message")
 		("n-x", po::value<unsigned int>(&npts.x()), "Number of points in X axis")
 		("n-y", po::value<unsigned int>(&npts.y()), "Number of points in Y axis")
 		("n-z", po::value<unsigned int>(&npts.z()), "Number of points in Z axis")
@@ -77,6 +77,11 @@ int main(int argc, char** argv)
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
 	po::notify(vm);
+
+	if (vm.count("help")) {
+		std::cout << desc;
+		return 0;
+	}
 
 	max1302 psd_adc(psd_adc_dev);
 	max1302 fb_adc(fb_adc_dev);

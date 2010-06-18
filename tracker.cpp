@@ -241,8 +241,8 @@ void tracker::feedback(fine_cal_result cal)
         std::ofstream f("pos");
         struct timespec start_time;
         clock_gettime(CLOCK_REALTIME, &start_time);
-        struct timespec last_rate_update = start_time;
-        unsigned int rate_update_period = 10000;
+        float last_report_t = 0, rate_report_period = 5;
+        unsigned int last_report_n = 0;
 
         _running = true;
 	while (!boost::this_thread::interruption_requested()) {
@@ -286,17 +286,15 @@ void tracker::feedback(fine_cal_result cal)
                 } catch (clamped_output_error e) {
                         break;
                 }
-		usleep(fb_delay);
 
                 n++;
-                if (fb_show_rate && n % rate_update_period == 0) {
-                        struct timespec ts;
-                        clock_gettime(CLOCK_REALTIME, &ts);
-                        float rate = rate_update_period / ((ts.tv_sec - start_time.tv_sec) +
-                                (ts.tv_nsec - start_time.tv_nsec)*1e-9);
+                if (fb_show_rate && t > (last_report_t + rate_report_period)) {
+                        float rate = (n - last_report_n) / (t - last_report_t);
                         fprintf(stderr, "Feedback loop rate: %f updates/sec\n", rate);
-			start_time = ts;
+                        last_report_t = t;
+                        last_report_n = n;
                 }
+		usleep(fb_delay);
 	}
 
         _running = false;

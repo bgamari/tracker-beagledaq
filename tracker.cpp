@@ -127,9 +127,9 @@ Vector3f tracker::rough_calibrate()
 	// Find extrema of Vz
         float max_deriv = 0;
         for (unsigned int i=1; i < rough_cal_z_pts-1; i++) {
-                float sum1 = psd_data.data[i+1].values[2];
+                float sum1 = psd_data.data[i+1].values[2] - psd_data.data[i+1].values[3];
                 float z1 = fb_data.data[i+1].values[2];
-                float sum2 = psd_data.data[i-1].values[2];
+                float sum2 = psd_data.data[i-1].values[2] - psd_data.data[i-1].values[3];
                 float z2 = fb_data.data[i-1].values[2];
                 float deriv = (sum1 - sum2) / (z1 - z2);
                 if (deriv > max_deriv) {

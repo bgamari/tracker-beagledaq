@@ -55,6 +55,7 @@ Vector4f tracker::scale_psd_position(Vector4f in)
         }
         return in;
 }
+
 static void dump_data(std::string file, vector<collect_cb<3>::point> fb_data,
                 vector<collect_cb<4>::point> psd_data, string comment="") {
         std::ofstream f(file);
@@ -246,12 +247,17 @@ void tracker::feedback(fine_cal_result cal)
 
         _running = true;
 	while (!boost::this_thread::interruption_requested()) {
+                // Get sensor values
 		Vector3f fb = fb_inputs.get();
                 Vector4f psd = psd_inputs.get();
+                n++;
+
+                // Compute estimated position
                 psd = scale_psd_position(psd) - cal.psd_mean;
 		Matrix<float, 9,1> psd_in = pack_psd_inputs(psd);
 		Vector3f delta = cal.beta * psd_in;
 
+                // Get feedback response
                 struct timespec ts;
                 clock_gettime(CLOCK_REALTIME, &ts);
                 float t = (ts.tv_sec - start_time.tv_sec) +
@@ -262,12 +268,14 @@ void tracker::feedback(fine_cal_result cal)
                         delta[i] += otf_amp * sin(2*M_PI/otf_freqs[i]*t);
                 }
 
+                // Check sanity of point
                 if (delta.norm() > fb_max_delta) {
                         fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");
                         bad_pts++;
                         continue;
                 }
 
+                // Move stage
                 Vector3f new_pos = fb - delta + fb_setpoint;
 		new_pos.z() = 0.5;
 		f << boost::format("%f\t%f\t%f\t%f\t%f\t%f\n") %
@@ -281,15 +289,16 @@ void tracker::feedback(fine_cal_result cal)
                         continue;
                 }
 
+                // Make sure recent points are generally sane
                 if (good_pts > 10)
                         good_pts = bad_pts = 0;
                 if (bad_pts > 10) {
                         fprintf(stderr, "Lost tracking\n");
                         break;
                 }
-
                 good_pts++;
-                n++;
+
+                // Show feedback rate report
                 if (fb_show_rate && t > (last_report_t + rate_report_period)) {
                         float rate = (n - last_report_n) / (t - last_report_t);
                         fprintf(stderr, "Feedback loop rate: %f updates/sec\n", rate);

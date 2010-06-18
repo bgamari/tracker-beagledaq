@@ -284,7 +284,9 @@ void tracker::feedback(fine_cal_result cal)
                 try {
                         stage_outputs.move(new_pos);
                 } catch (clamped_output_error e) {
-                        break;
+                        bad_pts++;
+                        fprintf(stderr, "Clamped\n");
+                        continue;
                 }
 
                 n++;

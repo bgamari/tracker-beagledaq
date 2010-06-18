@@ -265,7 +265,6 @@ void tracker::feedback(fine_cal_result cal)
                 for (int i=0; i<3; i++) {
                         fb_pids[i].add_point(t, delta[i]);
                         delta[i] = fb_pids[i].get_response();
-                        delta[i] += otf_amp * sin(2*M_PI/otf_freqs[i]*t);
                 }
 
                 // Check sanity of point
@@ -326,5 +325,170 @@ bool tracker::running()
 void tracker::stop_feedback()
 {
         feedback_thread.interrupt();
+}
+
+
+Vector4f otf_tracker::scale_psd_position(Vector4f in)
+{
+        if (scale_psd_inputs) {
+                in.x() /= in[2];
+                in.y() /= in[3];
+        }
+        return in;
+}
+
+otf_tracker::perturb_response otf_tracker::find_perturb_response(
+                unsigned int axis, float freq,
+                boost::circular_buffer<otf_tracker::pos_log_entry>& log_data)
+{
+        std::vector<float> T(log_data.size());
+        otf_tracker::perturb_response resp;
+        
+        // Generate template sinusoid
+        for (unsigned int i=0; i < log_data.size(); i++)
+                T[i] = sin(2*M_PI*freq*i*Ts);
+        
+        // Auto-correlate for phase
+        unsigned int max_lag = TODO;
+        float max_corr = 0;
+        for (unsigned int lag=0; lag < max_lag; lag++) {
+                float corr = 0;
+                for (unsigned int i=0; i < log_data.size()-max_lag; i++)
+                        corr += log_data[i].fb[axis] * log_data[i+lag].fb[axis];
+
+                if (corr > max_corr) {
+                        max_corr = corr;
+                        resp.phase = corr;
+                }
+        }
+
+        // Recompute template sinusoid with phase
+        for (unsigned int i=0; i < log_data.size(); i++)
+                T[i] = sin(2*M_PI*freq*i*Ts + resp.phase);
+
+        // Find amplitude
+        float a=0, b=0;
+        for (unsigned int i=0; i < log_data.size(); i++) {
+                a += log_data[i].fb[axis] * T[i];
+                b += T[i] * T[i];
+        }
+        resp.amp = a / b;
+
+        return resp;
+}
+
+/*
+ * Responsible for periodically updating the regression matrix from data
+ * collected in the feedback thread.
+ */
+void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean)
+{
+        while (true) {
+                usleep(recal_delay);
+                // Swap log buffers
+                {
+                        boost::mutex::scoped_lock lock(log_mutex);
+                        std::swap(active_log, inactive_log);
+                }
+
+                // Generate sinusoid data for regression
+                unsigned int samples = inactive_log->size();
+                Matrix<double, Dynamic,9> R(samples,9);
+                Matrix<double, Dynamic,3> S(samples,3);
+                for (unsigned int axis=0; axis<3; axis++) {
+                        float freq = perturb_freqs[axis];
+                        perturb_response resp = find_perturb_response(axis, freq, *inactive_log);
+                        for (unsigned int i=0; i<samples; i++) {
+                                pos_log_entry& ent = inactive_log->at(i);
+                                S(i,axis) = resp.amp * sin(2*M_PI*freq*ent.time + resp.phase);
+                        }
+                }
+
+                // Compute new PSD mean
+                Vector4f new_psd_mean = Vector4f::Zero();
+                for (unsigned int i=0; i<samples; i++)
+                        new_psd_mean += inactive_log->at(i).psd;
+                new_psd_mean /= samples;
+
+                // Pack PSD inputs
+                for (unsigned int i=0; i<samples; i++)
+                        R.row(i) = pack_psd_inputs(inactive_log->at(i).psd - new_psd_mean).cast<double>();
+
+                // Solve regression
+                SVD<Matrix<double, Dynamic,9> > svd(R);
+                Matrix<double, 9,3> bt = svd.solve(S);
+                beta = bt.transpose().cast<float>();
+                psd_mean = new_psd_mean;
+
+                inactive_log->clear();
+        }
+}
+
+void otf_tracker::feedback()
+{
+        unsigned int n = 0;
+        struct timespec start_time;
+        clock_gettime(CLOCK_REALTIME, &start_time);
+        struct timespec last_rate_update = start_time;
+        unsigned int rate_update_period = 10000;
+        std::ofstream f("pos");
+        Matrix<float, 3,9> beta;
+        Vector3f position;
+        Vector4f psd_mean;
+        boost::thread recal_thread(&otf_tracker::recal_worker, this, beta, psd_mean);
+
+	while (true) {
+                // Get sensor values
+		Vector3f fb = fb_inputs.get();
+                Vector4f psd = psd_inputs.get();
+                psd = scale_psd_position(psd);
+                n++;
+
+                // Add datum to log
+                struct timespec ts;
+                float t = (ts.tv_sec - start_time.tv_sec) +
+                        (ts.tv_nsec - start_time.tv_nsec)*1e-9;
+                {
+                        boost::mutex::scoped_lock lock(log_mutex);
+                        pos_log_entry ent = { t, fb, psd };
+                        active_log->push_back(ent);
+                }
+
+                // Compute estimated position
+                psd -= psd_mean;
+		Matrix<float, 9,1> psd_in = pack_psd_inputs(psd);
+		Vector3f delta = beta * psd_in;
+
+                if (delta.norm() > fb_max_delta) {
+                        fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");
+                        continue;
+                }
+
+                // Get PID response and apply perturbation
+                for (int i=0; i<3; i++) {
+                        delta[i] = fb_pids[i].get_response();
+                        delta[i] += perturb_amp * sin(2*M_PI/perturb_freqs[i]*t);
+                        fb_pids[i].add_point(t, delta[i]);
+                }
+
+                // Move stage
+		if (n % move_skip_cycles == 0)
+                        stage_outputs.move(delta);
+
+		f << boost::format("%f\t%f\t%f\t%f\t%f\t%f\n") %
+				delta.x() % delta.y() % delta.z() %
+				position.x() % position.y() % position.z();
+                usleep(fb_delay);
+
+                // Show feedback rate report
+                if (fb_show_rate && n % rate_update_period == 0) {
+                        struct timespec ts;
+                        clock_gettime(CLOCK_REALTIME, &ts);
+                        float rate = rate_update_period / ((ts.tv_sec - start_time.tv_sec) +
+                                (ts.tv_nsec - start_time.tv_nsec)*1e-9);
+                        fprintf(stderr, "Feedback loop rate: %f updates/sec\n", rate);
+			start_time = ts;
+                }
+        }
 }
 

@@ -25,11 +25,11 @@
 #include "pid.h"
 #include "stage.h"
 
-#include <cstdint>
 #include <array>
-#include <Eigen/Eigen>
-#include <boost/program_options.hpp>
+#include <boost/function.hpp>
 #include <boost/thread/thread.hpp>
+#include <boost/thread/mutex.hpp>
+#include <Eigen/Eigen>
 
 using namespace Eigen;
 
@@ -45,10 +45,6 @@ struct tracker {
         float fine_cal_range;
         unsigned int fine_cal_pts;
         unsigned int fine_cal_pt_delay;
-
-        // On-the-fly calibration parameters
-        array<float,3> otf_freqs;
-        float otf_amp;
 
         // Feedback parameters
         unsigned int fb_delay;  	// us
@@ -87,7 +83,6 @@ public:
                 rough_cal_xy_step(0.01), rough_cal_z_step(0.02),
                 rough_cal_xy_pts(20), rough_cal_z_pts(20),
                 fine_cal_range(0.02), fine_cal_pts(1000), fine_cal_pt_delay(1000),
-                otf_amp(0),
                 fb_delay(100), fb_max_delta(0.5), fb_show_rate(false),
                 fb_setpoint(Vector3f::Zero()),
                 psd_inputs(psd_inputs),
@@ -95,14 +90,80 @@ public:
                 fb_inputs(fb_inputs),
                 _running(false)
         {
-                // Work around apparent gcc bug concerning initializer lists
-                otf_freqs[0] = 67;
-                otf_freqs[1] = 61;
-                otf_freqs[2] = 53;
-
                 fb_pids[0] = pid_loop(0.6, 1e-3, 0, 10);
                 fb_pids[1] = pid_loop(0.6, 1e-3, 0, 10);
                 fb_pids[2] = pid_loop(1, 0, 0, 1);
+        }
+};
+
+struct otf_tracker {
+        // General parameters
+        bool scale_psd_inputs;
+
+        // On-the-fly feedback parameters
+        array<float,3> perturb_freqs;
+        float perturb_amp;
+        unsigned int recal_delay, fb_delay, move_skip_cycles;
+        float fb_max_delta;
+        array<pid_loop,3> fb_pids;
+        bool fb_show_rate;
+
+        input_channels<4>& psd_inputs;
+        stage& stage_outputs;
+        input_channels<3>& fb_inputs;
+
+private:
+        struct pos_log_entry {
+                float time;
+                Vector3f fb;
+                Vector4f psd;
+        };
+        // These are where the position data is stored for the on-the-fly calibration
+        // There are two ring buffers, one being filled with new data by the
+        // feedback loop (the active log) and the other being consumed by the
+        // calibration worker (the inactive log).
+        boost::circular_buffer<pos_log_entry> *active_log, *inactive_log;
+        boost::mutex log_mutex;
+
+        struct perturb_response {
+                unsigned int phase;
+                float amp;
+        };
+        perturb_response find_perturb_response(
+                        unsigned int axis, float freq,
+                        boost::circular_buffer<pos_log_entry>& log_data);
+
+        Vector4f scale_psd_position(Vector4f in);
+        void recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean);
+        void feedback();
+        bool _running;
+
+public:
+        boost::function<void()> feedback_ended_cb;
+        void start_feedback();
+        bool running();
+        void stop_feedback();
+
+        otf_tracker(input_channels<4>& psd_inputs,
+                        stage& stage_outputs, input_channels<3>& fb_inputs) :
+                scale_psd_inputs(true),
+                perturb_amp(0),
+                recal_delay(100*1000), fb_delay(100),
+                move_skip_cycles(100),
+                fb_max_delta(0.2),
+                fb_show_rate(false),
+                psd_inputs(psd_inputs),
+                stage_outputs(stage_outputs),
+                fb_inputs(fb_inputs)
+        {
+                fb_pids[0] = pid_loop(0.6, 1e-3, 0, 10);
+                fb_pids[1] = pid_loop(0.6, 1e-3, 0, 10);
+                fb_pids[2] = pid_loop(1, 0, 0, 1);
+
+                // Work around apparent gcc bug concerning initializer lists
+                perturb_freqs[0] = 67;
+                perturb_freqs[1] = 61;
+                perturb_freqs[2] = 53;
         }
 };
 

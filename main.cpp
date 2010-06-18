@@ -77,15 +77,6 @@ void add_tracker_params(tracker& tracker)
         def_param("fine_cal.point_delay", tracker.fine_cal_pt_delay,
                         "Delay in usec between fine calibration points");
 
-        def_param("otf.freq-x", tracker.otf_freqs[0],
-                        "Frequencies of on-the-fly calibration perturbations (X axis)");
-        def_param("otf.freq-y", tracker.otf_freqs[1],
-                        "Frequencies of on-the-fly calibration perturbations (Y axis)");
-        def_param("otf.freq-z", tracker.otf_freqs[2],
-                        "Frequencies of on-the-fly calibration perturbations (Z axis)");
-        def_param("otf.amp", tracker.otf_amp,
-                        "Amplitude of on-the-fly calibration perturbations");
-
         def_param("feedback.delay", tracker.fb_delay,
                         "Delay between feedback loop iterations");
         def_param("feedback.max_delta", tracker.fb_max_delta,
@@ -123,6 +114,18 @@ void add_tracker_params(tracker& tracker)
                         "Y axis derivative gain");
         def_param("pids.z_diff", tracker.fb_pids[2].diff_gain,
                         "Z axis derivative gain");
+}
+
+void add_otf_tracker_params(otf_tracker& tracker)
+{
+        def_param("otf.freq-x", tracker.perturb_freqs[0],
+                        "Frequencies of on-the-fly calibration perturbations (X axis)");
+        def_param("otf.freq-y", tracker.perturb_freqs[1],
+                        "Frequencies of on-the-fly calibration perturbations (Y axis)");
+        def_param("otf.freq-z", tracker.perturb_freqs[2],
+                        "Frequencies of on-the-fly calibration perturbations (Z axis)");
+        def_param("otf.amp", tracker.perturb_amp,
+                        "Amplitude of on-the-fly calibration perturbations");
 }
 
 std::string cmd_help =

@@ -244,7 +244,7 @@ void tracker::feedback(fine_cal_result cal)
         struct timespec last_rate_update = start_time;
         unsigned int rate_update_period = 10000;
 
-	while (true) {
+	while (!boost::this_thread::interruption_requested()) {
 		Vector3f fb = fb_inputs.get();
                 Vector4f psd = psd_inputs.get();
                 psd = scale_psd_position(psd) - cal.psd_mean;
@@ -272,7 +272,7 @@ void tracker::feedback(fine_cal_result cal)
                         good_pts = bad_pts = 0;
                 if (bad_pts > 100) {
                         fprintf(stderr, "Lost tracking\n");
-                        return;
+                        break;
                 }
 
                 Vector3f new_pos = fb - delta;
@@ -293,6 +293,23 @@ void tracker::feedback(fine_cal_result cal)
 			start_time = ts;
                 }
 	}
+
+        if (feedback_ended_cb)
+                feedback_ended_cb();
 }
 
+void tracker::start_feedback(fine_cal_result cal)
+{
+        feedback_thread = boost::thread(&tracker::feedback, this, cal);
+}
+
+bool tracker::running()
+{
+        return feedback_thread.joinable();
+}
+
+void tracker::stop_feedback()
+{
+        feedback_thread.interrupt();
+}
 

@@ -31,7 +31,6 @@
 #include <iostream>
 #include <array>
 #include <boost/tokenizer.hpp>
-#include <boost/thread.hpp>
 #include <boost/lexical_cast.hpp>
 
 using std::array;
@@ -137,13 +136,8 @@ std::string cmd_help =
 "  exit                         Exit\n"
 "  help                         This help message\n";
 
-void feedback_worker(tracker* tracker, tracker::fine_cal_result fine_cal, bool* feedback_running) {
-        *feedback_running = true;
-        try {
-                tracker->feedback(fine_cal);
-        } catch (clamped_output_error e) { }
+void feedback_ended() {
         std::cout << "FB-ERR\n";
-        *feedback_running = false;
 }
 
 int main(int argc, char** argv)
@@ -171,13 +165,12 @@ int main(int argc, char** argv)
 	usleep(10*1000);
         tracker tracker(psd_inputs, stage, fb_inputs);
         add_tracker_params(tracker);
+        tracker.feedback_ended_cb = &feedback_ended;
 
-        boost::thread* tracker_thread = NULL;
         boost::char_separator<char> sep("\t ");
 	Eigen::IOFormat mat_fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
         tracker::fine_cal_result fine_cal;
         Vector3f rough_pos = Vector3f::Zero();
-        bool feedback_running = false;
 	while (true) {
                 char* tmp = readline("> ");
                 if (!tmp) break;
@@ -247,17 +240,17 @@ int main(int argc, char** argv)
                 } else if (cmd == "show-coeffs") {
                         std::cout << fine_cal.beta.format(mat_fmt) << "\n";
                 } else if (cmd == "feedback-start") {
-                        if (feedback_running)
+                        if (tracker.running())
                                 std::cout << "ERR\tAlready running\n";
                         else {
-                                tracker_thread = new boost::thread(feedback_worker, &tracker, fine_cal, &feedback_running);
+                                tracker.start_feedback(fine_cal);
                                 std::cout << "OK\tFeedback running\n";
                         }
                 } else if (cmd == "feedback-stop") {
-                        if (!feedback_running)
+                        if (!tracker.running())
                                 std::cout << "ERR\tNot running\n";
                         else {
-                                tracker_thread->interrupt();
+                                tracker.stop_feedback();
                                 std::cout << "OK\tFeedback stopped\n";
                         }
                 } else if (cmd == "pause") {

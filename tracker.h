@@ -29,6 +29,7 @@
 #include <array>
 #include <Eigen/Eigen>
 #include <boost/program_options.hpp>
+#include <boost/thread/thread.hpp>
 
 using namespace Eigen;
 
@@ -59,18 +60,24 @@ struct tracker {
         stage& stage_outputs;
         input_channels<3>& fb_inputs;
 
-private:
-        Vector4f scale_psd_position(Vector4f in);
-
-public:
         struct fine_cal_result {
                 Matrix<float, 3,9> beta;
                 Vector4f psd_mean;
         };
 
+        boost::function<void()> feedback_ended_cb;
+
+private:
+        boost::thread feedback_thread;
+        Vector4f scale_psd_position(Vector4f in);
+        void feedback(fine_cal_result cal);
+
+public:
         Vector3f rough_calibrate();
         fine_cal_result fine_calibrate(Vector3f rough_pos);
-        void feedback(fine_cal_result cal);
+        void start_feedback(fine_cal_result cal);
+        bool running();
+        void stop_feedback();
 
         tracker(input_channels<4>& psd_inputs,
 		stage& stage_outputs, input_channels<3>& fb_inputs) :

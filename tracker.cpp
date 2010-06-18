@@ -266,14 +266,6 @@ void tracker::feedback(fine_cal_result cal)
                         fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");
                         bad_pts++;
                         continue;
-                } else
-                        good_pts++;
-
-                if (good_pts > 10)
-                        good_pts = bad_pts = 0;
-                if (bad_pts > 100) {
-                        fprintf(stderr, "Lost tracking\n");
-                        break;
                 }
 
                 Vector3f new_pos = fb - delta + fb_setpoint;
@@ -289,6 +281,14 @@ void tracker::feedback(fine_cal_result cal)
                         continue;
                 }
 
+                if (good_pts > 10)
+                        good_pts = bad_pts = 0;
+                if (bad_pts > 10) {
+                        fprintf(stderr, "Lost tracking\n");
+                        break;
+                }
+
+                good_pts++;
                 n++;
                 if (fb_show_rate && t > (last_report_t + rate_report_period)) {
                         float rate = (n - last_report_n) / (t - last_report_t);

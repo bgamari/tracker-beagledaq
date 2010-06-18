@@ -168,6 +168,7 @@ int main(int argc, char** argv)
 	stage.calibrate();
 	stage.move({0.5, 0.5, 0.5});
         def_param("stage.cal_range", stage.cal_range, "Stage calibration range");
+
 	usleep(10*1000);
         tracker tracker(psd_inputs, stage, fb_inputs);
         add_tracker_params(tracker);
@@ -176,7 +177,12 @@ int main(int argc, char** argv)
         boost::char_separator<char> sep("\t ");
 	Eigen::IOFormat mat_fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
         tracker::fine_cal_result fine_cal;
-        Vector3f rough_pos = Vector3f::Zero();
+        Vector3f rough_pos;
+        rough_pos << 0.5, 0.5, 0.5;
+        def_param("rough.pos_x", rough_pos.x(), "Rough calibration position (X axis)");
+        def_param("rough.pos_y", rough_pos.y(), "Rough calibration position (Y axis)");
+        def_param("rough.pos_z", rough_pos.z(), "Rough calibration position (Z axis)");
+
 	while (true) {
                 char* tmp = readline("> ");
                 if (!tmp) break;
@@ -228,6 +234,9 @@ int main(int argc, char** argv)
                         pos.y() = lexical_cast<float>(*tok); tok++;
                         pos.z() = lexical_cast<float>(*tok);
                         stage.move(pos);
+                        std::cout << "OK\n";
+                } else if (cmd == "move-rough-pos") {
+                        stage.move(rough_pos);
                         std::cout << "OK\n";
                 } else if (cmd == "center") {
                         Vector3f pos = 0.5 * Vector3f::Ones();

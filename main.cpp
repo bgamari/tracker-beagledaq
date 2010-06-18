@@ -18,12 +18,13 @@
  * Author: Ben Gamari <bgamari@physics.umass.edu>
  */
 
+#include "version.h"
 #include "bitfield.h"
 #include "max5134.h"
 #include "max1302.h"
 #include "tracker.h"
-#include "config.h"
 #include "parameters.h"
+#include "config.h"
 
 #include <cstdint>
 #include <readline/readline.h>
@@ -186,6 +187,7 @@ int main(int argc, char** argv)
         def_param("rough.pos_y", rough_pos.y(), "Rough calibration position (Y axis)");
         def_param("rough.pos_z", rough_pos.z(), "Rough calibration position (Z axis)");
 
+        std::cout << "Tracker " << version << "\n";
 	while (true) {
                 char* tmp = readline("> ");
                 if (!tmp) break;
@@ -282,6 +284,8 @@ int main(int argc, char** argv)
                 } else if (cmd == "help") {
                         std::cout << "Valid Commands:\n";
                         std::cout << cmd_help << "\n";
+                } else if (cmd == "version") {
+                        std::cout << branch << "\t" << version << "\n";
 		} else
 			std::cout << "ERR\tInvalid command\n";
 	}

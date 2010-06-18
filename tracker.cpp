@@ -18,8 +18,6 @@
  * Author: Ben Gamari <bgamari@physics.umass.edu>
  */
 
-
-
 #include "tracker.h"
 
 #include <time.h>

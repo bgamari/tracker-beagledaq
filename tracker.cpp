@@ -295,20 +295,4 @@ void tracker::feedback(fine_cal_result cal)
 	}
 }
 
-void tracker::track()
-{
-	Vector3f rough_pos = rough_calibrate();
-	stage_outputs.move(rough_pos);
-	fprintf(stderr, "Rough Cal: %f %f %f\n",
-                        rough_pos[0], rough_pos[1], rough_pos[2]);
-        fprintf(stderr, "Starting fine calibration...\n");
-	fine_cal_result fine_cal = fine_calibrate(rough_pos);
-        fprintf(stderr, "Fine calibration complete\n");
-#define DUMP_COEFFS
-#ifdef DUMP_COEFFS
-        dump_matrix(fine_cal.beta, "coeffs");
-#endif
-        fprintf(stderr, "Tracking...\n");
-	feedback(fine_cal);
-}
 

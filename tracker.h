@@ -93,7 +93,5 @@ public:
                 fb_pids[1] = pid_loop(0.6, 1e-3, 0, 10);
                 fb_pids[2] = pid_loop(1, 0, 0, 1);
         }
-
-        void track();
 };
 

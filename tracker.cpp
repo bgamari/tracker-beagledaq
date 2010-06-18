@@ -280,7 +280,11 @@ void tracker::feedback(fine_cal_result cal)
 		f << boost::format("%f\t%f\t%f\t%f\t%f\t%f\n") %
 				delta.x() % delta.y() % delta.z() %
 				new_pos.x() % new_pos.y() % new_pos.z();
-		stage_outputs.move(new_pos);
+                try {
+                        stage_outputs.move(new_pos);
+                } catch (clamped_output_error e) {
+                        break;
+                }
 		usleep(fb_delay);
 
                 n++;

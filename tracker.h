@@ -50,6 +50,7 @@ struct tracker {
         unsigned int fb_delay;  	// us
         float fb_max_delta;             // Maximum allowed delta
         bool fb_show_rate;              // Show periodic messages reporting the update rate of the feedback loop
+        float fb_rate_report_period;
         array<pid_loop,3> fb_pids;
         Vector3f fb_setpoint;
         
@@ -83,7 +84,8 @@ public:
                 rough_cal_xy_step(0.01), rough_cal_z_step(0.02),
                 rough_cal_xy_pts(20), rough_cal_z_pts(20),
                 fine_cal_range(0.02), fine_cal_pts(1000), fine_cal_pt_delay(1000),
-                fb_delay(100), fb_max_delta(0.5), fb_show_rate(false),
+                fb_delay(100), fb_max_delta(0.5),
+                fb_show_rate(false), fb_rate_report_period(5),
                 fb_setpoint(Vector3f::Zero()),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),
@@ -105,8 +107,10 @@ struct otf_tracker {
         float perturb_amp;
         unsigned int recal_delay, fb_delay, move_skip_cycles;
         float fb_max_delta;
+        Vector3f fb_setpoint;
         array<pid_loop,3> fb_pids;
         bool fb_show_rate;
+        float fb_rate_report_period;
 
         input_channels<4>& psd_inputs;
         stage& stage_outputs;
@@ -143,19 +147,24 @@ public:
         void start_feedback();
         bool running();
         void stop_feedback();
+        unsigned int get_log_length();
+        void set_log_length(unsigned int len);
 
         otf_tracker(input_channels<4>& psd_inputs,
                         stage& stage_outputs, input_channels<3>& fb_inputs) :
                 scale_psd_inputs(true),
                 perturb_amp(0),
-                recal_delay(100*1000), fb_delay(100),
+                recal_delay(100*1000), fb_delay(500),
                 move_skip_cycles(100),
                 fb_max_delta(0.2),
-                fb_show_rate(false),
+                fb_setpoint(Vector3f::Zero()),
+                fb_show_rate(false), fb_rate_report_period(5),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),
                 fb_inputs(fb_inputs)
         {
+                set_log_length(1000);
+
                 fb_pids[0] = pid_loop(0.6, 1e-3, 0, 10);
                 fb_pids[1] = pid_loop(0.6, 1e-3, 0, 10);
                 fb_pids[2] = pid_loop(1, 0, 0, 1);

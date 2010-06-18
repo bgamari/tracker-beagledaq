@@ -242,7 +242,7 @@ void tracker::feedback(fine_cal_result cal)
         std::ofstream f("pos");
         struct timespec start_time;
         clock_gettime(CLOCK_REALTIME, &start_time);
-        float last_report_t = 0, rate_report_period = 5;
+        float last_report_t = 0;
         unsigned int last_report_n = 0;
 
         _running = true;
@@ -298,7 +298,7 @@ void tracker::feedback(fine_cal_result cal)
                 good_pts++;
 
                 // Show feedback rate report
-                if (fb_show_rate && t > (last_report_t + rate_report_period)) {
+                if (fb_show_rate && t > (last_report_t + fb_rate_report_period)) {
                         float rate = (n - last_report_n) / (t - last_report_t);
                         fprintf(stderr, "Feedback loop rate: %f updates/sec\n", rate);
                         last_report_t = t;
@@ -343,13 +343,14 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
 {
         std::vector<float> T(log_data.size());
         otf_tracker::perturb_response resp;
+        float Ts = fb_delay * 1e-6;
         
         // Generate template sinusoid
         for (unsigned int i=0; i < log_data.size(); i++)
                 T[i] = sin(2*M_PI*freq*i*Ts);
         
         // Auto-correlate for phase
-        unsigned int max_lag = TODO;
+        unsigned int max_lag = Ts / freq;
         float max_corr = 0;
         for (unsigned int lag=0; lag < max_lag; lag++) {
                 float corr = 0;
@@ -429,14 +430,15 @@ void otf_tracker::feedback()
         unsigned int n = 0;
         struct timespec start_time;
         clock_gettime(CLOCK_REALTIME, &start_time);
-        struct timespec last_rate_update = start_time;
-        unsigned int rate_update_period = 10000;
+        float last_report_t = 0;
+        unsigned int last_report_n = 0;
         std::ofstream f("pos");
-        Matrix<float, 3,9> beta;
+        Matrix<float, 3,9> beta = Matrix<float,3,9>::Zero();
         Vector3f position;
-        Vector4f psd_mean;
+        Vector4f psd_mean = Vector4f::Zero();
         boost::thread recal_thread(&otf_tracker::recal_worker, this, beta, psd_mean);
 
+        _running = true;
 	while (true) {
                 // Get sensor values
 		Vector3f fb = fb_inputs.get();
@@ -446,6 +448,7 @@ void otf_tracker::feedback()
 
                 // Add datum to log
                 struct timespec ts;
+                clock_gettime(CLOCK_REALTIME, &ts);
                 float t = (ts.tv_sec - start_time.tv_sec) +
                         (ts.tv_nsec - start_time.tv_nsec)*1e-9;
                 {
@@ -472,23 +475,41 @@ void otf_tracker::feedback()
                 }
 
                 // Move stage
-		if (n % move_skip_cycles == 0)
-                        stage_outputs.move(delta);
-
+                Vector3f new_pos = fb - delta + fb_setpoint;
 		f << boost::format("%f\t%f\t%f\t%f\t%f\t%f\n") %
 				delta.x() % delta.y() % delta.z() %
 				position.x() % position.y() % position.z();
-                usleep(fb_delay);
+		if (n % move_skip_cycles == 0)
+                        try {
+                                stage_outputs.move(new_pos);
+                        } catch (clamped_output_error e) {
+                                fprintf(stderr, "Clamped\n");
+                                continue;
+                        }
 
                 // Show feedback rate report
-                if (fb_show_rate && n % rate_update_period == 0) {
-                        struct timespec ts;
-                        clock_gettime(CLOCK_REALTIME, &ts);
-                        float rate = rate_update_period / ((ts.tv_sec - start_time.tv_sec) +
-                                (ts.tv_nsec - start_time.tv_nsec)*1e-9);
+                if (fb_show_rate && t > (last_report_t + fb_rate_report_period)) {
+                        float rate = (n - last_report_n) / (t - last_report_t);
                         fprintf(stderr, "Feedback loop rate: %f updates/sec\n", rate);
-			start_time = ts;
+                        last_report_t = t;
+                        last_report_n = n;
                 }
+                usleep(fb_delay);
         }
+
+        _running = false;
+        if (feedback_ended_cb)
+                feedback_ended_cb();
 }
 
+unsigned int otf_tracker::get_log_length()
+{
+        return active_log->capacity();
+}
+
+void otf_tracker::set_log_length(unsigned int len)
+{
+        boost::mutex::scoped_lock lock(log_mutex);
+        active_log->set_capacity(len);
+        inactive_log->set_capacity(len);
+}

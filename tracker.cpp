@@ -244,6 +244,7 @@ void tracker::feedback(fine_cal_result cal)
         struct timespec last_rate_update = start_time;
         unsigned int rate_update_period = 10000;
 
+        _running = true;
 	while (!boost::this_thread::interruption_requested()) {
 		Vector3f fb = fb_inputs.get();
                 Vector4f psd = psd_inputs.get();
@@ -298,6 +299,7 @@ void tracker::feedback(fine_cal_result cal)
                 }
 	}
 
+        _running = false;
         if (feedback_ended_cb)
                 feedback_ended_cb();
 }
@@ -309,7 +311,7 @@ void tracker::start_feedback(fine_cal_result cal)
 
 bool tracker::running()
 {
-        return feedback_thread.joinable();
+        return _running;
 }
 
 void tracker::stop_feedback()

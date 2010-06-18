@@ -68,6 +68,7 @@ struct tracker {
         boost::function<void()> feedback_ended_cb;
 
 private:
+        bool _running;
         boost::thread feedback_thread;
         Vector4f scale_psd_position(Vector4f in);
         void feedback(fine_cal_result cal);
@@ -89,7 +90,8 @@ public:
                 fb_delay(100), fb_max_delta(0.5), fb_show_rate(false),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),
-                fb_inputs(fb_inputs)
+                fb_inputs(fb_inputs),
+                _running(false)
         {
                 // Work around apparent gcc bug concerning initializer lists
                 otf_freqs[0] = 67;

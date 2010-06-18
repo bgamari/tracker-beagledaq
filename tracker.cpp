@@ -25,13 +25,13 @@
 #include <time.h>
 #include <utility>
 #include <array>
-#include <boost/random.hpp>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/format.hpp>
-#include <time.h>
+#include <algorithm>
 #include <cstdio>
 #include <iostream>
 #include <fstream>
+#include <boost/random.hpp>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/format.hpp>
 
 using std::string;
 using std::vector;
@@ -193,30 +193,29 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
         res.psd_mean /= 1.0 * fine_cal_pts;
 
 	// Fill R and S matricies with collected data
-	Matrix<float, Dynamic,9> R(fine_cal_pts, 9);
-        Matrix<float, Dynamic,3> S(fine_cal_pts, 3);
+	Matrix<double, Dynamic,9> R(fine_cal_pts, 9);
+        Matrix<double, Dynamic,3> S(fine_cal_pts, 3);
 	for (unsigned int i=0; i < fine_cal_pts; i++) {
-		R.row(i) = pack_psd_inputs(psd_collect.data[i].values - res.psd_mean);
-		S.row(i) = fb_collect.data[i].values - rough_pos;
+		R.row(i) = pack_psd_inputs(psd_collect.data[i].values - res.psd_mean).cast<double>();
+		S.row(i) = (fb_collect.data[i].values - rough_pos).cast<double>();
 	}
 
         dump_data("fine", fb_collect.data, psd_collect.data);
 
 	// Solve regression coefficients
-	Matrix<double, Dynamic,9> Rd = R.cast<double>();
-	Matrix<double, Dynamic,3> Sd = S.cast<double>();
-        SVD<Matrix<double, Dynamic,9> > svd(Rd);
-        Matrix<double, 9,3> bt = svd.solve(Sd);
+        SVD<Matrix<double, Dynamic,9> > svd(R);
+        Matrix<double, 9,3> bt = svd.solve(S);
         res.beta = bt.transpose().cast<float>();
 
         bool compute_residuals = true;
         if (compute_residuals) {
                 std::ofstream of("fine-resid");
                 of << "# fb_x fb_y fb_z\tP_Lx P_Ly P_Lz\tresid_x resid_y resid_z\n";
-                Vector3f rms = Vector3f::Zero();
+                Vector3d rms = Vector3d::Zero();
                 for (unsigned int i=0; i < fine_cal_pts; i++) {
-                        Vector3f fb = fb_collect.data[i].values, s = S.row(i).transpose();
-                        Vector3f resid = res.beta * R.row(i).transpose() - s;
+                        Vector3f fb = fb_collect.data[i].values;
+                        Vector3d s = S.row(i).transpose().cast<double>();
+                        Vector3d resid = bt.transpose() * R.row(i).transpose() - s;
                         of << boost::format("%f %f %f\t%f %f %f\t%f %f %f\n") %
                                 fb.x() % fb.y() % fb.z() %
                                 s.x() % s.y() % s.z() %

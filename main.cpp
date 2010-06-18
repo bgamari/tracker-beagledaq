@@ -92,6 +92,12 @@ void add_tracker_params(tracker& tracker)
                         "Maximum allowed position change during feedback");
         def_param("feedback.show_rate", tracker.fb_show_rate,
                         "Report on feedback loop iteration rate");
+        def_param("feedback.setpoint-x", tracker.fb_setpoint.x(),
+                        "X axis setpoint");
+        def_param("feedback.setpoint-y", tracker.fb_setpoint.y(),
+                        "Y axis setpoint");
+        def_param("feedback.setpoint-z", tracker.fb_setpoint.z(),
+                        "Z axis setpoint");
 
         def_param("pids.x_prop", tracker.fb_pids[0].prop_gain,
                         "X axis proportional gain");

@@ -55,6 +55,7 @@ struct tracker {
         float fb_max_delta;             // Maximum allowed delta
         bool fb_show_rate;              // Show periodic messages reporting the update rate of the feedback loop
         array<pid_loop,3> fb_pids;
+        Vector3f fb_setpoint;
         
         input_channels<4>& psd_inputs;
         stage& stage_outputs;
@@ -88,6 +89,7 @@ public:
                 fine_cal_range(0.02), fine_cal_pts(1000), fine_cal_pt_delay(1000),
                 otf_amp(0),
                 fb_delay(100), fb_max_delta(0.5), fb_show_rate(false),
+                fb_setpoint(Vector3f::Zero()),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),
                 fb_inputs(fb_inputs),

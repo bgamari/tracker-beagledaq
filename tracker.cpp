@@ -276,7 +276,7 @@ void tracker::feedback(fine_cal_result cal)
                         break;
                 }
 
-                Vector3f new_pos = fb - delta;
+                Vector3f new_pos = fb - delta + fb_setpoint;
 		new_pos.z() = 0.5;
 		f << boost::format("%f\t%f\t%f\t%f\t%f\t%f\n") %
 				delta.x() % delta.y() % delta.z() %

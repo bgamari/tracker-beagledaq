@@ -246,6 +246,14 @@ void tracker::feedback(fine_cal_result cal)
 
         _running = true;
 	while (!boost::this_thread::interruption_requested()) {
+                // Make sure recent points are generally sane
+                if (good_pts > 10)
+                        good_pts = bad_pts = 0;
+                if (bad_pts > 10) {
+                        fprintf(stderr, "Lost tracking\n");
+                        break;
+                }
+
                 // Get sensor values
 		Vector3f fb = fb_inputs.get();
                 Vector4f psd = psd_inputs.get();
@@ -285,14 +293,6 @@ void tracker::feedback(fine_cal_result cal)
                         bad_pts++;
                         fprintf(stderr, "Clamped\n");
                         continue;
-                }
-
-                // Make sure recent points are generally sane
-                if (good_pts > 10)
-                        good_pts = bad_pts = 0;
-                if (bad_pts > 10) {
-                        fprintf(stderr, "Lost tracking\n");
-                        break;
                 }
                 good_pts++;
 

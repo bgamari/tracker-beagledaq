@@ -264,7 +264,7 @@ void tracker::feedback(fine_cal_result cal)
 		Matrix<float, 9,1> psd_in = pack_psd_inputs(psd);
 		Vector3f delta = cal.beta * psd_in;
 
-                // Get feedback response
+                // Get PID response
                 struct timespec ts;
                 clock_gettime(CLOCK_REALTIME, &ts);
                 float t = (ts.tv_sec - start_time.tv_sec) +

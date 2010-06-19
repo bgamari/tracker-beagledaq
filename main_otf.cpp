@@ -62,8 +62,21 @@ void add_tracker_params(otf_tracker& tracker)
         def_param("scale_psd_inputs", tracker.scale_psd_inputs,
                         "Scale PSD positions by sums");
 
+        def_param("otf.freq-x", tracker.perturb_freqs[0],
+                        "Frequencies of on-the-fly calibration perturbations (X axis)");
+        def_param("otf.freq-y", tracker.perturb_freqs[1],
+                        "Frequencies of on-the-fly calibration perturbations (Y axis)");
+        def_param("otf.freq-z", tracker.perturb_freqs[2],
+                        "Frequencies of on-the-fly calibration perturbations (Z axis)");
+	def_param("cal.perturb_amp", tracker.perturb_amp,
+			"Perturbation amplitude");
+	def_param("cal.delay", tracker.recal_delay,
+			"Calibration delay");
+
         def_param("feedback.delay", tracker.fb_delay,
                         "Delay between feedback loop iterations");
+	def_param("feedback.move_skip_cycles", tracker.move_skip_cycles,
+			"Number of feedback cycles to skip between moves");
         def_param("feedback.max_delta", tracker.fb_max_delta,
                         "Maximum allowed position change during feedback");
         def_param("feedback.show_rate", tracker.fb_show_rate,
@@ -100,14 +113,6 @@ void add_tracker_params(otf_tracker& tracker)
         def_param("pids.z_diff", tracker.fb_pids[2].diff_gain,
                         "Z axis derivative gain");
 
-        def_param("otf.freq-x", tracker.perturb_freqs[0],
-                        "Frequencies of on-the-fly calibration perturbations (X axis)");
-        def_param("otf.freq-y", tracker.perturb_freqs[1],
-                        "Frequencies of on-the-fly calibration perturbations (Y axis)");
-        def_param("otf.freq-z", tracker.perturb_freqs[2],
-                        "Frequencies of on-the-fly calibration perturbations (Z axis)");
-        def_param("otf.amp", tracker.perturb_amp,
-                        "Amplitude of on-the-fly calibration perturbations");
 }
 
 std::string cmd_help =

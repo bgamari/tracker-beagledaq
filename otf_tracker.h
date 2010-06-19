@@ -89,7 +89,7 @@ public:
         otf_tracker(input_channels<4>& psd_inputs,
                         stage& stage_outputs, input_channels<3>& fb_inputs) :
                 scale_psd_inputs(true),
-                perturb_amp(0),
+                perturb_amp(0.01),
                 recal_delay(100*1000), fb_delay(500),
                 move_skip_cycles(100),
                 fb_max_delta(0.2),

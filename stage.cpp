@@ -29,9 +29,9 @@ Vector3f stage::get_last_pos() const {
 	return last_pos;
 }
 
-void fb_stage::calibrate(unsigned int n_pts) {
-	Matrix<float, Dynamic,4> X(n_pts, 4);
-        Matrix<float, Dynamic,3> Y(n_pts, 3);
+void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
+	Matrix<float, Dynamic,4> X(n_pts*n_samp, 4);
+        Matrix<float, Dynamic,3> Y(n_pts*n_samp, 3);
 
 	typedef boost::mt19937 engine;
 	typedef boost::uniform_real<float> distribution;
@@ -42,20 +42,24 @@ void fb_stage::calibrate(unsigned int n_pts) {
         stage raw_stage(out);
         raw_stage.move({0.5, 0.5, 0.5});
 	FILE* f = fopen("stage-cal", "w");
+        unsigned int j=0;
 	for (unsigned int i=0; i<n_pts; i++) {
 		Vector3f out_pos;
 		out_pos << vg(), vg(), vg();
                 smooth_move(raw_stage, out_pos, 4*1000);
 		usleep(100*1000);
-		Vector3f fb_pos = fb.get();
 
-		X.row(i)[0] = 1; // constant
-		X.row(i).tail<3>() = fb_pos.transpose();
-                Y.row(i) = out_pos;
+                for (unsigned int n=0; n<n_samp; n++) {
+                        Vector3f fb_pos = fb.get();
+                        X.row(j)[0] = 1; // constant
+                        X.row(j).tail<3>() = fb_pos.transpose();
+                        Y.row(j) = out_pos;
+                        j++;
 		
-		fprintf(f, "%f %f %f\t%f %f %f\n",
-				out_pos.x(), out_pos.y(), out_pos.z(),
-				fb_pos.x(), fb_pos.y(), fb_pos.z());
+                        fprintf(f, "%f %f %f\t%f %f %f\n",
+                                        out_pos.x(), out_pos.y(), out_pos.z(),
+                                        fb_pos.x(), fb_pos.y(), fb_pos.z());
+                }
 	}
 	fclose(f);
         R = X.svd().solve(Y);

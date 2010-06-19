@@ -12,7 +12,7 @@ version.cpp ::
 tracker : main.o spi_device.o max5590.o max1270.o tracker.o pid.o parameters.o stage.o version.o
 	$(CXX) $(LDFLAGS) -o $@ $+
 
-tracker-otf : main_otf.o spi_device.o max5590.o max1270.o tracker.o pid.o parameters.o stage.o version.o
+tracker-otf : main_otf.o spi_device.o max5590.o max1270.o otf_tracker.o pid.o parameters.o stage.o version.o
 	$(CXX) $(LDFLAGS) -o $@ $+
 
 raster_dump : spi_device.o max5590.o max1270.o stage.o

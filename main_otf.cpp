@@ -22,7 +22,7 @@
 #include "bitfield.h"
 #include "max5134.h"
 #include "max1302.h"
-#include "tracker.h"
+#include "otf_tracker.h"
 #include "parameters.h"
 #include "config.h"
 
@@ -159,12 +159,6 @@ int main(int argc, char** argv)
 
         boost::char_separator<char> sep("\t ");
 	Eigen::IOFormat mat_fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
-        tracker::fine_cal_result fine_cal;
-        Vector3f rough_pos;
-        rough_pos << 0.5, 0.5, 0.5;
-        def_param("rough.pos_x", rough_pos.x(), "Rough calibration position (X axis)");
-        def_param("rough.pos_y", rough_pos.y(), "Rough calibration position (Y axis)");
-        def_param("rough.pos_z", rough_pos.z(), "Rough calibration position (Z axis)");
 
         std::cout << "Tracker " << version << "\n";
 	while (true) {
@@ -226,8 +220,6 @@ int main(int argc, char** argv)
                 } else if (cmd == "stage-cal") {
                         stage.calibrate();
                         std::cout << "OK\n";
-                } else if (cmd == "show-coeffs") {
-                        std::cout << fine_cal.beta.format(mat_fmt) << "\n";
                 } else if (cmd == "feedback-start") {
                         if (tracker.running())
                                 std::cout << "ERR\tAlready running\n";

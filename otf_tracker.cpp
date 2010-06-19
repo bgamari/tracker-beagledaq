@@ -125,7 +125,7 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
  */
 void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean)
 {
-        while (true) {
+	while (!boost::this_thread::interruption_requested()) {
                 usleep(recal_delay);
                 // Swap log buffers
                 {
@@ -133,8 +133,13 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean)
                         std::swap(active_log, inactive_log);
                 }
 
-                // Generate sinusoid data for regression
                 unsigned int samples = inactive_log->size();
+		if (!samples) {
+			std::cout << "recal_worker: No samples.\n";
+			continue;
+		}
+
+                // Generate sinusoid data for regression
                 Matrix<double, Dynamic,9> R(samples,9);
                 Matrix<double, Dynamic,3> S(samples,3);
                 for (unsigned int axis=0; axis<3; axis++) {
@@ -180,7 +185,7 @@ void otf_tracker::feedback()
         boost::thread recal_thread(&otf_tracker::recal_worker, this, beta, psd_mean);
 
         _running = true;
-	while (true) {
+	while (!boost::this_thread::interruption_requested()) {
                 // Get sensor values
 		Vector3f fb = fb_inputs.get();
                 Vector4f psd = psd_inputs.get();
@@ -238,9 +243,11 @@ void otf_tracker::feedback()
                 usleep(fb_delay);
         }
 
+	recal_thread.interrupt();
         _running = false;
         if (feedback_ended_cb)
                 feedback_ended_cb();
+	recal_thread.join();
 }
 
 unsigned int otf_tracker::get_log_length()

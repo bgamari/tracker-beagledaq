@@ -3,13 +3,16 @@ CXXFLAGS = -O3 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
 LDFLAGS = -lrt -lboost_program_options-mt -lboost_thread-mt -lreadline
 
 .PHONY : all
-all : tracker
+all : tracker tracker-otf
 
 version.cpp ::
 	@echo "const char* version = \"$(shell git rev-parse HEAD)\";" > version.cpp
 	@echo "const char* branch = \"$(shell git name-rev HEAD | cut -d ' ' -f 2)\";" >> version.cpp
 
 tracker : main.o spi_device.o max5590.o max1270.o tracker.o pid.o parameters.o stage.o version.o
+	$(CXX) $(LDFLAGS) -o $@ $+
+
+tracker-otf : main_otf.o spi_device.o max5590.o max1270.o tracker.o pid.o parameters.o stage.o version.o
 	$(CXX) $(LDFLAGS) -o $@ $+
 
 raster_dump : spi_device.o max5590.o max1270.o stage.o

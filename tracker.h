@@ -140,6 +140,7 @@ private:
         Vector4f scale_psd_position(Vector4f in);
         void recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean);
         void feedback();
+        boost::thread feedback_thread;
         bool _running;
 
 public:

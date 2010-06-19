@@ -512,3 +512,19 @@ void otf_tracker::set_log_length(unsigned int len)
         active_log->set_capacity(len);
         inactive_log->set_capacity(len);
 }
+
+void otf_tracker::start_feedback()
+{
+        feedback_thread = boost::thread(&otf_tracker::feedback, this);
+}
+
+bool otf_tracker::running()
+{
+        return _running;
+}
+
+void otf_tracker::stop_feedback()
+{
+        feedback_thread.interrupt();
+}
+

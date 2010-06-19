@@ -85,13 +85,14 @@ static Vector3f find_bead(vector<collect_cb<4>::point> psd_data, vector<collect_
 	return (fb_data[min].values + fb_data[max].values) / 2;
 }
 
-Vector3f tracker::rough_calibrate()
+Vector3f tracker::rough_calibrate(Vector3f center)
 {
 	Vector3f start, step;
         Vector3u pts;
 
-	float tmp = 0.5 - rough_cal_xy_range / 2;
-	start << tmp, tmp, 0.5;
+	Vector3f tmp;
+        tmp << rough_cal_xy_range, rough_cal_xy_range, 0;
+        start = center - tmp/2;
 	step << rough_cal_xy_range / rough_cal_xy_pts, rough_cal_xy_range / rough_cal_xy_pts, 0;
 	pts << rough_cal_xy_pts, rough_cal_xy_pts, 1;
 	raster_route route_xy(start, step, pts);
@@ -111,7 +112,7 @@ Vector3f tracker::rough_calibrate()
                         (boost::format("Center %f %f") % laser_pos.x() % laser_pos.y()).str());
 
 	// Scan in Z direction
-	laser_pos.z() = 0.5 - rough_cal_z_range / 2;
+	laser_pos.z() = center.z() - rough_cal_z_range / 2;
 	step << 0, 0, rough_cal_z_range / rough_cal_z_pts;
 	pts << 1, 1, rough_cal_z_pts;
 	raster_route route_z(laser_pos, step, pts);
@@ -137,7 +138,7 @@ Vector3f tracker::rough_calibrate()
                 }
         }
         dump_data("rough_z", fb_data.data, psd_data.data);
-        laser_pos.z() = 0.5;
+        laser_pos.z() = center.z(); // DEBUG
 	return laser_pos;
 }
 

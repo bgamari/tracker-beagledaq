@@ -117,18 +117,6 @@ void add_tracker_params(tracker& tracker)
                         "Z axis derivative gain");
 }
 
-void add_otf_tracker_params(otf_tracker& tracker)
-{
-        def_param("otf.freq-x", tracker.perturb_freqs[0],
-                        "Frequencies of on-the-fly calibration perturbations (X axis)");
-        def_param("otf.freq-y", tracker.perturb_freqs[1],
-                        "Frequencies of on-the-fly calibration perturbations (Y axis)");
-        def_param("otf.freq-z", tracker.perturb_freqs[2],
-                        "Frequencies of on-the-fly calibration perturbations (Z axis)");
-        def_param("otf.amp", tracker.perturb_amp,
-                        "Amplitude of on-the-fly calibration perturbations");
-}
-
 std::string cmd_help =
 "Valid commands:\n"
 "  set [parameter] [value]      Set a parameter value\n"

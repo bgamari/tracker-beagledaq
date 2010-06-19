@@ -173,9 +173,9 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 	typedef boost::variate_generator<engine&, distribution> vg;
 	engine e;
 	array<vg,3> rngs = {{
-		vg(e, distribution(rough_pos.x()-fine_cal_range, rough_pos.x()+fine_cal_range)),
-		vg(e, distribution(rough_pos.y()-fine_cal_range, rough_pos.y()+fine_cal_range)),
-		vg(e, distribution(rough_pos.z()-fine_cal_range, rough_pos.z()+fine_cal_range))
+		vg(e, distribution(rough_pos.x()-fine_cal_xy_range, rough_pos.x()+fine_cal_xy_range)),
+		vg(e, distribution(rough_pos.y()-fine_cal_xy_range, rough_pos.y()+fine_cal_xy_range)),
+		vg(e, distribution(rough_pos.z()-fine_cal_z_range, rough_pos.z()+fine_cal_z_range))
 	}};
 	random_route<engine, distribution> rt(rngs, fine_cal_pts);
 	collect_cb<4> psd_collect(psd_inputs);

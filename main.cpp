@@ -75,8 +75,10 @@ void add_tracker_params(tracker& tracker)
         def_param("rough_cal.z_dwell", tracker.rough_cal_z_dwell,
                         "Rough calibration point dwell time (Z scan)");
 
-        def_param("fine_cal.range", tracker.fine_cal_range,
-                        "Amplitude of fine calibration perturbations");
+        def_param("fine_cal.xy_range", tracker.fine_cal_xy_range,
+                        "Amplitude of fine calibration perturbations (X and Y axes)");
+        def_param("fine_cal.z_range", tracker.fine_cal_z_range,
+                        "Amplitude of fine calibration perturbations (Z axis)");
         def_param("fine_cal.points", tracker.fine_cal_pts,
                         "Number of points in fine calibration scan");
         def_param("fine_cal.point_delay", tracker.fine_cal_pt_delay,

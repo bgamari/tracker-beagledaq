@@ -89,9 +89,9 @@ public:
         otf_tracker(input_channels<4>& psd_inputs,
                         stage& stage_outputs, input_channels<3>& fb_inputs) :
                 scale_psd_inputs(true),
-                perturb_amp(0.01),
+                perturb_amp(0.05),
                 recal_delay(100*1000), fb_delay(500),
-                move_skip_cycles(100),
+                move_skip_cycles(10),
                 fb_max_delta(0.2),
                 fb_setpoint(Vector3f::Zero()),
                 fb_show_rate(false), fb_rate_report_period(5),
@@ -105,7 +105,7 @@ public:
 
                 fb_pids[0] = pid_loop(0.6, 1e-3, 0, 10);
                 fb_pids[1] = pid_loop(0.6, 1e-3, 0, 10);
-                fb_pids[2] = pid_loop(1, 0, 0, 1);
+                fb_pids[2] = pid_loop(0.1, 0, 0, 10);
 
                 // Work around apparent gcc bug concerning initializer lists
                 perturb_freqs[0] = 67;

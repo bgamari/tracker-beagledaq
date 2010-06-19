@@ -90,9 +90,9 @@ Vector3f tracker::rough_calibrate()
 	Vector3f start, step;
         Vector3u pts;
 
-	float tmp = 0.5 - rough_cal_xy_step * rough_cal_xy_pts / 2;
+	float tmp = 0.5 - rough_cal_xy_range / 2;
 	start << tmp, tmp, 0.5;
-	step << rough_cal_xy_step, rough_cal_xy_step, 0;
+	step << rough_cal_xy_range / rough_cal_xy_pts, rough_cal_xy_range / rough_cal_xy_pts, 0;
 	pts << rough_cal_xy_pts, rough_cal_xy_pts, 1;
 	raster_route route_xy(start, step, pts);
 	collect_cb<4> psd_data(psd_inputs);
@@ -111,9 +111,9 @@ Vector3f tracker::rough_calibrate()
                         (boost::format("Center %f %f") % laser_pos.x() % laser_pos.y()).str());
 
 	// Scan in Z direction
-	laser_pos.z() = 0.5 - rough_cal_z_step * rough_cal_z_pts/2;
-	step = (Vector3f() << 0, 0, rough_cal_z_step).finished();
-	pts = (Vector3u() << 1, 1, rough_cal_z_pts).finished();
+	laser_pos.z() = 0.5 - rough_cal_z_range / 2;
+	step << 0, 0, rough_cal_z_range / rough_cal_z_pts;
+	pts << 1, 1, rough_cal_z_pts;
 	raster_route route_z(laser_pos, step, pts);
         psd_data.data.clear();
         fb_data.data.clear();

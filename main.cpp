@@ -62,12 +62,12 @@ void add_tracker_params(tracker& tracker)
         def_param("scale_psd_inputs", tracker.scale_psd_inputs,
                         "Scale PSD positions by sums");
 
-        def_param("rough_cal.xy_step", tracker.rough_cal_xy_step,
-                        "Step size of rough calibration raster scan (X and Y axes)");
+        def_param("rough_cal.xy_range", tracker.rough_cal_xy_range,
+                        "Scan size of rough calibration raster scan (X and Y axes)");
         def_param("rough_cal.xy_points", tracker.rough_cal_xy_pts,
                         "Number of points in rough calibration raster scan (X and Y axes)");
-        def_param("rough_cal.z_step", tracker.rough_cal_z_step,
-                        "Step size of rough calibration raster scan (Z axis)");
+        def_param("rough_cal.z_range", tracker.rough_cal_z_range,
+                        "Scan size of rough calibration raster scan (Z axis)");
         def_param("rough_cal.z_points", tracker.rough_cal_z_pts,
                         "Number of points in rough calibration raster scan (Z axis)");
 

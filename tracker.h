@@ -38,7 +38,7 @@ struct tracker {
         bool scale_psd_inputs;
 
         // Rough calibration parameters
-        float rough_cal_xy_step, rough_cal_z_step;
+        float rough_cal_xy_range, rough_cal_z_range;
         unsigned int rough_cal_xy_pts, rough_cal_z_pts;
 
         // Fine calibration parameters
@@ -81,7 +81,7 @@ public:
         tracker(input_channels<4>& psd_inputs,
 		stage& stage_outputs, input_channels<3>& fb_inputs) :
                 scale_psd_inputs(true),
-                rough_cal_xy_step(0.01), rough_cal_z_step(0.02),
+                rough_cal_xy_range(0.01), rough_cal_z_range(0.02),
                 rough_cal_xy_pts(20), rough_cal_z_pts(20),
                 fine_cal_range(0.02), fine_cal_pts(1000), fine_cal_pt_delay(1000),
                 fb_delay(100), fb_max_delta(0.5),

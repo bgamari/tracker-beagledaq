@@ -48,8 +48,8 @@ void dump_matrix(Matrix A, const char* filename)
 Vector4f tracker::scale_psd_position(Vector4f in)
 {
         if (scale_psd_inputs) {
-                in.x() /= in[2];
-                in.y() /= in[3];
+                float sum = in[3] - in[2];
+                in /= sum;
         }
         return in;
 }

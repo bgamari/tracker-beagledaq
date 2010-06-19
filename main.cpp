@@ -63,13 +63,17 @@ void add_tracker_params(tracker& tracker)
                         "Scale PSD positions by sums");
 
         def_param("rough_cal.xy_range", tracker.rough_cal_xy_range,
-                        "Scan size of rough calibration raster scan (X and Y axes)");
+                        "Scan size of rough calibration raster scan (X/Y scan");
         def_param("rough_cal.xy_points", tracker.rough_cal_xy_pts,
-                        "Number of points in rough calibration raster scan (X and Y axes)");
+                        "Number of points in rough calibration raster scan (X/Y scan");
+        def_param("rough_cal.xy_dwell", tracker.rough_cal_xy_dwell,
+                        "Rough calibration point dwell time (X/Y scan)");
         def_param("rough_cal.z_range", tracker.rough_cal_z_range,
-                        "Scan size of rough calibration raster scan (Z axis)");
+                        "Scan size of rough calibration raster scan (Z scan)");
         def_param("rough_cal.z_points", tracker.rough_cal_z_pts,
-                        "Number of points in rough calibration raster scan (Z axis)");
+                        "Number of points in rough calibration raster scan (Z scan)");
+        def_param("rough_cal.z_dwell", tracker.rough_cal_z_dwell,
+                        "Rough calibration point dwell time (Z scan)");
 
         def_param("fine_cal.range", tracker.fine_cal_range,
                         "Amplitude of fine calibration perturbations");

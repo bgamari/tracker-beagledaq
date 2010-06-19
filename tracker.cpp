@@ -100,7 +100,7 @@ Vector3f tracker::rough_calibrate(Vector3f center)
         collect_cb<3> fb_data(fb_inputs);
 	
         // Run X/Y scan and preprocess data
-	execute_route(stage_outputs, route_xy, {&psd_data, &fb_data}, 10);
+	execute_route(stage_outputs, route_xy, {&psd_data, &fb_data}, rough_cal_xy_dwell);
         for (auto i=psd_data.data.begin(); i != psd_data.data.end(); i++)
                 i->values = scale_psd_position(i->values);
 
@@ -120,7 +120,7 @@ Vector3f tracker::rough_calibrate(Vector3f center)
         fb_data.data.clear();
 
         // Run Z scan and preprocess data
-	execute_route(stage_outputs, route_z, {&psd_data, &fb_data}, 100);
+	execute_route(stage_outputs, route_z, {&psd_data, &fb_data}, rough_cal_z_dwell);
         for (auto i=psd_data.data.begin(); i != psd_data.data.end(); i++)
                 i->values = scale_psd_position(i->values);
 

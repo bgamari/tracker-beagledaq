@@ -162,9 +162,11 @@ public:
                 fb_show_rate(false), fb_rate_report_period(5),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),
-                fb_inputs(fb_inputs)
+                fb_inputs(fb_inputs),
+		_running(false)
         {
-                set_log_length(1000);
+		active_log = new boost::circular_buffer<pos_log_entry>(1000);
+		inactive_log = new boost::circular_buffer<pos_log_entry>(1000);
 
                 fb_pids[0] = pid_loop(0.6, 1e-3, 0, 10);
                 fb_pids[1] = pid_loop(0.6, 1e-3, 0, 10);

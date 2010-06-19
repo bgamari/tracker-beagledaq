@@ -180,7 +180,6 @@ void otf_tracker::feedback()
         unsigned int last_report_n = 0;
         std::ofstream f("pos");
         Matrix<float, 3,9> beta = Matrix<float,3,9>::Zero();
-        Vector3f position;
         Vector4f psd_mean = Vector4f::Zero();
         boost::thread recal_thread(&otf_tracker::recal_worker, this, beta, psd_mean);
 
@@ -220,18 +219,20 @@ void otf_tracker::feedback()
                         delta[i] = fb_pids[i].get_response();
                 }
 
-                // Move stage
-                Vector3f new_pos = fb - delta + fb_setpoint;
 		f << boost::format("%f\t%f\t%f\t%f\t%f\t%f\n") %
 				delta.x() % delta.y() % delta.z() %
-				position.x() % position.y() % position.z();
-		if (n % move_skip_cycles == 0)
+				fb.x() % fb.y() % fb.z();
+
+                // Move stage
+		if (n % move_skip_cycles == 0) {
+			Vector3f new_pos = fb - delta + fb_setpoint;
                         try {
                                 stage_outputs.move(new_pos);
                         } catch (clamped_output_error e) {
                                 fprintf(stderr, "Clamped\n");
                                 continue;
                         }
+		}
 
                 // Show feedback rate report
                 if (fb_show_rate && t > (last_report_t + fb_rate_report_period)) {

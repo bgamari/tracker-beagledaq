@@ -24,6 +24,7 @@
 #include "max1302.h"
 #include "tracker.h"
 #include "parameters.h"
+#include "utils.h"
 #include "config.h"
 
 #include <cstdint>

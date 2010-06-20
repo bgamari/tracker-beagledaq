@@ -19,6 +19,7 @@
  */
 
 #include "otf_tracker.h"
+#include "utils.h"
 
 #include <time.h>
 #include <utility>
@@ -35,15 +36,6 @@ using std::string;
 using std::vector;
 using std::array;
 using Eigen::Dynamic;
-
-template<typename Matrix>
-void dump_matrix(Matrix A, const char* filename)
-{
-	Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
-        std::ofstream os(filename);
-        os << A.format(fmt);
-        os.close();
-}
 
 Vector4f otf_tracker::scale_psd_position(Vector4f in)
 {

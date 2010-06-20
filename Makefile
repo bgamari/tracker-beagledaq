@@ -9,10 +9,10 @@ version.cpp ::
 	@echo "const char* version = \"$(shell git rev-parse HEAD)\";" > version.cpp
 	@echo "const char* branch = \"$(shell git name-rev HEAD | cut -d ' ' -f 2)\";" >> version.cpp
 
-tracker : main.o spi_device.o max5590.o max1270.o tracker.o pid.o parameters.o stage.o version.o
+tracker : main.o spi_device.o max5590.o max1270.o tracker.o pid.o parameters.o stage.o version.o utils.o
 	$(CXX) $(LDFLAGS) -o $@ $+
 
-tracker-otf : main_otf.o spi_device.o max5590.o max1270.o otf_tracker.o pid.o parameters.o stage.o version.o
+tracker-otf : main_otf.o spi_device.o max5590.o max1270.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o
 	$(CXX) $(LDFLAGS) -o $@ $+
 
 raster_dump : spi_device.o max5590.o max1270.o stage.o

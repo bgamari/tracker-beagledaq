@@ -19,6 +19,7 @@
  */
 
 #include "tracker.h"
+#include "utils.h"
 
 #include <time.h>
 #include <utility>
@@ -36,15 +37,6 @@ using std::vector;
 using std::array;
 using Eigen::Dynamic;
 
-template<typename Matrix>
-void dump_matrix(Matrix A, const char* filename)
-{
-	Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
-        std::ofstream os(filename);
-        os << A.format(fmt);
-        os.close();
-}
-
 Vector4f tracker::scale_psd_position(Vector4f in)
 {
         if (scale_psd_inputs) {
@@ -52,19 +44,6 @@ Vector4f tracker::scale_psd_position(Vector4f in)
                 in /= sum;
         }
         return in;
-}
-
-static void dump_data(std::string file, vector<collect_cb<3>::point> fb_data,
-                vector<collect_cb<4>::point> psd_data, string comment="") {
-        std::ofstream f(file);
-        if (comment.length())
-                f << "# " << comment << "\n";
-	f << "# pos_x pos_y pos_z\tfb_x fb_y fb_z\tpsd_x psd_y sum_x sum_y\n";
-        for (unsigned int i=0; i < psd_data.size(); i++)
-		f << boost::format("%f %f %f\t%f %f %f\t%f %f %f %f\n") %
-				fb_data[i].position[0] % fb_data[i].position[1] % fb_data[i].position[2] %
-                                fb_data[i].values[0] % fb_data[i].values[1] % fb_data[i].values[2] %
-				psd_data[i].values[0] % psd_data[i].values[1] % psd_data[i].values[2] % psd_data[i].values[3];
 }
 
 template<unsigned int axis>

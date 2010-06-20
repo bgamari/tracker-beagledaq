@@ -38,13 +38,7 @@
 using std::array;
 using std::string;
 
-std::vector<parameter*> parameters;
-
-template<typename T>
-void def_param(string name, T& value, string description) {
-        parameter* p = new typed_value<T>(name, description, value);
-        parameters.push_back(p);
-}
+static Eigen::IOFormat mat_fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
 
 struct pid_tau_param : parameter {
         pid_loop& pid;
@@ -58,73 +52,8 @@ struct pid_tau_param : parameter {
         }
 };
 
-void add_tracker_params(tracker& tracker)
-{
-        def_param("scale_psd_inputs", tracker.scale_psd_inputs,
-                        "Scale PSD positions by sums");
 
-        def_param("rough_cal.xy_range", tracker.rough_cal_xy_range,
-                        "Scan size of rough calibration raster scan (X/Y scan");
-        def_param("rough_cal.xy_points", tracker.rough_cal_xy_pts,
-                        "Number of points in rough calibration raster scan (X/Y scan");
-        def_param("rough_cal.xy_dwell", tracker.rough_cal_xy_dwell,
-                        "Rough calibration point dwell time (X/Y scan)");
-        def_param("rough_cal.z_range", tracker.rough_cal_z_range,
-                        "Scan size of rough calibration raster scan (Z scan)");
-        def_param("rough_cal.z_points", tracker.rough_cal_z_pts,
-                        "Number of points in rough calibration raster scan (Z scan)");
-        def_param("rough_cal.z_dwell", tracker.rough_cal_z_dwell,
-                        "Rough calibration point dwell time (Z scan)");
-
-        def_param("fine_cal.xy_range", tracker.fine_cal_xy_range,
-                        "Amplitude of fine calibration perturbations (X and Y axes)");
-        def_param("fine_cal.z_range", tracker.fine_cal_z_range,
-                        "Amplitude of fine calibration perturbations (Z axis)");
-        def_param("fine_cal.points", tracker.fine_cal_pts,
-                        "Number of points in fine calibration scan");
-        def_param("fine_cal.point_delay", tracker.fine_cal_pt_delay,
-                        "Delay in usec between fine calibration points");
-
-        def_param("feedback.delay", tracker.fb_delay,
-                        "Delay between feedback loop iterations");
-        def_param("feedback.max_delta", tracker.fb_max_delta,
-                        "Maximum allowed position change during feedback");
-        def_param("feedback.show_rate", tracker.fb_show_rate,
-                        "Report on feedback loop iteration rate");
-        def_param("feedback.setpoint-x", tracker.fb_setpoint.x(),
-                        "X axis setpoint");
-        def_param("feedback.setpoint-y", tracker.fb_setpoint.y(),
-                        "Y axis setpoint");
-        def_param("feedback.setpoint-z", tracker.fb_setpoint.z(),
-                        "Z axis setpoint");
-
-        def_param("pids.x_prop", tracker.fb_pids[0].prop_gain,
-                        "X axis proportional gain");
-        def_param("pids.y_prop", tracker.fb_pids[1].prop_gain,
-                        "Y axis proportional gain");
-        def_param("pids.z_prop", tracker.fb_pids[2].prop_gain,
-                        "Z axis proportional gain");
-        def_param("pids.x_int", tracker.fb_pids[0].int_gain,
-                        "X axis integral gain");
-        def_param("pids.y_int", tracker.fb_pids[1].int_gain,
-                        "Y axis integral gain");
-        def_param("pids.z_int", tracker.fb_pids[2].int_gain,
-                        "Z axis integral gain");
-        parameters.push_back(new pid_tau_param("pids.x_tau", tracker.fb_pids[0],
-                                "X axis integral time constant"));
-        parameters.push_back(new pid_tau_param("pids.y_tau", tracker.fb_pids[1],
-                                "Y axis integral time constant"));
-        parameters.push_back(new pid_tau_param("pids.z_tau", tracker.fb_pids[2],
-                                "Z axis integral time constant"));
-        def_param("pids.x_diff", tracker.fb_pids[0].diff_gain,
-                        "X axis derivative gain");
-        def_param("pids.y_diff", tracker.fb_pids[1].diff_gain,
-                        "Y axis derivative gain");
-        def_param("pids.z_diff", tracker.fb_pids[2].diff_gain,
-                        "Z axis derivative gain");
-}
-
-std::string cmd_help =
+static std::string cmd_help =
 "Valid commands:\n"
 "  set [parameter] [value]      Set a parameter value\n"
 "  get [parameter]              Get the value of a parameter\n"
@@ -141,60 +70,120 @@ std::string cmd_help =
 "  exit                         Exit\n"
 "  help                         This help message\n";
 
-void feedback_ended() {
-        std::cout << "FB-ERR\n";
-}
-
-int main(int argc, char** argv)
-{
-//#define TEST
-#ifndef TEST
-	max1302 psd_adc(psd_adc_dev);
-	max1302 fb_adc(fb_adc_dev);
-	max1302_inputs<4> psd_inputs(psd_adc, psd_chans, max1302::SE_MINUS_VREF_PLUS_VREF);
-	max1302_inputs<3> fb_inputs(fb_adc, fb_chans, max1302::SE_ZERO_PLUS_VREF);
-        max1302_inputs<1> pd_input(fb_adc, pd_chans, max1302::SE_ZERO_PLUS_VREF);
-
-	max5134 dac(stage_pos_dac_dev);
-	max5134_outputs<3> stage_outputs(dac, stage_chans);
-#else	
-	test_inputs<4> psd_inputs;
-	test_inputs<3> fb_inputs;
-	test_outputs<3> stage_outputs;
-#endif
-
-	fb_stage stage(stage_outputs, fb_inputs);
-	stage.calibrate();
-	stage.move({0.5, 0.5, 0.5});
-        def_param("stage.cal_range", stage.cal_range, "Stage calibration range");
-
-	usleep(10*1000);
-        tracker tracker(psd_inputs, stage, fb_inputs);
-        add_tracker_params(tracker);
-        tracker.feedback_ended_cb = &feedback_ended;
-
-        boost::char_separator<char> sep("\t ");
-	Eigen::IOFormat mat_fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
-        tracker::fine_cal_result fine_cal;
+struct tracker_cli {
+        std::vector<parameter*> parameters;
+        input_channels<4>& psd_inputs;
+        input_channels<3>& fb_inputs;
+        output_channels<3>& stage_outputs;
+        fb_stage stage;
+        tracker tr;
         Vector3f rough_pos;
-        rough_pos << 0.5, 0.5, 0.5;
-        def_param("rough.pos_x", rough_pos.x(), "Rough calibration position (X axis)");
-        def_param("rough.pos_y", rough_pos.y(), "Rough calibration position (Y axis)");
-        def_param("rough.pos_z", rough_pos.z(), "Rough calibration position (Z axis)");
+        tracker::fine_cal_result fine_cal;
 
-        std::cout << "Tracker " << version << "\n";
-	while (true) {
-                char* tmp = readline("> ");
-                if (!tmp) break;
-                string line = tmp;
-                if (line == "" || line[0] == '#') {
-                        free(tmp);
-                        continue;
-                }
-                add_history(tmp);
-                free(tmp);
+        template<typename T>
+        void def_param(string name, T& value, string description) {
+                parameter* p = new typed_value<T>(name, description, value);
+                parameters.push_back(p);
+        }
+
+        void add_tracker_params(tracker& tracker)
+        {
+                def_param("scale_psd_inputs", tracker.scale_psd_inputs,
+                                "Scale PSD positions by sums");
+
+                def_param("rough_cal.xy_range", tracker.rough_cal_xy_range,
+                                "Scan size of rough calibration raster scan (X/Y scan");
+                def_param("rough_cal.xy_points", tracker.rough_cal_xy_pts,
+                                "Number of points in rough calibration raster scan (X/Y scan");
+                def_param("rough_cal.xy_dwell", tracker.rough_cal_xy_dwell,
+                                "Rough calibration point dwell time (X/Y scan)");
+                def_param("rough_cal.z_range", tracker.rough_cal_z_range,
+                                "Scan size of rough calibration raster scan (Z scan)");
+                def_param("rough_cal.z_points", tracker.rough_cal_z_pts,
+                                "Number of points in rough calibration raster scan (Z scan)");
+                def_param("rough_cal.z_dwell", tracker.rough_cal_z_dwell,
+                                "Rough calibration point dwell time (Z scan)");
+
+                def_param("fine_cal.xy_range", tracker.fine_cal_xy_range,
+                                "Amplitude of fine calibration perturbations (X and Y axes)");
+                def_param("fine_cal.z_range", tracker.fine_cal_z_range,
+                                "Amplitude of fine calibration perturbations (Z axis)");
+                def_param("fine_cal.points", tracker.fine_cal_pts,
+                                "Number of points in fine calibration scan");
+                def_param("fine_cal.point_delay", tracker.fine_cal_pt_delay,
+                                "Delay in usec between fine calibration points");
+
+                def_param("feedback.delay", tracker.fb_delay,
+                                "Delay between feedback loop iterations");
+                def_param("feedback.max_delta", tracker.fb_max_delta,
+                                "Maximum allowed position change during feedback");
+                def_param("feedback.show_rate", tracker.fb_show_rate,
+                                "Report on feedback loop iteration rate");
+                def_param("feedback.setpoint-x", tracker.fb_setpoint.x(),
+                                "X axis setpoint");
+                def_param("feedback.setpoint-y", tracker.fb_setpoint.y(),
+                                "Y axis setpoint");
+                def_param("feedback.setpoint-z", tracker.fb_setpoint.z(),
+                                "Z axis setpoint");
+
+                def_param("pids.x_prop", tracker.fb_pids[0].prop_gain,
+                                "X axis proportional gain");
+                def_param("pids.y_prop", tracker.fb_pids[1].prop_gain,
+                                "Y axis proportional gain");
+                def_param("pids.z_prop", tracker.fb_pids[2].prop_gain,
+                                "Z axis proportional gain");
+                def_param("pids.x_int", tracker.fb_pids[0].int_gain,
+                                "X axis integral gain");
+                def_param("pids.y_int", tracker.fb_pids[1].int_gain,
+                                "Y axis integral gain");
+                def_param("pids.z_int", tracker.fb_pids[2].int_gain,
+                                "Z axis integral gain");
+                parameters.push_back(new pid_tau_param("pids.x_tau", tracker.fb_pids[0],
+                                        "X axis integral time constant"));
+                parameters.push_back(new pid_tau_param("pids.y_tau", tracker.fb_pids[1],
+                                        "Y axis integral time constant"));
+                parameters.push_back(new pid_tau_param("pids.z_tau", tracker.fb_pids[2],
+                                        "Z axis integral time constant"));
+                def_param("pids.x_diff", tracker.fb_pids[0].diff_gain,
+                                "X axis derivative gain");
+                def_param("pids.y_diff", tracker.fb_pids[1].diff_gain,
+                                "Y axis derivative gain");
+                def_param("pids.z_diff", tracker.fb_pids[2].diff_gain,
+                                "Z axis derivative gain");
+        }
+
+        static void feedback_ended() {
+                std::cout << "$ FB-ERR\n";
+        }
+
+        tracker_cli(input_channels<4>& psd_inputs,
+                        input_channels<3>& fb_inputs,
+                        output_channels<3>& stage_outputs) :
+                psd_inputs(psd_inputs), fb_inputs(fb_inputs), stage_outputs(stage_outputs),
+                stage(stage_outputs, fb_inputs),
+                tr(psd_inputs, stage, fb_inputs)
+        {
+                stage.calibrate();
+                stage.move({0.5, 0.5, 0.5});
+                def_param("stage.cal_range", stage.cal_range, "Stage calibration range");
+                usleep(10*1000);
+
+                add_tracker_params(tr);
+                tr.feedback_ended_cb = &tracker_cli::feedback_ended;
+
+                rough_pos << 0.5, 0.5, 0.5;
+                def_param("rough.pos_x", rough_pos.x(), "Rough calibration position (X axis)");
+                def_param("rough.pos_y", rough_pos.y(), "Rough calibration position (Y axis)");
+                def_param("rough.pos_z", rough_pos.z(), "Rough calibration position (Z axis)");
+
+                std::cout << "Tracker " << version << "\n";
+        }
+
+        bool do_command(string cmdline)
+        {
                 typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
-		tokenizer tokens(line, sep);
+                boost::char_separator<char> sep("\t ");
+		tokenizer tokens(cmdline, sep);
 		tokenizer::iterator tok = tokens.begin();
 
 		string cmd = *tok; tok++;
@@ -246,27 +235,27 @@ int main(int argc, char** argv)
                         stage.calibrate();
                         std::cout << "! OK\n";
                 } else if (cmd == "rough-cal") {
-                        rough_pos = tracker.rough_calibrate();
+                        rough_pos = tr.rough_calibrate();
                         stage.move(rough_pos);
                         std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "fine-cal") {
-                        fine_cal = tracker.fine_calibrate(rough_pos);
+                        fine_cal = tr.fine_calibrate(rough_pos);
                         stage.move(rough_pos);
                         std::cout << "! OK\n";
                 } else if (cmd == "show-coeffs") {
                         std::cout << fine_cal.beta.format(mat_fmt) << "\n";
                 } else if (cmd == "feedback-start") {
-                        if (tracker.running())
+                        if (tr.running())
                                 std::cout << "! ERR\tAlready running\n";
                         else {
-                                tracker.start_feedback(fine_cal);
+                                tr.start_feedback(fine_cal);
                                 std::cout << "! OK\tFeedback running\n";
                         }
                 } else if (cmd == "feedback-stop") {
-                        if (!tracker.running())
+                        if (!tr.running())
                                 std::cout << "ERR\tNot running\n";
                         else {
-                                tracker.stop_feedback();
+                                tr.stop_feedback();
                                 std::cout << "OK\tFeedback stopped\n";
                         }
                 } else if (cmd == "pause") {
@@ -276,7 +265,7 @@ int main(int argc, char** argv)
                         float time = boost::lexical_cast<float>(*tok);
                         usleep(time * 1e6);
                 } else if (cmd == "exit" || cmd == "quit") {
-                        return 0;
+                        return true;
                 } else if (cmd == "help") {
                         std::cout << "Valid Commands:\n";
                         std::cout << cmd_help << "\n";
@@ -284,7 +273,46 @@ int main(int argc, char** argv)
                         std::cout << branch << "\t" << version << "\n";
 		} else
 			std::cout << "! ERR\tInvalid command\n";
-	}
+                return false;
+        }
+
+        void mainloop() {
+                bool stop = false;
+                while (!stop) {
+                        char* tmp = readline("> ");
+                        if (!tmp) break;
+                        string line = tmp;
+                        if (line == "" || line[0] == '#') {
+                                free(tmp);
+                                continue;
+                        }
+                        add_history(tmp);
+                        free(tmp);
+                        stop = do_command(line);
+                }
+        }
+};
+
+int main(int argc, char** argv)
+{
+//#define TEST
+#ifndef TEST
+	max1302 psd_adc(psd_adc_dev);
+	max1302 fb_adc(fb_adc_dev);
+	max1302_inputs<4> psd_inputs(psd_adc, psd_chans, max1302::SE_MINUS_VREF_PLUS_VREF);
+	max1302_inputs<3> fb_inputs(fb_adc, fb_chans, max1302::SE_ZERO_PLUS_VREF);
+        max1302_inputs<1> pd_input(fb_adc, pd_chans, max1302::SE_ZERO_PLUS_VREF);
+
+	max5134 dac(stage_pos_dac_dev);
+	max5134_outputs<3> stage_outputs(dac, stage_chans);
+#else	
+	test_inputs<4> psd_inputs;
+	test_inputs<3> fb_inputs;
+	test_outputs<3> stage_outputs;
+#endif
+
+        tracker_cli cli(psd_inputs, fb_inputs, stage_outputs);
+        cli.mainloop();
 
 	return 0;
 }

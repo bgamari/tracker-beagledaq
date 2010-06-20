@@ -208,7 +208,11 @@ struct tracker_cli {
                 while (is.good()) {
                         string line;
                         std::getline(is, line);
-                        do_command(line);
+                        try {
+                                do_command(line);
+                        } catch (std::exception e) {
+                                std::cout << "! Command failed\n";
+                        }
                 }
         }
 
@@ -324,7 +328,11 @@ struct tracker_cli {
                         }
                         add_history(tmp);
                         free(tmp);
-                        stop = do_command(line);
+                        try {
+                                stop = do_command(line);
+                        } catch (std::exception e) {
+                                std::cout << "! Command failed\n";
+                        }
                 }
         }
 };

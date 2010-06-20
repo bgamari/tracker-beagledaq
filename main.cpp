@@ -55,19 +55,23 @@ struct pid_tau_param : parameter {
 
 static std::string cmd_help =
 "Valid commands:\n"
+"  source [file]                Read commands from file\n"
 "  set [parameter] [value]      Set a parameter value\n"
 "  get [parameter]              Get the value of a parameter\n"
 "  list                         List all parameters and their values\n"
 "  read-psd                     Read PSD values\n"
 "  read-fb                      Read stage feedback sensor values\n"
 "  move [x] [y] [z]             Move stage to position (x, y, z)\n"
+"  move-rough-pos               Move stage to rough position\n"
 "  center                       Move stage to position (0.5, 0.5, 0.5)\n"
+"  stage-cal                    Run stage calibration\n"
 "  rough-cal                    Run rough calibration\n"
 "  fine-cal                     Run fine calibration (requires rough-cal)\n"
 "  show-coeffs                  Show fine calibration regression matrix\n"
 "  feedback-start               Start feedback (requires fine-cal)\n"
 "  feedback-stop                Stop feedback loop\n"
 "  exit                         Exit\n"
+"  version                      Show version information\n"
 "  help                         This help message\n";
 
 struct tracker_cli {
@@ -270,16 +274,9 @@ struct tracker_cli {
                                 tr.stop_feedback();
                                 std::cout << "OK\tFeedback stopped\n";
                         }
-                } else if (cmd == "pause") {
-                        std::cout << "Press enter when ready\n";
-                        getchar();
-                } else if (cmd == "wait") {
-                        float time = boost::lexical_cast<float>(*tok);
-                        usleep(time * 1e6);
-                } else if (cmd == "exit" || cmd == "quit") {
+                } else if (cmd == "exit") {
                         return true;
                 } else if (cmd == "help") {
-                        std::cout << "Valid Commands:\n";
                         std::cout << cmd_help << "\n";
                 } else if (cmd == "version") {
                         std::cout << branch << "\t" << version << "\n";

@@ -70,6 +70,7 @@ static std::string cmd_help =
 "  show-coeffs                  Show fine calibration regression matrix\n"
 "  feedback-start               Start feedback (requires fine-cal)\n"
 "  feedback-stop                Stop feedback loop\n"
+"  scan                         Run manual scan (configure with scan.* parameters)\n"
 "  exit                         Exit\n"
 "  version                      Show version information\n"
 "  help                         This help message\n";
@@ -83,6 +84,9 @@ struct tracker_cli {
         tracker tr;
         Vector3f rough_pos;
         tracker::fine_cal_result fine_cal;
+        Vector3f scan_center, scan_range;
+        Vector3u scan_points;
+        unsigned int scan_delay;
 
         template<typename T>
         void def_param(string name, T& value, string description) {
@@ -123,11 +127,11 @@ struct tracker_cli {
                                 "Maximum allowed position change during feedback");
                 def_param("feedback.show_rate", tracker.fb_show_rate,
                                 "Report on feedback loop iteration rate");
-                def_param("feedback.setpoint-x", tracker.fb_setpoint.x(),
+                def_param("feedback.setpoint_x", tracker.fb_setpoint.x(),
                                 "X axis setpoint");
-                def_param("feedback.setpoint-y", tracker.fb_setpoint.y(),
+                def_param("feedback.setpoint_y", tracker.fb_setpoint.y(),
                                 "Y axis setpoint");
-                def_param("feedback.setpoint-z", tracker.fb_setpoint.z(),
+                def_param("feedback.setpoint_z", tracker.fb_setpoint.z(),
                                 "Z axis setpoint");
 
                 def_param("pids.x_prop", tracker.fb_pids[0].prop_gain,
@@ -165,7 +169,8 @@ struct tracker_cli {
                         output_channels<3>& stage_outputs) :
                 psd_inputs(psd_inputs), fb_inputs(fb_inputs), stage_outputs(stage_outputs),
                 stage(stage_outputs, fb_inputs),
-                tr(psd_inputs, stage, fb_inputs)
+                tr(psd_inputs, stage, fb_inputs),
+                scan_delay(100)
         {
                 stage.calibrate();
                 stage.move({0.5, 0.5, 0.5});
@@ -179,6 +184,20 @@ struct tracker_cli {
                 def_param("rough.pos_x", rough_pos.x(), "Rough calibration position (X axis)");
                 def_param("rough.pos_y", rough_pos.y(), "Rough calibration position (Y axis)");
                 def_param("rough.pos_z", rough_pos.z(), "Rough calibration position (Z axis)");
+
+                scan_center << 0.5, 0.5, 0.5;
+                scan_range << 0.1, 0.1, 0.1;
+                scan_points << 100, 100, 100;
+                def_param("scan.center_x", scan_center.x(), "Center of manual scan (X axis)");
+                def_param("scan.center_y", scan_center.y(), "Center of manual scan (Y axis)");
+                def_param("scan.center_z", scan_center.z(), "Center of manual scan (Z axis)");
+                def_param("scan.range_x", scan_range.x(), "Range of manual scan (X axis)");
+                def_param("scan.range_y", scan_range.y(), "Range of manual scan (Y axis)");
+                def_param("scan.range_z", scan_range.z(), "Range of manual scan (Z axis)");
+                def_param("scan.points_x", scan_points.x(), "Number of points in manual scan (X axis)");
+                def_param("scan.points_y", scan_points.y(), "Number of points in manual scan (Y axis)");
+                def_param("scan.points_z", scan_points.z(), "Number of points in manual scan (Z axis)");
+                def_param("scan.delay", scan_delay, "Delay between points in manual scan");
 
                 std::cout << "Tracker " << version << "\n";
         }
@@ -280,6 +299,14 @@ struct tracker_cli {
                         std::cout << cmd_help << "\n";
                 } else if (cmd == "version") {
                         std::cout << branch << "\t" << version << "\n";
+                } else if (cmd == "scan") {
+                        Vector3f start = scan_center - scan_range / 2;
+                        Vector3f step = scan_range.array() / scan_points.array().cast<float>();
+                        raster_route r(start, step, scan_points);
+                        collect_cb<4> psd_data(psd_inputs);
+                        collect_cb<3> fb_data(fb_inputs);
+                        execute_route(stage, r, {&psd_data, &fb_data}, scan_delay);
+                        dump_data("scan", fb_data.data, psd_data.data);
 		} else
 			std::cout << "! ERR\tInvalid command\n";
                 return false;

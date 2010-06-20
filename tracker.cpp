@@ -262,7 +262,7 @@ void tracker::feedback(fine_cal_result cal)
 
                 // Move stage
                 Vector3f new_pos = fb - delta + fb_setpoint;
-		new_pos.z() = 0.5;
+		new_pos.z() = fb_setpoint.z();
 		f << boost::format("%f\t%f\t%f\t%f\t%f\t%f\n") %
 				delta.x() % delta.y() % delta.z() %
 				new_pos.x() % new_pos.y() % new_pos.z();

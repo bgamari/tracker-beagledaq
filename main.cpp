@@ -203,19 +203,19 @@ int main(int argc, char** argv)
 			string value = *tok;
 			parameter* p = find_parameter(parameters, param);
 			if (!p)
-                                std::cout << "Unknown parameter\n";
+                                std::cout << "! Unknown parameter\n";
                         else {
                                 try {
                                         *p = value;
                                 } catch (std::exception e) {
-                                        std::cout << "ERR\tInvalid value\n";
+                                        std::cout << "! ERR\tInvalid value\n";
                                 }
                         }
 		} else if (cmd == "get") {
 			string param = *tok;
 			parameter* p = find_parameter(parameters, param);
 			if (!p)
-                                std::cout << "Unknown parameter\n";
+                                std::cout << "! Unknown parameter\n";
                         else
                                 std::cout << param << " = " << *p << "\n";
 		} else if (cmd == "list") {
@@ -234,17 +234,17 @@ int main(int argc, char** argv)
                         pos.y() = lexical_cast<float>(*tok); tok++;
                         pos.z() = lexical_cast<float>(*tok);
                         stage.move(pos);
-                        std::cout << "OK\n";
+                        std::cout << "! OK\n";
                 } else if (cmd == "move-rough-pos") {
                         stage.move(rough_pos);
-                        std::cout << "OK\n";
+                        std::cout << "! OK\n";
                 } else if (cmd == "center") {
                         Vector3f pos = 0.5 * Vector3f::Ones();
                         stage.move(pos);
-                        std::cout << "OK\n";
+                        std::cout << "! OK\n";
                 } else if (cmd == "stage-cal") {
                         stage.calibrate();
-                        std::cout << "OK\n";
+                        std::cout << "! OK\n";
                 } else if (cmd == "rough-cal") {
                         rough_pos = tracker.rough_calibrate();
                         stage.move(rough_pos);
@@ -252,14 +252,15 @@ int main(int argc, char** argv)
                 } else if (cmd == "fine-cal") {
                         fine_cal = tracker.fine_calibrate(rough_pos);
                         stage.move(rough_pos);
+                        std::cout << "! OK\n";
                 } else if (cmd == "show-coeffs") {
                         std::cout << fine_cal.beta.format(mat_fmt) << "\n";
                 } else if (cmd == "feedback-start") {
                         if (tracker.running())
-                                std::cout << "ERR\tAlready running\n";
+                                std::cout << "! ERR\tAlready running\n";
                         else {
                                 tracker.start_feedback(fine_cal);
-                                std::cout << "OK\tFeedback running\n";
+                                std::cout << "! OK\tFeedback running\n";
                         }
                 } else if (cmd == "feedback-stop") {
                         if (!tracker.running())
@@ -282,7 +283,7 @@ int main(int argc, char** argv)
                 } else if (cmd == "version") {
                         std::cout << branch << "\t" << version << "\n";
 		} else
-			std::cout << "ERR\tInvalid command\n";
+			std::cout << "! ERR\tInvalid command\n";
 	}
 
 	return 0;

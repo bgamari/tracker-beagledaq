@@ -179,6 +179,16 @@ struct tracker_cli {
                 std::cout << "Tracker " << version << "\n";
         }
 
+        void source(string file) 
+        {
+                std::ifstream is(file);
+                while (is.good()) {
+                        string line;
+                        std::getline(is, line);
+                        do_command(line);
+                }
+        }
+
         bool do_command(string cmdline)
         {
                 typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
@@ -187,7 +197,9 @@ struct tracker_cli {
 		tokenizer::iterator tok = tokens.begin();
 
 		string cmd = *tok; tok++;
-		if (cmd == "set") {
+                if (cmd == "source") {
+                        source(*tok);
+                } else if (cmd == "set") {
 			string param = *tok; tok++;
 			string value = *tok;
 			parameter* p = find_parameter(parameters, param);

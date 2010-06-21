@@ -61,6 +61,8 @@ void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
                                         fb_pos.x(), fb_pos.y(), fb_pos.z());
                 }
 	}
+        usleep(10*1000);
+        last_pos = fb.get();
 	fclose(f);
         R = X.svd().solve(Y);
 }

@@ -38,6 +38,7 @@ public:
         const output_channels<3>& out;
         stage(const output_channels<3>& out) : out(out) { }
 	virtual void move(const Vector3f pos);
+        void smooth_move(Vector3f to, unsigned int move_time);
 	Vector3f get_last_pos() const;
 };
 
@@ -57,8 +58,6 @@ public:
 	void calibrate(unsigned int n_pts=10, unsigned int n_samp=10);
 	void move(const Vector3f pos);
 };
-
-void smooth_move(stage& stage, Vector3f to, unsigned int move_time);
 
 /*
  * point_callback: A callback function called on every point of a route

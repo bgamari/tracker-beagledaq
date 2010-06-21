@@ -46,7 +46,7 @@ void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
 	for (unsigned int i=0; i<n_pts; i++) {
 		Vector3f out_pos;
 		out_pos << vg(), vg(), vg();
-                smooth_move(raw_stage, out_pos, 4*1000);
+                raw_stage.smooth_move(out_pos, 4*1000);
 		usleep(100*1000);
 
                 for (unsigned int n=0; n<n_samp; n++) {
@@ -81,21 +81,22 @@ void fb_stage::move(const Vector3f pos)
  *
  * TODO: Acceleration?
  */
-void smooth_move(stage& stage, Vector3f to, unsigned int move_time)
+void stage::smooth_move(Vector3f to, unsigned int move_time)
 {
 	// How long to wait in between smoothed position updates
-	const unsigned int smooth_delay = 10; // us
+	const unsigned int smooth_delay = 50; // us
 	const unsigned int smooth_pts = move_time / smooth_delay;
-	Vector3f initial = stage.get_last_pos();
+	Vector3f initial = get_last_pos();
 	Vector3f step = (to - initial) / smooth_pts;
 
 	// Smoothly move into position
 	for (unsigned int i=0; i<smooth_pts; i++) {
 		Vector3f pos = initial + i*step;
-		stage.move(pos);
+		move(pos);
 		usleep(smooth_delay);
 	}
-	stage.move(to);
+        // Make sure we are all the way there
+	move(to);
 }
 
 /*
@@ -110,7 +111,7 @@ void execute_route(stage& stage, route& route, vector<point_callback*> cbs,
         usleep(10*1000);
 	for (; route.has_more(); ++route) {
 		Vector3f pos = route.get_pos();
-		smooth_move(stage, pos, move_time);
+		stage.smooth_move(pos, move_time);
 		usleep(point_delay);
 		for (auto cb = cbs.begin(); cb != cbs.end(); cb++)
 			if (! (**cb)(pos))

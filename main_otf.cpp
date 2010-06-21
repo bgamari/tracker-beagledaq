@@ -154,7 +154,7 @@ int main(int argc, char** argv)
 
 	fb_stage stage(stage_outputs, fb_inputs);
 	stage.calibrate();
-	stage.move({0.5, 0.5, 0.5});
+	stage.smooth_move({0.5, 0.5, 0.5}, 10000);
         def_param("stage.cal_range", stage.cal_range, "Stage calibration range");
 
 	usleep(10*1000);
@@ -216,11 +216,11 @@ int main(int argc, char** argv)
                         pos.x() = lexical_cast<float>(*tok); tok++;
                         pos.y() = lexical_cast<float>(*tok); tok++;
                         pos.z() = lexical_cast<float>(*tok);
-                        stage.move(pos);
+                        stage.smooth_move(pos, 10000);
                         std::cout << "OK\n";
                 } else if (cmd == "center") {
                         Vector3f pos = 0.5 * Vector3f::Ones();
-                        stage.move(pos);
+                        stage.smooth_move(pos, 10000);
                         std::cout << "OK\n";
                 } else if (cmd == "stage-cal") {
                         stage.calibrate();

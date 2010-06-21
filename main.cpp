@@ -173,7 +173,7 @@ struct tracker_cli {
                 scan_delay(100)
         {
                 stage.calibrate();
-                stage.move({0.5, 0.5, 0.5});
+                stage.smooth_move({0.5, 0.5, 0.5}, 10000);
                 def_param("stage.cal_range", stage.cal_range, "Stage calibration range");
                 usleep(10*1000);
 
@@ -261,25 +261,25 @@ struct tracker_cli {
                         pos.x() = lexical_cast<float>(*tok); tok++;
                         pos.y() = lexical_cast<float>(*tok); tok++;
                         pos.z() = lexical_cast<float>(*tok);
-                        stage.move(pos);
+                        stage.smooth_move(pos, 10000);
                         std::cout << "! OK\n";
                 } else if (cmd == "move-rough-pos") {
-                        stage.move(rough_pos);
+                        stage.smooth_move(rough_pos, 10000);
                         std::cout << "! OK\n";
                 } else if (cmd == "center") {
                         Vector3f pos = 0.5 * Vector3f::Ones();
-                        stage.move(pos);
+                        stage.smooth_move(pos, 10000);
                         std::cout << "! OK\n";
                 } else if (cmd == "stage-cal") {
                         stage.calibrate();
                         std::cout << "! OK\n";
                 } else if (cmd == "rough-cal") {
                         rough_pos = tr.rough_calibrate();
-                        stage.move(rough_pos);
+                        stage.smooth_move(rough_pos, 5000);
                         std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "fine-cal") {
                         fine_cal = tr.fine_calibrate(rough_pos);
-                        stage.move(rough_pos);
+                        stage.smooth_move(rough_pos, 1000);
                         std::cout << "! OK\n";
                 } else if (cmd == "show-coeffs") {
                         std::cout << fine_cal.beta.format(mat_fmt) << "\n";

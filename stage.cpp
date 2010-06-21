@@ -109,7 +109,7 @@ void stage::smooth_move(Vector3f to, unsigned int move_time)
 void execute_route(stage& stage, route& route, vector<point_callback*> cbs,
 		unsigned int point_delay, unsigned int move_time)
 {
-        stage.move(route.get_pos());
+        stage.smooth_move(route.get_pos(), move_time*10);
         usleep(10*1000);
 	for (; route.has_more(); ++route) {
 		Vector3f pos = route.get_pos();

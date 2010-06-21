@@ -92,6 +92,7 @@ Vector3f tracker::rough_calibrate(Vector3f center)
 
 	// Scan in Z direction
 	laser_pos.z() = center.z() - rough_cal_z_range / 2;
+        stage_outputs.smooth_move(laser_pos, 4000);
 	step << 0, 0, rough_cal_z_range / rough_cal_z_pts;
 	pts << 1, 1, rough_cal_z_pts;
 	raster_route route_z(laser_pos, step, pts);

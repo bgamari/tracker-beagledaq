@@ -41,6 +41,7 @@ struct tracker {
         float rough_cal_xy_range, rough_cal_z_range;
         unsigned int rough_cal_xy_pts, rough_cal_z_pts;
         unsigned int rough_cal_xy_dwell, rough_cal_z_dwell;
+        unsigned int rough_cal_z_avg_win;
 
         // Fine calibration parameters
         float fine_cal_xy_range, fine_cal_z_range;
@@ -85,6 +86,7 @@ public:
                 rough_cal_xy_range(0.4), rough_cal_z_range(0.6),
                 rough_cal_xy_pts(40), rough_cal_z_pts(200),
                 rough_cal_xy_dwell(1000), rough_cal_z_dwell(1000),
+                rough_cal_z_avg_win(5),
                 fine_cal_xy_range(0.008), fine_cal_z_range(0.02), 
                 fine_cal_pts(1000), fine_cal_pt_delay(1000),
                 fb_delay(2000), fb_max_delta(0.05),

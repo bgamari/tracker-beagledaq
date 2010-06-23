@@ -104,9 +104,20 @@ Vector3f tracker::rough_calibrate(Vector3f center)
         for (auto i=psd_data.data.begin(); i != psd_data.data.end(); i++)
                 i->values = scale_psd_position(i->values);
 
+        // Preprocess Z data with moving average
+        if (rough_cal_z_avg_win) {
+                for (unsigned int i = rough_cal_z_avg_win; i < rough_cal_z_pts - rough_cal_z_avg_win; i++) {
+                        Vector4f mean = Vector4f::Zero();
+                        for (int j = -rough_cal_z_avg_win; j < (int) rough_cal_z_avg_win; j++)
+                                mean += psd_data.data[i+j].values;
+                        mean /= 2.0*rough_cal_z_avg_win;
+                        psd_data.data[i].values = mean;
+                }
+        }
+
 	// Find extrema of Vz
         float max_deriv = 0;
-        for (unsigned int i=1; i < rough_cal_z_pts-1; i++) {
+        for (unsigned int i = rough_cal_z_avg_win + 1; i < rough_cal_z_pts - rough_cal_z_avg_win - 1; i++) {
                 float sum1 = psd_data.data[i+1].values[2] - psd_data.data[i+1].values[3];
                 float z1 = fb_data.data[i+1].values[2];
                 float sum2 = psd_data.data[i-1].values[2] - psd_data.data[i-1].values[3];
@@ -118,7 +129,6 @@ Vector3f tracker::rough_calibrate(Vector3f center)
                 }
         }
         dump_data("rough_z", fb_data.data, psd_data.data);
-        laser_pos.z() = center.z(); // DEBUG
 	return laser_pos;
 }
 

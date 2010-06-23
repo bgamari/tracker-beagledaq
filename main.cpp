@@ -111,6 +111,8 @@ struct tracker_cli {
                                 "Number of points in rough calibration raster scan (Z scan)");
                 def_param("rough_cal.z_dwell", tracker.rough_cal_z_dwell,
                                 "Rough calibration point dwell time (Z scan)");
+                def_param("rough_cal.z_avg_win", tracker.rough_cal_z_avg_win,
+                                "Averaging window for filtering of Z axis rough calibration data");
 
                 def_param("fine_cal.xy_range", tracker.fine_cal_xy_range,
                                 "Amplitude of fine calibration perturbations (X and Y axes)");

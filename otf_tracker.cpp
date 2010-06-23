@@ -115,7 +115,7 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
  * Responsible for periodically updating the regression matrix from data
  * collected in the feedback thread.
  */
-void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean)
+void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean, unsigned int& recal_count)
 {
 	while (!boost::this_thread::interruption_requested()) {
                 usleep(recal_delay);
@@ -160,12 +160,14 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean)
                 psd_mean = new_psd_mean;
 
                 inactive_log->clear();
+                recal_count++;
         }
 }
 
 void otf_tracker::feedback()
 {
         unsigned int n = 0;
+        unsigned int recal_count = 0;
         struct timespec start_time;
         clock_gettime(CLOCK_REALTIME, &start_time);
         float last_report_t = 0;
@@ -173,7 +175,7 @@ void otf_tracker::feedback()
         std::ofstream f("pos");
         Matrix<float, 3,9> beta = Matrix<float,3,9>::Zero();
         Vector4f psd_mean = Vector4f::Zero();
-        boost::thread recal_thread(&otf_tracker::recal_worker, this, beta, psd_mean);
+        boost::thread recal_thread(&otf_tracker::recal_worker, this, beta, psd_mean, recal_count);
 
         _running = true;
 	while (!boost::this_thread::interruption_requested()) {
@@ -216,7 +218,7 @@ void otf_tracker::feedback()
 				fb.x() % fb.y() % fb.z();
 
                 // Move stage
-		if (n % move_skip_cycles == 0) {
+		if (n % move_skip_cycles == 0 && recal_count) {
 			Vector3f new_pos = fb - delta + fb_setpoint;
                         try {
                                 stage_outputs.move(new_pos);

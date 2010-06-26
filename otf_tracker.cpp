@@ -75,7 +75,7 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
                 boost::circular_buffer<otf_tracker::pos_log_entry>& log_data)
 {
         std::vector<float> T(log_data.size());
-        otf_tracker::perturb_response resp;
+        otf_tracker::perturb_response resp = {0, 0};
         float Ts = fb_delay * 1e-6;
         
         // Generate template sinusoid
@@ -125,23 +125,35 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean, uns
                         std::swap(active_log, inactive_log);
                 }
 
+                printf("recal %d\n", recal_count);
                 unsigned int samples = inactive_log->size();
 		if (!samples) {
 			std::cout << "recal_worker: No samples.\n";
 			continue;
 		}
 
+                std::ofstream f((boost::format("recal-data-%d") % recal_count).str());
+                for (unsigned int i=0; i<samples; i++) {
+                        pos_log_entry& e = inactive_log->at(i);
+                        f << (boost::format("%f %f %f\t%f %f %f %f\n") %
+                                        e.fb[0] % e.fb[1] % e.fb[2] %
+                                        e.psd[0] % e.psd[1] % e.psd[2] % e.psd[3]);
+                }
+
                 // Generate sinusoid data for regression
                 Matrix<double, Dynamic,9> R(samples,9);
                 Matrix<double, Dynamic,3> S(samples,3);
+                printf("phase/amp\t");
                 for (unsigned int axis=0; axis<3; axis++) {
                         float freq = perturb_freqs[axis];
                         perturb_response resp = find_perturb_response(axis, freq, *inactive_log);
+                        printf("%d\t%f\t\t", resp.phase, resp.amp);
                         for (unsigned int i=0; i<samples; i++) {
                                 pos_log_entry& ent = inactive_log->at(i);
                                 S(i,axis) = resp.amp * sin(2*M_PI*freq*ent.time + resp.phase);
                         }
                 }
+                printf("\n");
 
                 // Compute new PSD mean
                 Vector4f new_psd_mean = Vector4f::Zero();
@@ -156,6 +168,7 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean, uns
                 // Solve regression
                 SVD<Matrix<double, Dynamic,9> > svd(R);
                 Matrix<double, 9,3> bt = svd.solve(S);
+                std::cout << "Singular values: " << svd.singularValues() << "\n";
                 beta = bt.transpose().cast<float>();
                 psd_mean = new_psd_mean;
 
@@ -213,13 +226,20 @@ void otf_tracker::feedback()
                         delta[i] = fb_pids[i].get_response();
                 }
 
-		f << boost::format("%f\t%f\t%f\t%f\t%f\t%f\n") %
+                Vector3f last_pos = stage_outputs.get_last_pos();
+		f << boost::format("%f %f %f\t%f %f %f\t%f %f %f\n") %
 				delta.x() % delta.y() % delta.z() %
-				fb.x() % fb.y() % fb.z();
+				fb.x() % fb.y() % fb.z() %
+                                last_pos.x() % last_pos.y() % last_pos.z();
 
                 // Move stage
-		if (n % move_skip_cycles == 0 && recal_count) {
-			Vector3f new_pos = fb - delta + fb_setpoint;
+		if (n % move_skip_cycles == 0) {
+                        Vector3f fb_mean = Vector3f::Zero();
+                        for (int i=0; i<5; i++)
+                                fb_mean += fb_inputs.get();
+                        fb_mean /= 5;
+
+			Vector3f new_pos = fb_mean - delta + fb_setpoint;
                         try {
                                 stage_outputs.move(new_pos);
                         } catch (clamped_output_error e) {

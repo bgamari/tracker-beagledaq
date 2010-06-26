@@ -195,6 +195,8 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 	// Solve regression coefficients
         SVD<Matrix<double, Dynamic,9> > svd(R);
         Matrix<double, 9,3> bt = svd.solve(S);
+        res.singular_values = svd.singularValues();
+        std::cout << "Singular values: " << svd.singularValues() << "\n";
         res.beta = bt.transpose().cast<float>();
 
         bool compute_residuals = true;

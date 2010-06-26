@@ -63,6 +63,7 @@ struct tracker {
         struct fine_cal_result {
                 Matrix<float, 3,9> beta;
                 Vector4f psd_mean;
+                Matrix<double, 9,1> singular_values;
         };
 
         boost::function<void()> feedback_ended_cb;

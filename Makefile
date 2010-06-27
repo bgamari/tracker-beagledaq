@@ -1,5 +1,6 @@
 INCLUDES = -Ieigen
-CXXFLAGS = -O3 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
+PLATFORM_FLAGS = -mcpu=cortex-a8 -mfpu=neon -ftree-vectorize -mfloat-abi=softfp
+CXXFLAGS = ${PLATFORM_FLAGS} -O3 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
 LDFLAGS = -lrt -lboost_program_options-mt -lboost_thread-mt -lreadline
 
 .PHONY : all

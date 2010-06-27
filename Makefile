@@ -20,6 +20,7 @@ raster_dump : spi_device.o max5590.o max1270.o stage.o
 .PHONY : clean
 clean :
 	rm -f *.o
+	rm -Rf .deps
 
 % : %.o
 

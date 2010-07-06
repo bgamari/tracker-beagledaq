@@ -260,7 +260,7 @@ struct tracker_cli {
                         string match = args.size() ? args[0] : "";
 			for (auto p=parameters.begin(); p != parameters.end(); p++)
                                 if ((**p).name.compare(0, match.size(), match) == 0)
-                                        std::cout << (**p).name << " = " << **p << "\n";
+                                        std::cout << (boost::format("%-30s\t%10s\t\t%50s\n") % (**p).name % **p % (**p).description);
                 } else if (cmd == "read-psd") {
                         Vector4f psd = psd_inputs.get();
                         std::cout << psd.transpose().format(mat_fmt) << "\n";

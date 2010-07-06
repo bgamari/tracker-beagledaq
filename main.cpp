@@ -184,9 +184,9 @@ struct tracker_cli {
                 tr.feedback_ended_cb = &tracker_cli::feedback_ended;
 
                 rough_pos << 0.5, 0.5, 0.5;
-                def_param("rough.pos_x", rough_pos.x(), "Rough calibration position (X axis)");
-                def_param("rough.pos_y", rough_pos.y(), "Rough calibration position (Y axis)");
-                def_param("rough.pos_z", rough_pos.z(), "Rough calibration position (Z axis)");
+                def_param("rough_pos.x", rough_pos.x(), "Rough calibration position (X axis)");
+                def_param("rough_pos.y", rough_pos.y(), "Rough calibration position (Y axis)");
+                def_param("rough_pos.z", rough_pos.z(), "Rough calibration position (Z axis)");
 
                 scan_center << 0.5, 0.5, 0.5;
                 scan_range << 0.1, 0.1, 0.1;

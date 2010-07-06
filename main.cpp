@@ -52,6 +52,7 @@ struct pid_tau_param : parameter {
         }
 };
 
+class invalid_syntax : std::exception { };
 
 static std::string cmd_help =
 "Valid commands:\n"
@@ -226,11 +227,17 @@ struct tracker_cli {
 		tokenizer::iterator tok = tokens.begin();
 
 		string cmd = *tok; tok++;
+                vector<string> args;
+                for (; tok != tokens.end(); tok++)
+                        args.push_back(*tok);
+
                 if (cmd == "source") {
-                        source(*tok);
+                        if (args.size() != 1) throw invalid_syntax();
+                        source(args[0]);
                 } else if (cmd == "set") {
-			string param = *tok; tok++;
-			string value = *tok;
+                        if (args.size() != 2) throw invalid_syntax();
+			string param = args[0];
+			string value = args[1];
 			parameter* p = find_parameter(parameters, param);
 			if (!p)
                                 std::cout << "! Unknown parameter\n";
@@ -242,15 +249,18 @@ struct tracker_cli {
                                 }
                         }
 		} else if (cmd == "get") {
-			string param = *tok;
+                        if (args.size() != 1) throw invalid_syntax();
+			string param = args[0];
 			parameter* p = find_parameter(parameters, param);
 			if (!p)
                                 std::cout << "! Unknown parameter\n";
                         else
                                 std::cout << param << " = " << *p << "\n";
 		} else if (cmd == "list") {
+                        string match = args.size() ? args[0] : "";
 			for (auto p=parameters.begin(); p != parameters.end(); p++)
-				std::cout << (**p).name << " = " << **p << "\n";
+                                if ((**p).name.compare(0, match.size(), match) == 0)
+                                        std::cout << (**p).name << " = " << **p << "\n";
                 } else if (cmd == "read-psd") {
                         Vector4f psd = psd_inputs.get();
                         std::cout << psd.transpose().format(mat_fmt) << "\n";
@@ -259,10 +269,11 @@ struct tracker_cli {
                         std::cout << fb.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "move") {
                         using boost::lexical_cast;
+                        if (args.size() != 3) throw invalid_syntax();
                         Vector3f pos;
-                        pos.x() = lexical_cast<float>(*tok); tok++;
-                        pos.y() = lexical_cast<float>(*tok); tok++;
-                        pos.z() = lexical_cast<float>(*tok);
+                        pos.x() = lexical_cast<float>(args[0]);
+                        pos.y() = lexical_cast<float>(args[1]);
+                        pos.z() = lexical_cast<float>(args[2]);
                         stage.smooth_move(pos, 10000);
                         std::cout << "! OK\n";
                 } else if (cmd == "move-rough-pos") {
@@ -332,8 +343,10 @@ struct tracker_cli {
                         free(tmp);
                         try {
                                 stop = do_command(line);
-                        } catch (std::exception e) {
+                        } catch (std::exception& e) {
                                 std::cout << "! Command failed\n";
+                        } catch (invalid_syntax e) {
+                                std::cout << "! Invalid syntax\n";
                         }
                 }
         }

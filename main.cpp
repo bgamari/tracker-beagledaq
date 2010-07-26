@@ -287,9 +287,13 @@ struct tracker_cli {
                         stage.calibrate();
                         std::cout << "! OK\n";
                 } else if (cmd == "rough-cal") {
-                        rough_pos = tr.rough_calibrate();
-                        stage.smooth_move(rough_pos, 5000);
-                        std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
+                        try {
+                                rough_pos = tr.rough_calibrate();
+                                stage.smooth_move(rough_pos, 5000);
+                                std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
+                        } catch (clamped_output_error e) {
+                                std::cout << "! ERR Clamped output\n";
+                        }
                 } else if (cmd == "fine-cal") {
                         fine_cal = tr.fine_calibrate(rough_pos);
                         stage.smooth_move(rough_pos, 1000);

@@ -133,7 +133,7 @@ struct max5134_outputs : output_channels<N> {
 		for (unsigned int i=0; i<N; i++) {
 			if (values[i] < 0.0 || values[i] > 1.0)
 				throw clamped_output_error(values);
-			uint16_t out_val = round(values[i]*0xffff);
+			uint16_t out_val = lrint(values[i]*0xffff);
 			cmds.push_back(new max5134::write_cmd(channels[i], out_val));
 			all_mask |= channels[i];
 		}

@@ -20,6 +20,8 @@
 
 #include "stage.h"
 
+#include <fstream>
+
 void stage::move(const Vector3f pos) {
         out.set(pos);
         last_pos = pos;
@@ -30,8 +32,8 @@ Vector3f stage::get_last_pos() const {
 }
 
 void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
-	Matrix<float, Dynamic,4> X(n_pts*n_samp, 4);
-        Matrix<float, Dynamic,3> Y(n_pts*n_samp, 3);
+        stage raw_stage(out);
+        raw_stage.move({0.5, 0.5, 0.5});
 
 	typedef boost::mt19937 engine;
 	typedef boost::uniform_real<float> distribution;
@@ -39,32 +41,30 @@ void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
 	boost::variate_generator<engine&, distribution> vg(e,
 			distribution(0.5-cal_range, 0.5+cal_range));
 	
-        stage raw_stage(out);
-        raw_stage.move({0.5, 0.5, 0.5});
-	FILE* f = fopen("stage-cal", "w");
-        unsigned int j=0;
+	Matrix<float, Dynamic,4> X(n_pts, 4);
+        Matrix<float, Dynamic,3> Y(n_pts, 3);
+	Matrix<float, Dynamic,3> samples(n_samp, 3);
 	for (unsigned int i=0; i<n_pts; i++) {
 		Vector3f out_pos;
 		out_pos << vg(), vg(), vg();
                 raw_stage.smooth_move(out_pos, 4*1000);
-		usleep(100*1000);
+		usleep(25*1000);
 
-                for (unsigned int n=0; n<n_samp; n++) {
-                        Vector3f fb_pos = fb.get();
-                        X.row(j)[0] = 1; // constant
-                        X.row(j).tail<3>() = fb_pos.transpose();
-                        Y.row(j) = out_pos;
-                        j++;
-		
-                        fprintf(f, "%f %f %f\t%f %f %f\n",
-                                        out_pos.x(), out_pos.y(), out_pos.z(),
-                                        fb_pos.x(), fb_pos.y(), fb_pos.z());
-                }
+                for (unsigned int n=0; n<n_samp; n++)
+			samples.row(n) = fb.get();
+		Vector3f fb_mean = samples.colwise().sum() / n_samp;
+
+		X.row(i)[0] = 1; // constant
+		X.row(i).tail<3>() = fb_mean.transpose();
+		Y.row(i) = out_pos;
 	}
-        usleep(10*1000);
-        last_pos = fb.get();
-	fclose(f);
         R = X.svd().solve(Y);
+
+	std::ofstream of("stage-cal");
+	of << (MatrixXf(n_pts, 7) << X, Y).finished();
+
+        usleep(25*1000);
+        last_pos = fb.get();
 }
 
 void fb_stage::move(const Vector3f pos)

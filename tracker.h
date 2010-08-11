@@ -84,7 +84,7 @@ public:
         tracker(input_channels<4>& psd_inputs,
 		stage& stage_outputs, input_channels<3>& fb_inputs) :
                 scale_psd_inputs(false),
-                rough_cal_xy_range(0.4), rough_cal_z_range(0.6),
+                rough_cal_xy_range(0.4), rough_cal_z_range(0.4),
                 rough_cal_xy_pts(40), rough_cal_z_pts(200),
                 rough_cal_xy_dwell(1000), rough_cal_z_dwell(1000),
                 rough_cal_z_avg_win(5),

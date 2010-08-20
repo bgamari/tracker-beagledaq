@@ -128,16 +128,21 @@ struct raster_route : route {
 template<unsigned int N>
 struct collect_cb : point_callback {
 	input_channels<N>& inputs;
+	unsigned int n_samples;
 	struct point {
 		Vector3f position;
 		Matrix<float,N,1> values;
 	};
 	std::vector<point> data;
 
-	collect_cb(input_channels<N>& inputs) : inputs(inputs) { }
+	collect_cb(input_channels<N>& inputs, unsigned int n_samples=1) :
+		inputs(inputs), n_samples(n_samples) { }
 
         bool operator()(Vector3f& pos) {
-		point p = { pos, inputs.get() };
+		Matrix<float,N,1> accum = Matrix<float,N,1>::Zero();
+		for (unsigned int i=0; i < n_samples; i++)
+			accum += inputs.get();
+		point p = { pos, accum / n_samples };
 		data.push_back(p);
 		return true;
 	}

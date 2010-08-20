@@ -158,6 +158,7 @@ static Matrix<float,9,1> pack_psd_inputs(Vector4f data) {
 
 tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 {
+	bool dump_matricies = true;
 	typedef boost::mt19937 engine;
 	typedef boost::uniform_real<float> distribution;
 	typedef boost::variate_generator<engine&, distribution> vg;
@@ -218,11 +219,11 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
                 fprintf(stderr, "RMS Residuals: %f %f %f\n", rms.x(), rms.y(), rms.z());
         }
 
-#ifdef DUMP_MATRICIES
-        dump_matrix(R, "R");
-        dump_matrix(S, "S");
-        dump_matrix(bt, "beta");
-#endif
+	if (dump_matricies) {
+		dump_matrix(R, "R");
+		dump_matrix(S, "S");
+		dump_matrix(bt, "beta");
+	}
         return res;
 }
 

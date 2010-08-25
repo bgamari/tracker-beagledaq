@@ -82,13 +82,12 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
         for (unsigned int i=0; i < log_data.size(); i++)
                 T[i] = sin(2*M_PI*freq*i*Ts);
         
-        // Auto-correlate for phase
-        unsigned int max_lag = Ts / freq;
+        // Cross-correlate for phase
         float max_corr = 0;
-        for (unsigned int lag=0; lag < max_lag; lag++) {
+        for (float ph=0; ph < phase_max; ph += phase_step) {
                 float corr = 0;
-                for (unsigned int i=0; i < log_data.size()-max_lag; i++)
-                        corr += log_data[i].fb[axis] * log_data[i+lag].fb[axis];
+                for (unsigned int i=0; i < log_data.size(); i++)
+                        corr += sin(2*M_PI*freq*i*Ts + ph) * log_data[i].fb[axis];
 
                 if (corr > max_corr) {
                         max_corr = corr;
@@ -96,15 +95,12 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
                 }
         }
 
-        // Recompute template sinusoid with phase
-        for (unsigned int i=0; i < log_data.size(); i++)
-                T[i] = sin(2*M_PI*freq*i*Ts + resp.phase);
-
         // Find amplitude
         float a=0, b=0;
         for (unsigned int i=0; i < log_data.size(); i++) {
-                a += log_data[i].fb[axis] * T[i];
-                b += T[i] * T[i];
+                float y = sin(2*M_PI*freq*i*Ts + resp.phase);
+                a += log_data[i].fb[axis] * y;
+                b += y*y;
         }
         resp.amp = a / b;
 
@@ -150,7 +146,7 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean, uns
                 for (unsigned int axis=0; axis<3; axis++) {
                         float freq = perturb_freqs[axis];
                         perturb_response resp = find_perturb_response(axis, freq, *inactive_log);
-                        printf("%d\t%f\t\t", resp.phase, resp.amp);
+                        printf("%f\t%f\t\t", resp.phase, resp.amp);
                         for (unsigned int i=0; i<samples; i++) {
                                 pos_log_entry& ent = inactive_log->at(i);
                                 S(i,axis) = resp.amp * sin(2*M_PI*freq*ent.time + resp.phase);

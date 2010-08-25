@@ -47,6 +47,7 @@ struct otf_tracker {
         bool fb_show_rate;
         float fb_rate_report_period;
 	int record_data_cnt;
+	float phase_max, phase_step;
 
         input_channels<4>& psd_inputs;
         stage& stage_outputs;
@@ -66,8 +67,7 @@ private:
         boost::mutex log_mutex;
 
         struct perturb_response {
-                unsigned int phase;
-                float amp;
+                float phase, amp;
         };
         perturb_response find_perturb_response(
                         unsigned int axis, float freq,
@@ -96,6 +96,7 @@ public:
                 fb_max_delta(0.1),
                 fb_setpoint(Vector3f::Zero()),
                 fb_show_rate(false), fb_rate_report_period(5),
+		phase_max(1.0*M_PI), phase_step(0.1*M_PI),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),
                 fb_inputs(fb_inputs),

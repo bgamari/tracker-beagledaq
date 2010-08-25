@@ -114,15 +114,20 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
 void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, boost::mutex* beta_mutex,
                 Vector4f& psd_mean, unsigned int& recal_count)
 {
-	while (!boost::this_thread::interruption_requested()) {
+	while (true) {
                 usleep(recal_delay);
+                try {
+                        boost::this_thread::interruption_point(); // Clear interrupt flag
+                } catch (boost::thread_interrupted e) {
+                        break;
+                }
+
                 // Swap log buffers
                 {
                         boost::mutex::scoped_lock lock(log_mutex);
                         std::swap(active_log, inactive_log);
                 }
 
-                printf("recal %d\n", recal_count);
                 unsigned int samples = inactive_log->size();
 		if (!samples) {
 			std::cout << "recal_worker: No samples.\n";
@@ -147,7 +152,7 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, boost::mutex* beta_mute
                 for (unsigned int axis=0; axis<3; axis++) {
                         float freq = perturb_freqs[axis];
                         perturb_response resp = find_perturb_response(axis, freq, *inactive_log);
-                        printf("%f\t%f\t\t", resp.phase, resp.amp);
+                        printf("%f  %f\t", resp.phase, resp.amp);
                         for (unsigned int i=0; i<samples; i++) {
                                 pos_log_entry& ent = inactive_log->at(i);
                                 S(i,axis) = resp.amp * sin(2*M_PI*freq*ent.time + resp.phase);
@@ -168,7 +173,7 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, boost::mutex* beta_mute
                 // Solve regression
                 SVD<Matrix<double, Dynamic,9> > svd(R);
                 Matrix<double, 9,3> bt = svd.solve(S);
-                std::cout << "Singular values: " << svd.singularValues() << "\n";
+                //std::cout << "Singular values: " << svd.singularValues() << "\n";
                 {
                         boost::mutex::scoped_lock lock(*beta_mutex);
                         beta = bt.transpose().cast<float>();
@@ -195,7 +200,13 @@ void otf_tracker::feedback()
         boost::thread recal_thread(&otf_tracker::recal_worker, this, beta, &beta_mutex, psd_mean, recal_count);
 
         _running = true;
-	while (!boost::this_thread::interruption_requested()) {
+	while (true) {
+                try {
+                        boost::this_thread::interruption_point(); // Clear interrupt flag
+                } catch (boost::thread_interrupted e) {
+                        break;
+                }
+
                 // Get sensor values
 		Vector3f fb = fb_inputs.get();
                 Vector4f psd = psd_inputs.get();
@@ -248,6 +259,7 @@ void otf_tracker::feedback()
                         fb_mean /= 5;
 
 			Vector3f new_pos = fb_mean - delta + fb_setpoint;
+                        new_pos = fb_mean;
                         try {
                                 stage_outputs.move(new_pos);
                         } catch (clamped_output_error e) {

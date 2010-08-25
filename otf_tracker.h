@@ -92,7 +92,7 @@ public:
                         stage& stage_outputs, input_channels<3>& fb_inputs) :
                 scale_psd_inputs(false),
                 perturb_amp(0.02*Vector3f::Ones()),
-                recal_delay(100*1000), fb_delay(500*1000),
+                recal_delay(1000*1000), fb_delay(10*1000),
                 move_skip_cycles(1),
                 fb_max_delta(0.1),
                 fb_setpoint(Vector3f::Zero()),

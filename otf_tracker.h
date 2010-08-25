@@ -97,6 +97,7 @@ public:
                 fb_max_delta(0.1),
                 fb_setpoint(Vector3f::Zero()),
                 fb_show_rate(false), fb_rate_report_period(5),
+		record_data_cnt(0),
 		phase_max(1.0*M_PI), phase_step(0.1*M_PI),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),

@@ -46,6 +46,7 @@ struct otf_tracker {
         array<pid_loop,3> fb_pids;
         bool fb_show_rate;
         float fb_rate_report_period;
+	int record_data_cnt;
 
         input_channels<4>& psd_inputs;
         stage& stage_outputs;

@@ -132,12 +132,15 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean, uns
 			continue;
 		}
 
-                std::ofstream f((boost::format("recal-data-%d") % recal_count).str());
-                for (unsigned int i=0; i<samples; i++) {
-                        pos_log_entry& e = inactive_log->at(i);
-                        f << (boost::format("%f %f %f\t%f %f %f %f\n") %
-                                        e.fb[0] % e.fb[1] % e.fb[2] %
-                                        e.psd[0] % e.psd[1] % e.psd[2] % e.psd[3]);
+                if (record_data_cnt) {
+                        std::ofstream f((boost::format("recal-data-%d") % recal_count).str());
+                        for (unsigned int i=0; i<samples; i++) {
+                                pos_log_entry& e = inactive_log->at(i);
+                                f << (boost::format("%f %f %f\t%f %f %f %f\n") %
+                                                e.fb[0] % e.fb[1] % e.fb[2] %
+                                                e.psd[0] % e.psd[1] % e.psd[2] % e.psd[3]);
+                        }
+                        record_data_cnt--;
                 }
 
                 // Generate sinusoid data for regression

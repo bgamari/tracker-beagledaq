@@ -174,8 +174,8 @@ struct tracker_cli {
                 psd_inputs(psd_inputs), fb_inputs(fb_inputs), stage_outputs(stage_outputs),
                 stage(stage_outputs, fb_inputs),
                 tr(psd_inputs, stage, fb_inputs),
-                scan_delay(100),
-		auto_xy_range_factor(0)
+		auto_xy_range_factor(0),
+                scan_delay(100)
         {
                 stage.calibrate();
                 stage.smooth_move({0.5, 0.5, 0.5}, 10000);

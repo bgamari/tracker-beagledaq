@@ -46,15 +46,15 @@ Vector4f tracker::scale_psd_position(Vector4f in)
         return in;
 }
 
-template<typename Derived>
-static unsigned int max_row(MatrixBase<Derived> a) {
+template<typename Matrix>
+static unsigned int max_row(Matrix a) {
 	int row, col;
 	a.maxCoeff(&row, &col);
 	return row;
 }
 
-template<typename Derived>
-static unsigned int min_row(MatrixBase<Derived> a) {
+template<typename Matrix>
+static unsigned int min_row(Matrix a) {
 	int row, col;
 	a.minCoeff(&row, &col);
 	return row;
@@ -72,8 +72,8 @@ Vector2f tracker::rough_calibrate_xy(Vector3f center)
 	pts << rough_cal_xy_pts, rough_cal_xy_pts, 1;
 
 	raster_route rt(start, step, pts);
-	Matrix<float, Dynamic, 4> psd_data(rough_cal_xy_pts, 4);
-	Matrix<float, Dynamic, 3> fb_data(rough_cal_xy_pts, 3);
+	Matrix<float, Dynamic, 4> psd_data(rough_cal_xy_pts*rough_cal_xy_pts, 4);
+	Matrix<float, Dynamic, 3> fb_data(rough_cal_xy_pts*rough_cal_xy_pts, 3);
 	
         // Run X/Y scan and preprocess data
 	for (int i=0; rt.has_more(); ++i, ++rt) {
@@ -95,6 +95,7 @@ Vector2f tracker::rough_calibrate_xy(Vector3f center)
 	laser_pos.y() = ymax_pos.y() - ymin_pos.y();
         dump_matrix((Matrix<float,Dynamic,7>() << fb_data, psd_data).finished(),
                         "rough", (boost::format("Center %f %f") % laser_pos.x() % laser_pos.y()).str());
+
 	return laser_pos;
 }
 

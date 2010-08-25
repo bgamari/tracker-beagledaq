@@ -43,7 +43,7 @@ public:
 };
 
 class fb_stage : public stage {
-	Matrix<float, 4,3> R;
+	Matrix<float, 7,3> R;
 public:
 	const input_channels<3>& fb;
         float cal_range;

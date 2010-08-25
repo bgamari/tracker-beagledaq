@@ -41,37 +41,46 @@ void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
 	boost::variate_generator<engine&, distribution> vg(e,
 			distribution(0.5-cal_range, 0.5+cal_range));
 	
-	Matrix<float, Dynamic,4> X(n_pts, 4);
+	Matrix<float, Dynamic,7> X(n_pts, 7);
         Matrix<float, Dynamic,3> Y(n_pts, 3);
+	Matrix<float, Dynamic,3> dev(n_pts, 3);
 	Matrix<float, Dynamic,3> samples(n_samp, 3);
 	for (unsigned int i=0; i<n_pts; i++) {
 		Vector3f out_pos;
 		out_pos << vg(), vg(), vg();
                 raw_stage.smooth_move(out_pos, 4*1000);
-		usleep(25*1000);
+		usleep(75*1000);
 
                 for (unsigned int n=0; n<n_samp; n++)
 			samples.row(n) = fb.get();
 		Vector3f fb_mean = samples.colwise().sum() / n_samp;
+		Vector3f fb_dev = ((samples.rowwise() - fb_mean.transpose()).array().square().colwise().sum() / n_samp).sqrt();
 
+		dev.row(i) = fb_dev;
 		X.row(i)[0] = 1; // constant
-		X.row(i).tail<3>() = fb_mean.transpose();
+		X.row(i).segment(1,3) = fb_mean.transpose();
+		X.row(i).segment(4,3) = fb_mean.transpose().array().square();
 		Y.row(i) = out_pos;
 	}
         R = X.svd().solve(Y);
 
-	std::ofstream of("stage-cal");
-	of << (MatrixXf(n_pts, 7) << X, Y).finished();
+	{
+		std::ofstream of("stage-cal");
+		Matrix<float, Dynamic,3> resid(n_pts, 3);
+		resid = X*R - Y;
+		of << (MatrixXf(n_pts, 12) << X.col(1),X.col(2),X.col(3), Y, dev, resid).finished();
+	}
 
         usleep(25*1000);
-        last_pos = fb.get();
+        move({0.5, 0.5, 0.5});
 }
 
 void fb_stage::move(const Vector3f pos)
 {
-	Vector4f npos; // position with constant component
+	Matrix<float,7,1> npos;
 	npos[0] = 1;
-	npos.tail<3>() = pos;
+	npos.segment(1,3) = pos;
+	npos.segment(4,3) = pos.array().square();
 
 	Vector3f p = R.transpose() * npos;
 	out.set(p);

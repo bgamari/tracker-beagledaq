@@ -74,7 +74,8 @@ private:
                         boost::circular_buffer<pos_log_entry>& log_data);
 
         Vector4f scale_psd_position(Vector4f in);
-        void recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean, unsigned int& recal_count);
+        void recal_worker(Matrix<float, 3,9>& beta, boost::mutex* beta_mutex,
+		       Vector4f& psd_mean, unsigned int& recal_count);
         void feedback();
         boost::thread feedback_thread;
         bool _running;

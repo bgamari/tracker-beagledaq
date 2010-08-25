@@ -111,7 +111,8 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
  * Responsible for periodically updating the regression matrix from data
  * collected in the feedback thread.
  */
-void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean, unsigned int& recal_count)
+void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, boost::mutex* beta_mutex,
+                Vector4f& psd_mean, unsigned int& recal_count)
 {
 	while (!boost::this_thread::interruption_requested()) {
                 usleep(recal_delay);
@@ -168,8 +169,11 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, Vector4f& psd_mean, uns
                 SVD<Matrix<double, Dynamic,9> > svd(R);
                 Matrix<double, 9,3> bt = svd.solve(S);
                 std::cout << "Singular values: " << svd.singularValues() << "\n";
-                beta = bt.transpose().cast<float>();
-                psd_mean = new_psd_mean;
+                {
+                        boost::mutex::scoped_lock lock(*beta_mutex);
+                        beta = bt.transpose().cast<float>();
+                        psd_mean = new_psd_mean;
+                }
 
                 inactive_log->clear();
                 recal_count++;
@@ -186,8 +190,9 @@ void otf_tracker::feedback()
         unsigned int last_report_n = 0;
         std::ofstream f("pos");
         Matrix<float, 3,9> beta = Matrix<float,3,9>::Zero();
+        boost::mutex beta_mutex;
         Vector4f psd_mean = Vector4f::Zero();
-        boost::thread recal_thread(&otf_tracker::recal_worker, this, beta, psd_mean, recal_count);
+        boost::thread recal_thread(&otf_tracker::recal_worker, this, beta, &beta_mutex, psd_mean, recal_count);
 
         _running = true;
 	while (!boost::this_thread::interruption_requested()) {
@@ -209,9 +214,13 @@ void otf_tracker::feedback()
                 }
 
                 // Compute estimated position
-                psd -= psd_mean;
-		Matrix<float, 9,1> psd_in = pack_psd_inputs(psd);
-		Vector3f delta = beta * psd_in;
+                Matrix<float, 9,1> psd_in = pack_psd_inputs(psd);
+                Vector3f delta;
+                {
+                        boost::mutex::scoped_lock lock(beta_mutex);
+                        psd -= psd_mean;
+                        delta = beta * psd_in;
+                }
 
                 if (delta.norm() > fb_max_delta) {
                         fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");

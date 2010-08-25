@@ -60,7 +60,7 @@ static unsigned int min_row(Matrix a) {
 	return row;
 }
 
-Vector2f tracker::rough_calibrate_xy(Vector3f center)
+tracker::rough_cal_xy_result tracker::rough_calibrate_xy(Vector3f center)
 {
 	Vector3f tmp;
 	Vector3f start, step;
@@ -86,19 +86,15 @@ Vector2f tracker::rough_calibrate_xy(Vector3f center)
 		fb_data.row(i) = fb_inputs.get();
 	}
 
+	dump_matrix((MatrixXf(rough_cal_xy_pts*rough_cal_xy_pts,10) << pos_data, fb_data, psd_data).finished(), "rough");
+
 	// Find extrema of Vx, Vy
-	Vector2f laser_pos;
-	Vector3f xmin_pos = fb_data.row(min_row(psd_data.col(0)));
-	Vector3f xmax_pos = fb_data.row(max_row(psd_data.col(0)));
-	Vector3f ymin_pos = fb_data.row(min_row(psd_data.col(1)));
-	Vector3f ymax_pos = fb_data.row(max_row(psd_data.col(1)));
-
-	laser_pos.x() = (xmax_pos.x() - xmin_pos.x())/2 + xmin_pos.x();
-	laser_pos.y() = (ymax_pos.y() - ymin_pos.y())/2 + ymin_pos.y();
-	dump_matrix((MatrixXf(rough_cal_xy_pts*rough_cal_xy_pts,10) << pos_data, fb_data, psd_data).finished(),
-                        "rough", (boost::format("Center %f %f") % laser_pos.x() % laser_pos.y()).str());
-
-	return laser_pos;
+	rough_cal_xy_result res;
+	res.xmin = fb_data.row(min_row(psd_data.col(0)));
+	res.xmax = fb_data.row(max_row(psd_data.col(0)));
+	res.ymin = fb_data.row(min_row(psd_data.col(1)));
+	res.ymax = fb_data.row(max_row(psd_data.col(1)));
+	return res;
 }
 
 
@@ -156,13 +152,25 @@ Vector3f tracker::rough_calibrate_z(Vector3f center)
 	return laser_pos;
 }
 
-Vector3f tracker::rough_calibrate(Vector3f center)
+tracker::rough_cal_result tracker::rough_calibrate(Vector3f center)
 {
+	rough_cal_xy_result res_xy = rough_calibrate_xy(center);
 	Vector3f laser_pos;
 
-	laser_pos.head(2) = rough_calibrate_xy(center);
+	float dist = (res_xy.xmin - res_xy.ymin).norm();
+	std::cout << "Extrema distance: " << dist << "\n";
+	laser_pos.x() = (res_xy.xmax.x() - res_xy.xmin.x())/2 + res_xy.xmin.x();
+	laser_pos.y() = (res_xy.ymax.y() - res_xy.ymin.y())/2 + res_xy.ymin.y();
 	laser_pos.z() = center.z();
-	return rough_calibrate_z(laser_pos);
+
+	Vector3f z = rough_calibrate_z(laser_pos);
+	laser_pos.z() = z.z();
+
+	rough_cal_result res;
+	res.center = laser_pos;
+	res.xy_size = dist;
+	res.z_size = 0.1;
+	return res;
 }
 
 /*

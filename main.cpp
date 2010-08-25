@@ -288,7 +288,10 @@ struct tracker_cli {
                         std::cout << "! OK\n";
                 } else if (cmd == "rough-cal") {
                         try {
-                                rough_pos = tr.rough_calibrate();
+				tracker::rough_cal_result res = tr.rough_calibrate();
+				rough_pos = res.center;
+				tr.fine_cal_xy_range = res.xy_size / 5;
+				tr.fine_cal_z_range = res.z_size / 5;
                                 stage.smooth_move(rough_pos, 5000);
                                 std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
                         } catch (clamped_output_error e) {

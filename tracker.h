@@ -74,9 +74,18 @@ private:
         void feedback(fine_cal_result cal);
 
 public:
-	Vector2f rough_calibrate_xy(Vector3f center);
+	struct rough_cal_xy_result {
+		Vector3f xmin, ymin, xmax, ymax;
+	};
+	rough_cal_xy_result rough_calibrate_xy(Vector3f center);
 	Vector3f rough_calibrate_z(Vector3f center);
-        Vector3f rough_calibrate(Vector3f center=0.5*Vector3f::Ones());
+
+	struct rough_cal_result {
+		Vector3f center;
+		float xy_size, z_size;
+	};
+        rough_cal_result rough_calibrate(Vector3f center=0.5*Vector3f::Ones());
+
         fine_cal_result fine_calibrate(Vector3f rough_pos);
         void start_feedback(fine_cal_result cal);
         bool running();

@@ -85,6 +85,7 @@ struct tracker_cli {
         tracker tr;
         Vector3f rough_pos;
         tracker::fine_cal_result fine_cal;
+	float auto_xy_range_factor;
         Vector3f scan_center, scan_range;
         Vector3u scan_points;
         unsigned int scan_delay;
@@ -173,7 +174,8 @@ struct tracker_cli {
                 psd_inputs(psd_inputs), fb_inputs(fb_inputs), stage_outputs(stage_outputs),
                 stage(stage_outputs, fb_inputs),
                 tr(psd_inputs, stage, fb_inputs),
-                scan_delay(100)
+                scan_delay(100),
+		auto_xy_range_factor(0)
         {
                 stage.calibrate();
                 stage.smooth_move({0.5, 0.5, 0.5}, 10000);
@@ -187,6 +189,8 @@ struct tracker_cli {
                 def_param("rough_pos.x", rough_pos.x(), "Rough calibration position (X axis)");
                 def_param("rough_pos.y", rough_pos.y(), "Rough calibration position (Y axis)");
                 def_param("rough_pos.z", rough_pos.z(), "Rough calibration position (Z axis)");
+
+		def_param("auto_xy_range_factor", auto_xy_range_factor, "Fine calibration range as a fraction of rough calibration extrema separation");
 
                 scan_center << 0.5, 0.5, 0.5;
                 scan_range << 0.1, 0.1, 0.1;
@@ -290,8 +294,8 @@ struct tracker_cli {
                         try {
 				tracker::rough_cal_result res = tr.rough_calibrate();
 				rough_pos = res.center;
-				tr.fine_cal_xy_range = res.xy_size / 5;
-				tr.fine_cal_z_range = res.z_size / 5;
+				if (auto_xy_range_factor)
+					tr.fine_cal_xy_range = res.xy_size * auto_xy_range_factor;
                                 stage.smooth_move(rough_pos, 5000);
                                 std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
                         } catch (clamped_output_error e) {

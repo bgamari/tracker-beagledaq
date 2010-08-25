@@ -29,7 +29,7 @@ using std::string;
 template<typename Matrix>
 void dump_matrix(Matrix A, string filename, string comment="")
 {
-	Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
+	Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, Eigen::DontAlignCols, "\t", "\n");
         std::ofstream os(filename);
         os << A.format(fmt);
         os.close();

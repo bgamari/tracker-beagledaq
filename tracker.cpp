@@ -72,6 +72,7 @@ Vector2f tracker::rough_calibrate_xy(Vector3f center)
 	pts << rough_cal_xy_pts, rough_cal_xy_pts, 1;
 
 	raster_route rt(start, step, pts);
+	Matrix<float, Dynamic, 3> pos_data(rough_cal_xy_pts*rough_cal_xy_pts, 3);
 	Matrix<float, Dynamic, 4> psd_data(rough_cal_xy_pts*rough_cal_xy_pts, 4);
 	Matrix<float, Dynamic, 3> fb_data(rough_cal_xy_pts*rough_cal_xy_pts, 3);
 	
@@ -80,6 +81,7 @@ Vector2f tracker::rough_calibrate_xy(Vector3f center)
 		Vector3f pos = rt.get_pos();
 		stage_outputs.move(pos);
 		usleep(rough_cal_xy_dwell);
+		pos_data.row(i) = pos;
 		psd_data.row(i) = scale_psd_position(psd_inputs.get());
 		fb_data.row(i) = fb_inputs.get();
 	}
@@ -91,9 +93,9 @@ Vector2f tracker::rough_calibrate_xy(Vector3f center)
 	Vector3f ymin_pos = fb_data.row(min_row(psd_data.col(1)));
 	Vector3f ymax_pos = fb_data.row(max_row(psd_data.col(1)));
 
-	laser_pos.x() = xmax_pos.x() - xmin_pos.x();
-	laser_pos.y() = ymax_pos.y() - ymin_pos.y();
-        dump_matrix((Matrix<float,Dynamic,7>() << fb_data, psd_data).finished(),
+	laser_pos.x() = (xmax_pos.x() - xmin_pos.x())/2 + xmin_pos.x();
+	laser_pos.y() = (ymax_pos.y() - ymin_pos.y())/2 + ymin_pos.y();
+	dump_matrix((MatrixXf(rough_cal_xy_pts*rough_cal_xy_pts,10) << pos_data, fb_data, psd_data).finished(),
                         "rough", (boost::format("Center %f %f") % laser_pos.x() % laser_pos.y()).str());
 
 	return laser_pos;
@@ -102,15 +104,17 @@ Vector2f tracker::rough_calibrate_xy(Vector3f center)
 
 Vector3f tracker::rough_calibrate_z(Vector3f center)
 {
-	Vector3f step, laser_pos = center;
-	Vector3u pts;
-
+	Vector3f laser_pos = center;
 	laser_pos.z() -= rough_cal_z_range / 2;
         stage_outputs.smooth_move(laser_pos, 4000);
+
+	Vector3f step; 
+	Vector3u pts;
 	step << 0, 0, rough_cal_z_range / rough_cal_z_pts;
 	pts << 1, 1, rough_cal_z_pts;
 
 	raster_route rt(laser_pos, step, pts);
+	Matrix<float, Dynamic, 3> pos_data(rough_cal_z_pts, 3);
 	Matrix<float, Dynamic, 4> psd_data(rough_cal_z_pts, 4);
 	Matrix<float, Dynamic, 3> fb_data(rough_cal_z_pts, 3);
 
@@ -119,6 +123,7 @@ Vector3f tracker::rough_calibrate_z(Vector3f center)
 		Vector3f pos = rt.get_pos();
 		stage_outputs.move(pos);
 		usleep(rough_cal_z_dwell);
+		pos_data.row(i) = pos;
 		psd_data.row(i) = scale_psd_position(psd_inputs.get());
 		fb_data.row(i) = fb_inputs.get();
 	}
@@ -147,7 +152,7 @@ Vector3f tracker::rough_calibrate_z(Vector3f center)
                         laser_pos.z() = fb_data(i,2);
                 }
         }
-        dump_matrix((Matrix<float,Dynamic,7>() << fb_data, psd_data).finished(), "rough_z");
+        dump_matrix((MatrixXf(rough_cal_z_pts,10) << pos_data, fb_data, psd_data).finished(), "rough_z");
 	return laser_pos;
 }
 
@@ -214,13 +219,13 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 	}
 
 	// Find and subtract out PSD mean
-        res.psd_mean = psd_data.rowwise().mean();
+        res.psd_mean = psd_data.colwise().mean();
 	psd_data.rowwise() -= res.psd_mean;
+        dump_matrix((MatrixXf(fine_cal_pts,7) << fb_data, psd_data).finished(), "fine");
 
 	// Fill R and S matricies with collected data
 	Matrix<double, Dynamic,9> R = pack_psd_inputs(psd_data).cast<double>();
         Matrix<double, Dynamic,3> S = (fb_data.rowwise() - rough_pos.transpose()).cast<double>();
-        dump_matrix((Matrix<float,Dynamic,7>() << fb_data, psd_data).finished(), "fine");
 
 	// Solve regression coefficients
         SVD<Matrix<double, Dynamic,9> > svd(R);

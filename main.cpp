@@ -324,10 +324,10 @@ struct tracker_cli {
                         Vector3f start = scan_center - scan_range / 2;
                         Vector3f step = scan_range.array() / scan_points.array().cast<float>();
                         raster_route r(start, step, scan_points);
-                        collect_cb<4> psd_data(psd_inputs);
-                        collect_cb<3> fb_data(fb_inputs);
-                        execute_route(stage, r, {&psd_data, &fb_data}, scan_delay);
-                        dump_data("scan", fb_data.data, psd_data.data);
+			// FIXME
+                        //collect_cb<3> fb_data(fb_inputs);
+                        //execute_route(stage, r, {&psd_data, &fb_data}, scan_delay);
+                        //dump_data("scan", fb_data.data, psd_data.data);
 		} else
 			std::cout << "! ERR\tInvalid command\n";
                 return false;

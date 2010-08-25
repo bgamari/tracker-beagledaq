@@ -60,16 +60,6 @@ public:
 };
 
 /*
- * point_callback: A callback function called on every point of a route
- */
-struct point_callback {
-	/*
-	 * Return false to abort route. true otherwise.
-	 */
-	virtual bool operator()(Vector3f& pos) = 0;
-};
-
-/*
  * route: Represents a path of points through 3-space
  */
 struct route {
@@ -77,10 +67,6 @@ struct route {
 	virtual void operator++() = 0;
 	virtual bool has_more() = 0;
 };
-
-void execute_route(stage& stage, route& route,
-		vector<point_callback*> cbs=vector<point_callback*>(),
-		unsigned int point_delay=1000, unsigned int move_time=100);
 
 template <class Engine, class Distribution>
 struct random_route : route {
@@ -122,71 +108,5 @@ struct raster_route : route {
         Vector3f get_pos();
         void operator++();
 	bool has_more();
-};
-
-// Collect a single reading from a set of input channels at each point
-template<unsigned int N>
-struct collect_cb : point_callback {
-	input_channels<N>& inputs;
-	unsigned int n_samples;
-	struct point {
-		Vector3f position;
-		Matrix<float,N,1> values;
-	};
-	std::vector<point> data;
-
-	collect_cb(input_channels<N>& inputs, unsigned int n_samples=1) :
-		inputs(inputs), n_samples(n_samples) { }
-
-        bool operator()(Vector3f& pos) {
-		Matrix<float,N,1> accum = Matrix<float,N,1>::Zero();
-		for (unsigned int i=0; i < n_samples; i++)
-			accum += inputs.get();
-		point p = { pos, accum / n_samples };
-		data.push_back(p);
-		return true;
-	}
-};
-
-// Collect multiple readings from each point
-template<unsigned int N>
-struct multi_collect_cb : point_callback {
-	input_channels<N>& inputs;
-	struct point {
-		Vector3f position;
-		vector<Matrix<float,N,1>> values;
-	};
-	std::vector<point> data;
-        unsigned int n_pts, delay;
-
-	multi_collect_cb(input_channels<N>& inputs,
-                        unsigned int n_pts, unsigned int delay=0) :
-                inputs(inputs), n_pts(n_pts), delay(delay) { }
-
-        bool operator()(Vector3f& pos) {
-		point p;
-                p.position = pos;
-                for (unsigned int i=0; i < n_pts; i++) {
-                        p.values.push_back(inputs.get());
-                        usleep(delay);
-                }
-		data.push_back(p);
-		return true;
-	}
-};
-
-template<unsigned int N>
-struct dump_inputs_cb : point_callback {
-	input_channels<N>& in;
-	dump_inputs_cb(input_channels<N>& in) : in(in) { }
-	bool operator()(Vector3f& pos) {
-		// pos_x pos_y pos_z\tpsd_x psd_y\tpsd_sum\tfb_x fb_y fb_z\n
-		Matrix<float,1,N> d = in.get();
-		printf("%f\t%f\t%f\t", pos[0], pos[1], pos[2]);
-		for (unsigned int i=0; i<N; i++)
-			printf("%f\t", d[i]);
-		printf("\n");
-		return true;
-	}
 };
 

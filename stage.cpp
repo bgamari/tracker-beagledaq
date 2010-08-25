@@ -101,27 +101,6 @@ void stage::smooth_move(Vector3f to, unsigned int move_time)
 	move(to);
 }
 
-/*
- * execute_route: Execute a route, calling the given callback for every pont.
- *
- * Waits point_delay between moving to point and calling callback.
- */
-void execute_route(stage& stage, route& route, vector<point_callback*> cbs,
-		unsigned int point_delay, unsigned int move_time)
-{
-        stage.smooth_move(route.get_pos(), move_time*10);
-        usleep(10*1000);
-	for (; route.has_more(); ++route) {
-		Vector3f pos = route.get_pos();
-		stage.smooth_move(pos, move_time);
-		usleep(point_delay);
-		for (auto cb = cbs.begin(); cb != cbs.end(); cb++)
-			if (! (**cb)(pos))
-				break;
-	}
-}
-
-
 Vector3f raster_route::get_pos() {
         Vector3i pos;
         unsigned int m = n;

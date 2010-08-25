@@ -26,11 +26,8 @@
 using std::vector;
 using std::string;
 
-void dump_data(std::string file, vector<collect_cb<3>::point> fb_data,
-                vector<collect_cb<4>::point> psd_data, string comment="");
-
 template<typename Matrix>
-void dump_matrix(Matrix A, const char* filename)
+void dump_matrix(Matrix A, string filename, string comment="")
 {
 	Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
         std::ofstream os(filename);

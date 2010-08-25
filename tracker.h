@@ -75,6 +75,8 @@ private:
         void feedback(fine_cal_result cal);
 
 public:
+	Vector2f rough_calibrate_xy(Vector3f center);
+	Vector3f rough_calibrate_z(Vector3f center);
         Vector3f rough_calibrate(Vector3f center=0.5*Vector3f::Ones());
         fine_cal_result fine_calibrate(Vector3f rough_pos);
         void start_feedback(fine_cal_result cal);

@@ -78,7 +78,8 @@ Vector2f tracker::rough_calibrate_xy(Vector3f center)
         // Run X/Y scan and preprocess data
 	for (int i=0; rt.has_more(); ++i, ++rt) {
 		Vector3f pos = rt.get_pos();
-		stage_outputs.smooth_move(pos, 4000);
+		stage_outputs.move(pos);
+		usleep(rough_cal_xy_dwell);
 		psd_data.row(i) = scale_psd_position(psd_inputs.get());
 		fb_data.row(i) = fb_inputs.get();
 	}
@@ -115,7 +116,8 @@ Vector3f tracker::rough_calibrate_z(Vector3f center)
         // Run Z scan and preprocess data
 	for (int i=0; rt.has_more(); ++i, ++rt) {
 		Vector3f pos = rt.get_pos();
-		stage_outputs.smooth_move(pos, 4000);
+		stage_outputs.move(pos);
+		usleep(rough_cal_z_dwell);
 		psd_data.row(i) = scale_psd_position(psd_inputs.get());
 		fb_data.row(i) = fb_inputs.get();
 	}
@@ -204,7 +206,8 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 	// Collect data
 	for (int i=0; rt.has_more(); ++i, ++rt) {
 		Vector3f pos = rt.get_pos();
-		stage_outputs.smooth_move(pos, 4000);
+		stage_outputs.move(pos);
+		usleep(fine_cal_dwell);
 		psd_data.row(i) = scale_psd_position(psd_inputs.get());
 		fb_data.row(i) = fb_inputs.get();
 	}

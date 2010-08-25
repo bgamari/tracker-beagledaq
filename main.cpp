@@ -121,7 +121,7 @@ struct tracker_cli {
                                 "Amplitude of fine calibration perturbations (Z axis)");
                 def_param("fine_cal.points", tracker.fine_cal_pts,
                                 "Number of points in fine calibration scan");
-                def_param("fine_cal.point_delay", tracker.fine_cal_pt_delay,
+                def_param("fine_cal.dwell", tracker.fine_cal_dwell,
                                 "Delay in usec between fine calibration points");
 
                 def_param("feedback.delay", tracker.fb_delay,
@@ -323,11 +323,14 @@ struct tracker_cli {
                 } else if (cmd == "scan") {
                         Vector3f start = scan_center - scan_range / 2;
                         Vector3f step = scan_range.array() / scan_points.array().cast<float>();
-                        raster_route r(start, step, scan_points);
-			// FIXME
-                        //collect_cb<3> fb_data(fb_inputs);
-                        //execute_route(stage, r, {&psd_data, &fb_data}, scan_delay);
-                        //dump_data("scan", fb_data.data, psd_data.data);
+                        raster_route rt(start, step, scan_points);
+			std::ofstream of("scan");
+			for (int i=0; rt.has_more(); ++i, ++rt) {
+				stage.smooth_move(rt.get_pos(), 4000);
+				Vector3f fb = fb_inputs.get();
+				Vector4f psd = psd_inputs.get();
+				of << (Matrix<float,1,7>() << fb, psd).finished() << "\n";
+			}
 		} else
 			std::cout << "! ERR\tInvalid command\n";
                 return false;

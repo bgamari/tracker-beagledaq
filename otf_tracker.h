@@ -39,7 +39,7 @@ struct otf_tracker {
 
         // On-the-fly feedback parameters
         array<float,3> perturb_freqs;
-        float perturb_amp;
+        Vector3f perturb_amp;
         unsigned int recal_delay, fb_delay, move_skip_cycles;
         float fb_max_delta;
         Vector3f fb_setpoint;
@@ -90,7 +90,7 @@ public:
         otf_tracker(input_channels<4>& psd_inputs,
                         stage& stage_outputs, input_channels<3>& fb_inputs) :
                 scale_psd_inputs(false),
-                perturb_amp(0.05),
+                perturb_amp(0.05*Vector3f::Ones()),
                 recal_delay(100*1000), fb_delay(500),
                 move_skip_cycles(10),
                 fb_max_delta(0.2),

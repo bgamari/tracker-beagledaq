@@ -62,14 +62,18 @@ void add_tracker_params(otf_tracker& tracker)
         def_param("scale_psd_inputs", tracker.scale_psd_inputs,
                         "Scale PSD positions by sums");
 
-        def_param("otf.freq-x", tracker.perturb_freqs[0],
+        def_param("otf.freq_x", tracker.perturb_freqs[0],
                         "Frequencies of on-the-fly calibration perturbations (X axis)");
-        def_param("otf.freq-y", tracker.perturb_freqs[1],
+        def_param("otf.freq_y", tracker.perturb_freqs[1],
                         "Frequencies of on-the-fly calibration perturbations (Y axis)");
-        def_param("otf.freq-z", tracker.perturb_freqs[2],
+        def_param("otf.freq_z", tracker.perturb_freqs[2],
                         "Frequencies of on-the-fly calibration perturbations (Z axis)");
-	def_param("cal.perturb_amp", tracker.perturb_amp,
-			"Perturbation amplitude");
+	def_param("cal.perturb_amp_x", tracker.perturb_amp[0],
+			"Perturbation amplitude (X axis)");
+	def_param("cal.perturb_amp_y", tracker.perturb_amp[1],
+			"Perturbation amplitude (Y axis)");
+	def_param("cal.perturb_amp_z", tracker.perturb_amp[2],
+			"Perturbation amplitude (Z axis)");
 	def_param("cal.delay", tracker.recal_delay,
 			"Calibration delay");
 

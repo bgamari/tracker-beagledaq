@@ -224,7 +224,7 @@ void otf_tracker::feedback()
 
                 // Get PID response and apply perturbation
                 for (int i=0; i<3; i++) {
-                        delta[i] += perturb_amp * sin(2*M_PI/perturb_freqs[i]*t);
+                        delta[i] += perturb_amp[i] * sin(2*M_PI/perturb_freqs[i]*t);
                         fb_pids[i].add_point(t, delta[i]);
                         delta[i] = fb_pids[i].get_response();
                 }

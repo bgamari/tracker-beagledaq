@@ -31,8 +31,7 @@ public:
         float prop_gain, int_gain, diff_gain;
 
 public:
-        pid_loop() : points(1), prop_gain(1), int_gain(0), diff_gain(0) { }
-        pid_loop(float prop_gain, float int_gain, float diff_gain, unsigned int tau) :
+        pid_loop(float prop_gain=1, float int_gain=0, float diff_gain=0, unsigned int tau=10) :
                 points(tau), prop_gain(prop_gain), int_gain(int_gain), diff_gain(diff_gain)
         {
                 assert(tau >= 1);

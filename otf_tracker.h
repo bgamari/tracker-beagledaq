@@ -116,5 +116,6 @@ public:
                 perturb_freqs[1] = 61;
                 perturb_freqs[2] = 53;
         }
+        ~otf_tracker();
 };
 

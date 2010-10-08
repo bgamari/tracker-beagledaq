@@ -311,5 +311,10 @@ bool otf_tracker::running()
 void otf_tracker::stop_feedback()
 {
         feedback_thread.interrupt();
+        feedback_thread.join();
+}
+
+otf_tracker::~otf_tracker() {
+        stop_feedback();
 }
 

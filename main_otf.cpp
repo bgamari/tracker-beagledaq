@@ -156,10 +156,8 @@ int main(int argc, char** argv)
 	test_outputs<3> stage_outputs;
 #endif
 
-	fb_stage stage(stage_outputs, fb_inputs);
-	stage.calibrate();
+	pid_stage stage(stage_outputs, fb_inputs);
 	stage.smooth_move({0.5, 0.5, 0.5}, 10000);
-        def_param("stage.cal_range", stage.cal_range, "Stage calibration range");
 
 	usleep(10*1000);
         otf_tracker tracker(psd_inputs, stage, fb_inputs);
@@ -225,9 +223,6 @@ int main(int argc, char** argv)
                 } else if (cmd == "center") {
                         Vector3f pos = 0.5 * Vector3f::Ones();
                         stage.smooth_move(pos, 10000);
-                        std::cout << "OK\n";
-                } else if (cmd == "stage-cal") {
-                        stage.calibrate();
                         std::cout << "OK\n";
                 } else if (cmd == "feedback-start") {
                         if (tracker.running())

@@ -290,7 +290,6 @@ void tracker::feedback(fine_cal_result cal)
                 }
 
                 // Get sensor values
-		Vector3f fb = fb_inputs.get();
                 Vector4f psd = psd_inputs.get();
                 n++;
 
@@ -317,13 +316,13 @@ void tracker::feedback(fine_cal_result cal)
                 }
 
                 // Move stage
-                Vector3f new_pos = fb - delta + fb_setpoint;
+                Vector3f new_pos = delta + fb_setpoint;
 		//new_pos.z() = 0.5 + fb_setpoint.z();
 		f << boost::format("%f\t%f\t%f\t%f\t%f\t%f\n") %
 				delta.x() % delta.y() % delta.z() %
 				new_pos.x() % new_pos.y() % new_pos.z();
                 try {
-                        stage_outputs.move(new_pos);
+                        stage_outputs.move_rel(delta + fb_setpoint);
                 } catch (clamped_output_error e) {
                         bad_pts++;
                         fprintf(stderr, "Clamped\n");

@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <boost/random.hpp>
+#include <boost/thread.hpp>
 #include <Eigen/Eigen>
 
 using std::vector;
@@ -38,8 +39,9 @@ public:
         const output_channels<3>& out;
         stage(const output_channels<3>& out) : out(out) { }
 	virtual void move(const Vector3f pos);
+        virtual void move_rel(const Vector3f delta);
         void smooth_move(Vector3f to, unsigned int move_time);
-	Vector3f get_last_pos() const;
+	virtual Vector3f get_pos() const;
 };
 
 class fb_stage : public stage {
@@ -47,16 +49,40 @@ class fb_stage : public stage {
 public:
 	const input_channels<3>& fb;
         float cal_range;
+
 	fb_stage(const output_channels<3>& out, const input_channels<3>& fb, float cal_range=0.4)
-		: stage(out), fb(fb), cal_range(cal_range) { }
+		: stage(out), fb(fb), cal_range(cal_range) {
+		calibrate();
+	}
 
 	/*
 	 * calibrate():
 	 * Perform basic first-order OLS regression to map feedback coordinate
 	 * space to stage input space
 	 */
-	void calibrate(unsigned int n_pts=40, unsigned int n_samp=6);
+	void calibrate(unsigned int n_pts=400, unsigned int n_samp=10);
 	void move(const Vector3f pos);
+};
+
+class pid_stage : public stage {
+	Vector3f setpoint, pos;
+	const input_channels<3>& fb;
+public:
+	unsigned int fb_delay;
+private:
+	boost::thread fb_worker;
+	void worker();
+
+public:
+	pid_stage(const output_channels<3>& out, const input_channels<3>& fb, float cal_range=0.4) :
+		stage(out), 
+		setpoint(0.5*Vector3f::Ones()), pos(0.5*Vector3f::Ones()),
+		fb(fb), fb_delay(1000), fb_worker(&pid_stage::worker, this)
+	{ }
+
+	void move(const Vector3f pos);
+        void move_rel(const Vector3f delta);
+        Vector3f get_pos() const;
 };
 
 /*

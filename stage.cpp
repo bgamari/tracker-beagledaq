@@ -19,15 +19,22 @@
  */
 
 #include "stage.h"
+#include "pid.h"
 
 #include <fstream>
 
-void stage::move(const Vector3f pos) {
+void stage::move(const Vector3f pos)
+{
         out.set(pos);
         last_pos = pos;
 }
 
-Vector3f stage::get_last_pos() const {
+void stage::move_rel(const Vector3f delta)
+{
+        move(last_pos + delta);
+}
+
+Vector3f stage::get_pos() const {
 	return last_pos;
 }
 
@@ -49,7 +56,7 @@ void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
 		Vector3f out_pos;
 		out_pos << vg(), vg(), vg();
                 raw_stage.smooth_move(out_pos, 4*1000);
-		usleep(75*1000);
+		usleep(25*1000);
 
                 for (unsigned int n=0; n<n_samp; n++)
 			samples.row(n) = fb.get();
@@ -87,8 +94,44 @@ void fb_stage::move(const Vector3f pos)
 	last_pos = pos;
 }
 
+void pid_stage::worker() 
+{
+	pid_loop pidx(0.1), pidy(0.1), pidz(0.1);
+	unsigned int i=0; 
+	while (true) {
+		Vector3f fb_pos = fb.get();
+		Vector3f err = fb_pos - setpoint;
+
+		pidx.add_point(i, err.x());
+		pidy.add_point(i, err.y());
+		pidz.add_point(i, err.z());
+
+		Vector3f resp;
+		resp << pidx.get_response(), pidy.get_response(), pidz.get_response();
+		pos -= resp;
+		out.set(pos);
+		i++;
+		usleep(fb_delay);
+	}
+}
+
+void pid_stage::move(const Vector3f pos)
+{
+	setpoint = pos;
+}
+
+void pid_stage::move_rel(const Vector3f delta)
+{
+        setpoint += delta;
+}
+
+Vector3f pid_stage::get_pos() const
+{
+        return setpoint;
+}
+
 /*
- * smooth_move: Linearly interpolate position over time to smooth stage motion..
+ * smooth_move: Linearly interpolate position over time to smooth stage motion
  *
  * TODO: Acceleration?
  */
@@ -97,7 +140,7 @@ void stage::smooth_move(Vector3f to, unsigned int move_time)
 	// How long to wait in between smoothed position updates
 	const unsigned int smooth_delay = 50; // us
 	const unsigned int smooth_pts = move_time / smooth_delay;
-	Vector3f initial = get_last_pos();
+	Vector3f initial = get_pos();
 	Vector3f step = (to - initial) / smooth_pts;
 
 	// Smoothly move into position

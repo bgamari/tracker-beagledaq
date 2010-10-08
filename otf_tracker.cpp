@@ -198,6 +198,7 @@ void otf_tracker::feedback()
         boost::mutex beta_mutex;
         Vector4f psd_mean = Vector4f::Zero();
         boost::thread recal_thread(&otf_tracker::recal_worker, this, beta, &beta_mutex, psd_mean, recal_count);
+        Vector3f last_pos = stage_outputs.get_pos();
 
         _running = true;
 	while (true) {
@@ -245,7 +246,6 @@ void otf_tracker::feedback()
                         delta[i] = fb_pids[i].get_response();
                 }
 
-                Vector3f last_pos = stage_outputs.get_last_pos();
 		f << boost::format("%f %f %f\t%f %f %f\t%f %f %f\n") %
 				delta.x() % delta.y() % delta.z() %
 				fb.x() % fb.y() % fb.z() %
@@ -258,10 +258,11 @@ void otf_tracker::feedback()
                                 fb_mean += fb_inputs.get();
                         fb_mean /= 5;
 
-			Vector3f new_pos = fb_mean - delta + fb_setpoint;
-                        new_pos = fb_mean;
+			Vector3f new_pos = fb_mean; //fb_mean - delta + fb_setpoint;
+//new_pos.z() = new_pos.y() = 0.5;
                         try {
                                 stage_outputs.move(new_pos);
+                                last_pos = new_pos;
                         } catch (clamped_output_error e) {
                                 fprintf(stderr, "Clamped\n");
                                 continue;

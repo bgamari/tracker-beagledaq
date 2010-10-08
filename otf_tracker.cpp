@@ -209,7 +209,7 @@ void otf_tracker::feedback()
                 }
 
                 // Get sensor values
-		Vector3f fb = fb_inputs.get();
+		Vector3f fb = stage_outputs.get_pos();
                 Vector4f psd = psd_inputs.get();
                 psd = scale_psd_position(psd);
                 n++;
@@ -253,15 +253,9 @@ void otf_tracker::feedback()
 
                 // Move stage
 		if (n % move_skip_cycles == 0) {
-                        Vector3f fb_mean = Vector3f::Zero();
-                        for (int i=0; i<5; i++)
-                                fb_mean += fb_inputs.get();
-                        fb_mean /= 5;
-
-			Vector3f new_pos = fb_mean; //fb_mean - delta + fb_setpoint;
-//new_pos.z() = new_pos.y() = 0.5;
+			Vector3f new_pos = fb_setpoint - delta;
                         try {
-                                stage_outputs.move(new_pos);
+                                stage_outputs.move_rel(new_pos);
                                 last_pos = new_pos;
                         } catch (clamped_output_error e) {
                                 fprintf(stderr, "Clamped\n");

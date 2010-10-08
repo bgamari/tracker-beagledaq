@@ -51,7 +51,6 @@ struct otf_tracker {
 
         input_channels<4>& psd_inputs;
         stage& stage_outputs;
-        input_channels<3>& fb_inputs;
 
 private:
         struct pos_log_entry {
@@ -88,8 +87,7 @@ public:
         unsigned int get_log_length();
         void set_log_length(unsigned int len);
 
-        otf_tracker(input_channels<4>& psd_inputs,
-                        stage& stage_outputs, input_channels<3>& fb_inputs) :
+        otf_tracker(input_channels<4>& psd_inputs, stage& stage_outputs) :
                 scale_psd_inputs(false),
                 perturb_amp(0.02*Vector3f::Ones()),
                 recal_delay(1000*1000), fb_delay(10*1000),
@@ -101,7 +99,6 @@ public:
 		phase_max(1.0*M_PI), phase_step(0.1*M_PI),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),
-                fb_inputs(fb_inputs),
 		_running(false)
         {
 		active_log = new boost::circular_buffer<pos_log_entry>(1000);

@@ -26,16 +26,20 @@
 void stage::move(const Vector3f pos)
 {
         out.set(pos);
-        last_pos = pos;
+        target_pos = pos;
 }
 
 void stage::move_rel(const Vector3f delta)
 {
-        move(last_pos + delta);
+        move(target_pos + delta);
+}
+
+Vector3f stage::get_target_pos() const {
+	return target_pos;
 }
 
 Vector3f stage::get_pos() const {
-	return last_pos;
+	return target_pos;
 }
 
 void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
@@ -91,7 +95,12 @@ void fb_stage::move(const Vector3f pos)
 
 	Vector3f p = R.transpose() * npos;
 	out.set(p);
-	last_pos = pos;
+	target_pos = pos;
+}
+
+Vector3f fb_stage::get_pos() const
+{
+        return fb.get();
 }
 
 void pid_stage::worker() 
@@ -100,7 +109,7 @@ void pid_stage::worker()
 	unsigned int i=0; 
 	while (!boost::this_thread::interruption_requested()) {
 		Vector3f fb_pos = fb.get();
-		Vector3f err = fb_pos - setpoint;
+		Vector3f err = fb_pos - target_pos;
 
 		pidx.add_point(i, err.x());
 		pidy.add_point(i, err.y());
@@ -122,17 +131,22 @@ pid_stage::~pid_stage() {
 
 void pid_stage::move(const Vector3f pos)
 {
-	setpoint = pos;
+	target_pos = pos;
 }
 
 void pid_stage::move_rel(const Vector3f delta)
 {
-        setpoint += delta;
+        target_pos += delta;
 }
 
 Vector3f pid_stage::get_pos() const
 {
-        return setpoint;
+        return fb.get();
+}
+
+Vector3f pid_stage::get_target_pos() const
+{
+        return target_pos;
 }
 
 /*

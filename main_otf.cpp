@@ -156,11 +156,11 @@ int main(int argc, char** argv)
 	test_outputs<3> stage_outputs;
 #endif
 
-	pid_stage stage(stage_outputs, fb_inputs);
-	stage.smooth_move({0.5, 0.5, 0.5}, 10000);
+	pid_stage s(stage_outputs, fb_inputs);
+	s.smooth_move({0.5, 0.5, 0.5}, 10000);
 
 	usleep(10*1000);
-        otf_tracker tracker(psd_inputs, stage, fb_inputs);
+        otf_tracker tracker(psd_inputs, s);
         add_tracker_params(tracker);
         tracker.feedback_ended_cb = &feedback_ended;
 
@@ -209,8 +209,8 @@ int main(int argc, char** argv)
                 } else if (cmd == "read-psd") {
                         Vector4f psd = psd_inputs.get();
                         std::cout << psd.transpose().format(mat_fmt) << "\n";
-                } else if (cmd == "read-fb") {
-                        Vector3f fb = fb_inputs.get();
+                } else if (cmd == "read-pos") {
+                        Vector3f fb = s.get_pos();
                         std::cout << fb.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "move") {
                         using boost::lexical_cast;
@@ -218,11 +218,11 @@ int main(int argc, char** argv)
                         pos.x() = lexical_cast<float>(*tok); tok++;
                         pos.y() = lexical_cast<float>(*tok); tok++;
                         pos.z() = lexical_cast<float>(*tok);
-                        stage.smooth_move(pos, 10000);
+                        s.smooth_move(pos, 10000);
                         std::cout << "OK\n";
                 } else if (cmd == "center") {
                         Vector3f pos = 0.5 * Vector3f::Ones();
-                        stage.smooth_move(pos, 10000);
+                        s.smooth_move(pos, 10000);
                         std::cout << "OK\n";
                 } else if (cmd == "feedback-start") {
                         if (tracker.running())

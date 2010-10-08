@@ -61,11 +61,10 @@ static std::string cmd_help =
 "  get [parameter]              Get the value of a parameter\n"
 "  list                         List all parameters and their values\n"
 "  read-psd                     Read PSD values\n"
-"  read-fb                      Read stage feedback sensor values\n"
+"  read-pos                     Read stage position\n"
 "  move [x] [y] [z]             Move stage to position (x, y, z)\n"
 "  move-rough-pos               Move stage to rough position\n"
 "  center                       Move stage to position (0.5, 0.5, 0.5)\n"
-"  stage-cal                    Run stage calibration\n"
 "  rough-cal                    Run rough calibration\n"
 "  fine-cal                     Run fine calibration (requires rough-cal)\n"
 "  show-coeffs                  Show fine calibration regression matrix\n"
@@ -79,9 +78,7 @@ static std::string cmd_help =
 struct tracker_cli {
         std::vector<parameter*> parameters;
         input_channels<4>& psd_inputs;
-        input_channels<3>& fb_inputs;
-        output_channels<3>& stage_outputs;
-        fb_stage stage;
+        stage& s;
         tracker tr;
         Vector3f rough_pos;
         tracker::fine_cal_result fine_cal;
@@ -168,18 +165,13 @@ struct tracker_cli {
                 std::cout << "$ FB-ERR\n";
         }
 
-        tracker_cli(input_channels<4>& psd_inputs,
-                        input_channels<3>& fb_inputs,
-                        output_channels<3>& stage_outputs) :
-                psd_inputs(psd_inputs), fb_inputs(fb_inputs), stage_outputs(stage_outputs),
-                stage(stage_outputs, fb_inputs),
-                tr(psd_inputs, stage, fb_inputs),
+        tracker_cli(input_channels<4>& psd_inputs, stage& s) :
+                psd_inputs(psd_inputs), s(s),
+                tr(psd_inputs, s),
 		auto_xy_range_factor(0),
                 scan_delay(100)
         {
-                stage.calibrate();
-                stage.smooth_move({0.5, 0.5, 0.5}, 10000);
-                def_param("stage.cal_range", stage.cal_range, "Stage calibration range");
+                s.smooth_move({0.5, 0.5, 0.5}, 10000);
                 usleep(10*1000);
 
                 add_tracker_params(tr);
@@ -268,8 +260,8 @@ struct tracker_cli {
                 } else if (cmd == "read-psd") {
                         Vector4f psd = psd_inputs.get();
                         std::cout << psd.transpose().format(mat_fmt) << "\n";
-                } else if (cmd == "read-fb") {
-                        Vector3f fb = fb_inputs.get();
+                } else if (cmd == "read-pos") {
+                        Vector3f fb = s.get_pos();
                         std::cout << fb.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "move") {
                         using boost::lexical_cast;
@@ -278,17 +270,14 @@ struct tracker_cli {
                         pos.x() = lexical_cast<float>(args[0]);
                         pos.y() = lexical_cast<float>(args[1]);
                         pos.z() = lexical_cast<float>(args[2]);
-                        stage.smooth_move(pos, 10000);
+                        s.smooth_move(pos, 10000);
                         std::cout << "! OK\n";
                 } else if (cmd == "move-rough-pos") {
-                        stage.smooth_move(rough_pos, 10000);
+                        s.smooth_move(rough_pos, 10000);
                         std::cout << "! OK\n";
                 } else if (cmd == "center") {
                         Vector3f pos = 0.5 * Vector3f::Ones();
-                        stage.smooth_move(pos, 10000);
-                        std::cout << "! OK\n";
-                } else if (cmd == "stage-cal") {
-                        stage.calibrate();
+                        s.smooth_move(pos, 10000);
                         std::cout << "! OK\n";
                 } else if (cmd == "rough-cal") {
                         try {
@@ -296,14 +285,14 @@ struct tracker_cli {
 				rough_pos = res.center;
 				if (auto_xy_range_factor)
 					tr.fine_cal_xy_range = res.xy_size * auto_xy_range_factor;
-                                stage.smooth_move(rough_pos, 5000);
+                                s.smooth_move(rough_pos, 5000);
                                 std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
                         } catch (clamped_output_error e) {
                                 std::cout << "! ERR Clamped output\n";
                         }
                 } else if (cmd == "fine-cal") {
                         fine_cal = tr.fine_calibrate(rough_pos);
-                        stage.smooth_move(rough_pos, 1000);
+                        s.smooth_move(rough_pos, 1000);
                         std::cout << "! OK\n";
                 } else if (cmd == "show-coeffs") {
                         std::cout << fine_cal.beta.format(mat_fmt) << "\n";
@@ -333,8 +322,8 @@ struct tracker_cli {
                         raster_route rt(start, step, scan_points);
 			std::ofstream of("scan");
 			for (int i=0; rt.has_more(); ++i, ++rt) {
-				stage.smooth_move(rt.get_pos(), 4000);
-				Vector3f fb = fb_inputs.get();
+				s.smooth_move(rt.get_pos(), 4000);
+				Vector3f fb = s.get_pos();
 				Vector4f psd = psd_inputs.get();
 				of << (Matrix<float,1,7>() << fb, psd).finished() << "\n";
 			}
@@ -378,13 +367,16 @@ int main(int argc, char** argv)
 
 	max5134 dac(stage_pos_dac_dev);
 	max5134_outputs<3> stage_outputs(dac, stage_chans);
+
+        //fb_stage stage(stage_outputs, fb_inputs);
+        pid_stage stage(stage_outputs, fb_inputs);
 #else	
 	test_inputs<4> psd_inputs;
 	test_inputs<3> fb_inputs;
 	test_outputs<3> stage_outputs;
 #endif
 
-        tracker_cli cli(psd_inputs, fb_inputs, stage_outputs);
+        tracker_cli cli(psd_inputs, stage);
         cli.mainloop();
 
 	return 0;

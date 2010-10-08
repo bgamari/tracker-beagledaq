@@ -34,16 +34,26 @@ typedef Matrix<unsigned int,3,1> Vector3u;
 
 class stage {
 protected:
-        Vector3f last_pos;
+        Vector3f target_pos;
 public:
         const output_channels<3>& out;
-        stage(const output_channels<3>& out) : out(out) { }
+        stage(const output_channels<3>& out) :
+                target_pos(0.5*Vector3f::Ones()), out(out) { }
 	virtual void move(const Vector3f pos);
         virtual void move_rel(const Vector3f delta);
         void smooth_move(Vector3f to, unsigned int move_time);
+        virtual Vector3f get_target_pos() const;
 	virtual Vector3f get_pos() const;
 };
 
+/*
+ * fb_stage: Stage backend with calibration to feedback sensor
+ *
+ * This stage backend specifies positions relative to a feedback sensor.
+ * The output position values are computed from a calibration between
+ * the feedback sensor and the output values.
+ *
+ */
 class fb_stage : public stage {
 	Matrix<float, 7,3> R;
 public:
@@ -56,16 +66,23 @@ public:
 	}
 
 	/*
-	 * calibrate():
-	 * Perform basic first-order OLS regression to map feedback coordinate
+         * calibrate():
+         * Perform basic first-order OLS regression to map feedback coordinate
 	 * space to stage input space
 	 */
 	void calibrate(unsigned int n_pts=400, unsigned int n_samp=10);
 	void move(const Vector3f pos);
+        Vector3f get_pos() const;
 };
 
+/*
+ * pid_stage: Stage backend with PID feedback
+ *
+ * This stage backend implements a PID loop feeding back from a
+ * feedback sensor
+ */
 class pid_stage : public stage {
-	Vector3f setpoint, pos;
+	Vector3f pos; // current output value
 	const input_channels<3>& fb;
 public:
 	unsigned int fb_delay;
@@ -75,8 +92,7 @@ private:
 
 public:
 	pid_stage(const output_channels<3>& out, const input_channels<3>& fb) :
-		stage(out), 
-		setpoint(0.5*Vector3f::Ones()), pos(0.5*Vector3f::Ones()),
+		stage(out), pos(0.5*Vector3f::Ones()),
 		fb(fb), fb_delay(1000), fb_worker(&pid_stage::worker, this)
 	{ }
         ~pid_stage();
@@ -84,6 +100,7 @@ public:
 	void move(const Vector3f pos);
         void move_rel(const Vector3f delta);
         Vector3f get_pos() const;
+	Vector3f get_target_pos() const;
 };
 
 /*

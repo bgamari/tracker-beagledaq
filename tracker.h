@@ -57,7 +57,6 @@ struct tracker {
         
         input_channels<4>& psd_inputs;
         stage& stage_outputs;
-        input_channels<3>& fb_inputs;
 
         struct fine_cal_result {
                 Matrix<float, 3,9> beta;
@@ -92,7 +91,7 @@ public:
         void stop_feedback();
 
         tracker(input_channels<4>& psd_inputs,
-		stage& stage_outputs, input_channels<3>& fb_inputs) :
+		stage& stage_outputs) :
                 scale_psd_inputs(false),
                 rough_cal_xy_range(0.4), rough_cal_z_range(0.4),
                 rough_cal_xy_pts(40), rough_cal_z_pts(200),
@@ -105,7 +104,6 @@ public:
                 fb_setpoint(Vector3f::Zero()),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),
-                fb_inputs(fb_inputs),
                 _running(false)
         {
                 fb_pids[0] = pid_loop(0.6, 1e-3, 0, 10);

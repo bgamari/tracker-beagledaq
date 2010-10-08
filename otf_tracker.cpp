@@ -280,6 +280,7 @@ void otf_tracker::feedback()
         }
 
 	recal_thread.interrupt();
+        recal_thread.join();
         _running = false;
         if (feedback_ended_cb)
                 feedback_ended_cb();

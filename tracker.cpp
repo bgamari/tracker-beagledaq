@@ -358,5 +358,10 @@ bool tracker::running()
 void tracker::stop_feedback()
 {
         feedback_thread.interrupt();
+        feedback_thread.join();
+}
+
+tracker::~tracker() {
+        stop_feedback();
 }
 

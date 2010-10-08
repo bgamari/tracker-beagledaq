@@ -74,11 +74,12 @@ private:
 	void worker();
 
 public:
-	pid_stage(const output_channels<3>& out, const input_channels<3>& fb, float cal_range=0.4) :
+	pid_stage(const output_channels<3>& out, const input_channels<3>& fb) :
 		stage(out), 
 		setpoint(0.5*Vector3f::Ones()), pos(0.5*Vector3f::Ones()),
 		fb(fb), fb_delay(1000), fb_worker(&pid_stage::worker, this)
 	{ }
+        ~pid_stage();
 
 	void move(const Vector3f pos);
         void move_rel(const Vector3f delta);

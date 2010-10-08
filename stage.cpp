@@ -98,7 +98,7 @@ void pid_stage::worker()
 {
 	pid_loop pidx(0.1), pidy(0.1), pidz(0.1);
 	unsigned int i=0; 
-	while (true) {
+	while (!boost::this_thread::interruption_requested()) {
 		Vector3f fb_pos = fb.get();
 		Vector3f err = fb_pos - setpoint;
 
@@ -113,6 +113,11 @@ void pid_stage::worker()
 		i++;
 		usleep(fb_delay);
 	}
+}
+
+pid_stage::~pid_stage() {
+        fb_worker.interrupt();
+        fb_worker.join();
 }
 
 void pid_stage::move(const Vector3f pos)

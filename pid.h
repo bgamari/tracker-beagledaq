@@ -18,7 +18,7 @@
  * Author: Ben Gamari <bgamari@physics.umass.edu>
  */
 
-
+#pragma once
 #include <boost/circular_buffer.hpp>
 
 class pid_loop {

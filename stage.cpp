@@ -19,9 +19,9 @@
  */
 
 #include "stage.h"
-#include "pid.h"
 
 #include <fstream>
+#include "boost/format.hpp"
 
 void stage::move(const Vector3f pos)
 {
@@ -105,8 +105,9 @@ Vector3f fb_stage::get_pos() const
 
 void pid_stage::worker() 
 {
-	pid_loop pidx(0.1), pidy(0.1), pidz(0.1);
+        bool debug = false;
 	unsigned int i=0; 
+        std::ofstream fx("stage-x"), fy("stage-y"), fz("stage-z");
 	while (!boost::this_thread::interruption_requested()) {
 		Vector3f fb_pos = fb.get();
 		Vector3f err = fb_pos - target_pos;
@@ -118,6 +119,15 @@ void pid_stage::worker()
 		Vector3f resp;
 		resp << pidx.get_response(), pidy.get_response(), pidz.get_response();
 		pos -= resp;
+                if (debug) {
+                        fx << (boost::format("%f\t%f\t%f\t%f\n") % target_pos[0] % fb_pos[0] % resp[0] % pos[0]);
+                        fy << (boost::format("%f\t%f\t%f\t%f\n") % target_pos[1] % fb_pos[1] % resp[1] % pos[1]);
+                        fz << (boost::format("%f\t%f\t%f\t%f\n") % target_pos[2] % fb_pos[2] % resp[2] % pos[2]);
+                }
+                for (int j=0; j<3; j++) {
+                        pos[j] = std::min(1.0f, pos[j]);
+                        pos[j] = std::max(0.0f, pos[j]);
+                }
 		out.set(pos);
 		i++;
 		usleep(fb_delay);
@@ -131,22 +141,14 @@ pid_stage::~pid_stage() {
 
 void pid_stage::move(const Vector3f pos)
 {
+        for (int i=0; i<3; i++)
+                if (pos[i] < 0 || pos[i] > 1) throw clamped_output_error(pos);
 	target_pos = pos;
-}
-
-void pid_stage::move_rel(const Vector3f delta)
-{
-        target_pos += delta;
 }
 
 Vector3f pid_stage::get_pos() const
 {
         return fb.get();
-}
-
-Vector3f pid_stage::get_target_pos() const
-{
-        return target_pos;
 }
 
 /*

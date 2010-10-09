@@ -75,10 +75,40 @@ static std::string cmd_help =
 "  version                      Show version information\n"
 "  help                         This help message\n";
 
+template<typename T>
+void def_param(std::vector<parameter*>& params, string name, T& value, string description) {
+        parameter* p = new typed_value<T>(name, description, value);
+        params.push_back(p);
+}
+
+void add_pid_params(std::vector<parameter*>& params, string name, pid_loop& pid)
+{
+        def_param(params, name + "_prop", pid.prop_gain, "PID Proportional gain");
+        def_param(params, name + "_int", pid.int_gain, "PID Integral gain");
+        params.push_back(new pid_tau_param(name + "_tau", pid, "PID Integral time constant"));
+        def_param(params, name + "_diff", pid.diff_gain, "PID Differential gain");
+}
+
+template<class Stage>
+void add_stage_params(std::vector<parameter*>& params, Stage& s)
+{
+        throw std::runtime_error("Unimplemented");
+}
+
+template<>
+void add_stage_params<pid_stage>(std::vector<parameter*>& params, pid_stage& s)
+{
+        add_pid_params(params, "stage.pidx", s.pidx);
+        add_pid_params(params, "stage.pidy", s.pidy);
+        add_pid_params(params, "stage.pidz", s.pidz);
+        def_param(params, "stage.delay", s.fb_delay, "Stage feedback loop delay");
+}
+
+template<class Stage>
 struct tracker_cli {
-        std::vector<parameter*> parameters;
+        std::vector<parameter*> params;
         input_channels<4>& psd_inputs;
-        stage& s;
+        Stage& s;
         tracker tr;
         Vector3f rough_pos;
         tracker::fine_cal_result fine_cal;
@@ -90,7 +120,7 @@ struct tracker_cli {
         template<typename T>
         void def_param(string name, T& value, string description) {
                 parameter* p = new typed_value<T>(name, description, value);
-                parameters.push_back(p);
+                params.push_back(p);
         }
 
         void add_tracker_params(tracker& tracker)
@@ -135,37 +165,16 @@ struct tracker_cli {
                 def_param("feedback.setpoint_z", tracker.fb_setpoint.z(),
                                 "Z axis setpoint");
 
-                def_param("pids.x_prop", tracker.fb_pids[0].prop_gain,
-                                "X axis proportional gain");
-                def_param("pids.y_prop", tracker.fb_pids[1].prop_gain,
-                                "Y axis proportional gain");
-                def_param("pids.z_prop", tracker.fb_pids[2].prop_gain,
-                                "Z axis proportional gain");
-                def_param("pids.x_int", tracker.fb_pids[0].int_gain,
-                                "X axis integral gain");
-                def_param("pids.y_int", tracker.fb_pids[1].int_gain,
-                                "Y axis integral gain");
-                def_param("pids.z_int", tracker.fb_pids[2].int_gain,
-                                "Z axis integral gain");
-                parameters.push_back(new pid_tau_param("pids.x_tau", tracker.fb_pids[0],
-                                        "X axis integral time constant"));
-                parameters.push_back(new pid_tau_param("pids.y_tau", tracker.fb_pids[1],
-                                        "Y axis integral time constant"));
-                parameters.push_back(new pid_tau_param("pids.z_tau", tracker.fb_pids[2],
-                                        "Z axis integral time constant"));
-                def_param("pids.x_diff", tracker.fb_pids[0].diff_gain,
-                                "X axis derivative gain");
-                def_param("pids.y_diff", tracker.fb_pids[1].diff_gain,
-                                "Y axis derivative gain");
-                def_param("pids.z_diff", tracker.fb_pids[2].diff_gain,
-                                "Z axis derivative gain");
+                add_pid_params(params, "pids.x", tracker.fb_pids[0]);
+                add_pid_params(params, "pids.y", tracker.fb_pids[1]);
+                add_pid_params(params, "pids.z", tracker.fb_pids[2]);
         }
 
         static void feedback_ended() {
                 std::cout << "$ FB-ERR\n";
         }
 
-        tracker_cli(input_channels<4>& psd_inputs, stage& s) :
+        tracker_cli(input_channels<4>& psd_inputs, Stage& s) :
                 psd_inputs(psd_inputs), s(s),
                 tr(psd_inputs, s),
 		auto_xy_range_factor(0),
@@ -175,6 +184,7 @@ struct tracker_cli {
                 usleep(10*1000);
 
                 add_tracker_params(tr);
+                add_stage_params(params, s);
                 tr.feedback_ended_cb = &tracker_cli::feedback_ended;
 
                 rough_pos << 0.5, 0.5, 0.5;
@@ -234,7 +244,7 @@ struct tracker_cli {
                         if (args.size() != 2) throw invalid_syntax();
 			string param = args[0];
 			string value = args[1];
-			parameter* p = find_parameter(parameters, param);
+			parameter* p = find_parameter(params, param);
 			if (!p)
                                 std::cout << "! Unknown parameter\n";
                         else {
@@ -247,14 +257,14 @@ struct tracker_cli {
 		} else if (cmd == "get") {
                         if (args.size() != 1) throw invalid_syntax();
 			string param = args[0];
-			parameter* p = find_parameter(parameters, param);
+			parameter* p = find_parameter(params, param);
 			if (!p)
                                 std::cout << "! Unknown parameter\n";
                         else
                                 std::cout << param << " = " << *p << "\n";
 		} else if (cmd == "list") {
                         string match = args.size() ? args[0] : "";
-			for (auto p=parameters.begin(); p != parameters.end(); p++)
+			for (auto p=params.begin(); p != params.end(); p++)
                                 if ((**p).name.compare(0, match.size(), match) == 0)
                                         std::cout << (boost::format("%-30s\t%10s\t\t%50s\n") % (**p).name % **p % (**p).description);
                 } else if (cmd == "read-psd") {
@@ -346,10 +356,10 @@ struct tracker_cli {
                         free(tmp);
                         try {
                                 stop = do_command(line);
-                        } catch (std::exception& e) {
-                                std::cout << "! Command failed\n";
                         } catch (invalid_syntax e) {
                                 std::cout << "! Invalid syntax\n";
+                        } catch (std::exception& e) {
+                                std::cout << "! Command failed\n";
                         }
                 }
         }
@@ -376,7 +386,7 @@ int main(int argc, char** argv)
 	test_outputs<3> stage_outputs;
 #endif
 
-        tracker_cli cli(psd_inputs, stage);
+        tracker_cli<pid_stage> cli(psd_inputs, stage);
         cli.mainloop();
 
 	return 0;

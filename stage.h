@@ -22,6 +22,7 @@
 #pragma once
 
 #include "channels.h"
+#include "pid.h"
 
 #include <vector>
 #include <boost/random.hpp>
@@ -85,6 +86,7 @@ class pid_stage : public stage {
 	Vector3f pos; // current output value
 	const input_channels<3>& fb;
 public:
+	pid_loop pidx, pidy, pidz;
 	unsigned int fb_delay;
 private:
 	boost::thread fb_worker;
@@ -92,15 +94,13 @@ private:
 
 public:
 	pid_stage(const output_channels<3>& out, const input_channels<3>& fb) :
-		stage(out), pos(0.5*Vector3f::Ones()),
-		fb(fb), fb_delay(1000), fb_worker(&pid_stage::worker, this)
-	{ }
+		stage(out), pos(0.5*Vector3f::Ones()), fb(fb),
+                pidx(0.1), pidy(0.1), pidz(0.1),
+                fb_delay(6000), fb_worker(&pid_stage::worker, this) { }
         ~pid_stage();
 
 	void move(const Vector3f pos);
-        void move_rel(const Vector3f delta);
         Vector3f get_pos() const;
-	Vector3f get_target_pos() const;
 };
 
 /*

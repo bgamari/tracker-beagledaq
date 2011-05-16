@@ -20,8 +20,14 @@
 
 
 #pragma once
-#include "spi_device.h"
+
 #include <cstdio>
+#include <vector>
+#include <cstdint>
+#include <cstring>
+#include <bitset>
+
+#include "spi_device.h"
 
 class max1302 : spi_device
 {
@@ -99,6 +105,103 @@ public:
 	max1302(const char* dev) : spi_device(dev) {
 		set_max_speed(1*MHZ);
 	}
+
+	void submit(std::vector<command*>& cmds) {
+		spi_device::submit(cmds);
+	}
+};
+
+class max5134 : spi_device {
+public:
+	typedef std::bitset<4> chan_mask;
+
+	max5134(const char* dev) : spi_device(dev) {
+		set_max_speed(10*MHZ);
+	}
+
+	struct command : spi_device::command {
+		unsigned int length() { return 3; }
+		void unpack(const uint8_t* buf) { }
+	};
+
+	class noop_cmd : public command {
+		void pack(uint8_t* buf) {
+			buf[0] = 0x00;
+			buf[1] = 0x00;
+			buf[2] = 0x00;
+		}
+	public:
+		noop_cmd() { }
+	};
+
+	class load_dac_cmd : public command {
+		chan_mask dacs;
+		void pack(uint8_t* buf) {
+			buf[0] = 0x01;
+			buf[1] = (uint8_t) dacs.to_ulong();
+			buf[2] = 0x00;
+		}
+	public:
+		load_dac_cmd(chan_mask dacs) : dacs(dacs) { }
+	};
+
+	class clear_cmd : public command {
+		void pack(uint8_t* buf) {
+			buf[0] = 0x02;
+			buf[1] = 0x00;
+			buf[2] = 0x00;
+		}
+	public:
+		clear_cmd() { }
+	};
+
+	class pwr_cntrl_cmd : public command {
+		chan_mask dacs;
+		bool ready_en;
+		void pack(uint8_t* buf) {
+			buf[0] = 0x03;
+			buf[1] = (uint8_t) dacs.to_ulong();
+			buf[2] = ready_en ? (1<<7) : 0x00;
+		}
+	public:
+		pwr_cntrl_cmd(chan_mask dacs, bool ready_en) : dacs(dacs), ready_en(ready_en) { }
+	};
+
+	class linearity_cmd : public command {
+		bool lin;
+		void pack(uint8_t* buf) {
+			buf[0] = 0x05;
+			buf[1] = 0x00;
+			buf[2] = lin ? (1<<1) : 0x00;
+		}
+	public:
+		linearity_cmd(bool lin) : lin(lin) { }
+	};
+
+	class write_cmd : public command {
+		chan_mask dacs;
+		uint16_t value;
+		void pack(uint8_t* buf) {
+			buf[0] = (0x01 << 4) | ((uint8_t) dacs.to_ulong());
+			buf[1] = (value >> 8) & 0xff;
+			buf[2] = (value >> 0) & 0xff;
+		}
+	public:
+		write_cmd(chan_mask dacs, uint16_t value) : dacs(dacs), value(value) { }
+	};
+
+
+	class write_thru_cmd : public command {
+		chan_mask dacs;
+		uint16_t value;
+		void pack(uint8_t* buf) {
+			buf[0] = (0x03 << 4) | ((uint8_t) dacs.to_ulong());
+			buf[1] = (value >> 8) & 0xff;
+			buf[2] = (value >> 0) & 0xff;
+		}
+	public:
+		write_thru_cmd(chan_mask dacs, uint16_t value) : dacs(dacs), value(value) { }
+	};
 
 	void submit(std::vector<command*>& cmds) {
 		spi_device::submit(cmds);

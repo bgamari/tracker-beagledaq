@@ -19,8 +19,6 @@
  */
 
 #include "version.h"
-#include "max5134.h"
-#include "max1302.h"
 #include "tracker.h"
 #include "parameters.h"
 #include "utils.h"

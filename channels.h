@@ -23,8 +23,8 @@
 #pragma once
 #include <array>
 #include <Eigen/Eigen>
-#include "max1302.h"
-#include "max5134.h"
+#include "hardware/max1302.h"
+#include "hardware/max5134.h"
 
 using namespace Eigen;
 using std::array;

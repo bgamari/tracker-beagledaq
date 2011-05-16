@@ -11,10 +11,10 @@ version.cpp ::
 	@echo "const char* version = \"$(shell git rev-parse HEAD)\";" > version.cpp
 	@echo "const char* branch = \"$(shell git name-rev HEAD | cut -d ' ' -f 2)\";" >> version.cpp
 
-tracker : main.o spi_device.o max5590.o max1270.o tracker.o pid.o parameters.o stage.o version.o utils.o
+tracker : main.o hardware/spi_device.o hardware/max5590.o hardware/max1270.o tracker.o pid.o parameters.o stage.o version.o utils.o
 	$(CXX) $(LDFLAGS) -o $@ $+
 
-tracker-otf : main_otf.o spi_device.o max5590.o max1270.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o
+tracker-otf : main_otf.o hardware/spi_device.o hardware/max5590.o hardware/max1270.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o
 	$(CXX) $(LDFLAGS) -o $@ $+
 
 raster_dump : spi_device.o max5590.o max1270.o stage.o
@@ -26,14 +26,14 @@ clean :
 
 % : %.o
 
-max1270_test : spi_device.o
-max5134_test : spi_device.o
-max5590_test : spi_device.o
-max1302_test : spi_device.o
-max1302_bench : spi_device.o
+hardware/max1270_test : hardware/spi_device.o
+hardware/max5134_test : hardware/spi_device.o
+hardware/max5590_test : hardware/spi_device.o
+hardware/max1302_test : hardware/spi_device.o
+hardware/max1302_bench : hardware/spi_device.o
 
 .PHONY : tests
-tests : max1270_test max5134_test max5590_test max1302_test raster_dump
+tests : hardware/max1270_test hardware/max5134_test hardware/max5590_test hardware/max1302_test raster_dump
 
 # For automatic header dependencies
 .deps/%.d : %

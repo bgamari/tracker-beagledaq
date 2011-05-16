@@ -17,7 +17,7 @@ tracker : main.o hardware/spi_device.o tracker.o pid.o parameters.o stage.o vers
 tracker-otf : main_otf.o hardware/spi_device.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o
 	$(CXX) $(LDFLAGS) -o $@ $+
 
-raster_dump : spi_device.o max5590.o max1270.o stage.o
+raster_dump : hardware/spi_device.o stage.o
 
 .PHONY : clean
 clean :

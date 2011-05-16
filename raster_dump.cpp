@@ -18,8 +18,7 @@
  * Author: Ben Gamari <bgamari@physics.umass.edu>
  */
 
-#include "max5134.h"
-#include "max1302.h"
+#include "channels.h"
 #include "stage.h"
 #include "config.h"
 
@@ -27,30 +26,6 @@
 #include <vector>
 #include <iostream>
 #include <boost/program_options.hpp>
-
-template<unsigned int N>
-struct multi_dump_cb : point_callback {
-	input_channels<N>& inputs;
-	struct point {
-		Vector3f position;
-		vector<Matrix<float,N,1>> values;
-	};
-        unsigned int n_pts, delay;
-
-	multi_dump_cb(input_channels<N>& inputs,
-                        unsigned int n_pts, unsigned int delay=0) :
-                inputs(inputs), n_pts(n_pts), delay(delay) { }
-
-        bool operator()(Vector3f& pos) {
-		Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, " ", " ");
-                for (unsigned int i=0; i < n_pts; i++) {
-                        Matrix<float,N,1> v = inputs.get();
-			std::cout << pos.format(fmt) << "\t" << v.format(fmt) << "\n";
-                        usleep(delay);
-                }
-		return true;
-	}
-};
 
 int main(int argc, char** argv)
 {
@@ -98,10 +73,18 @@ int main(int argc, char** argv)
 
 	Vector3f start = center - size / 2;
 	Vector3f step = size.array() / npts.array().cast<float>();
-	raster_route route(start, step, npts);
+	raster_route rt(start, step, npts);
+	for (int i=0; rt.has_more(); ++i, ++rt) {
+		Vector3f pos = rt.get_pos();
+		stage.move(pos);
+		usleep(1000);
 
-	multi_dump_cb<4> psd_collect(psd_inputs, nsamps, delay);
-
-	execute_route(stage, route, {&psd_collect});
+		Eigen::IOFormat fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, " ", " ");
+                for (unsigned int i=0; i < nsamps; i++) {
+                        Matrix<float,N,1> v = psd_inputs.get();
+			std::cout << pos.format(fmt) << "\t" << v.format(fmt) << "\n";
+                        usleep(delay);
+                }
+	}
 }
 

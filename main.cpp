@@ -19,7 +19,6 @@
  */
 
 #include "version.h"
-#include "bitfield.h"
 #include "max5134.h"
 #include "max1302.h"
 #include "tracker.h"
@@ -32,6 +31,7 @@
 #include <readline/history.h>
 #include <iostream>
 #include <array>
+#include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/lexical_cast.hpp>
 

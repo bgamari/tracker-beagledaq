@@ -19,7 +19,6 @@
  */
 
 #include "version.h"
-#include "bitfield.h"
 #include "max5134.h"
 #include "max1302.h"
 #include "otf_tracker.h"

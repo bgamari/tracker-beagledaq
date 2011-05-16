@@ -2,7 +2,7 @@ INCLUDES = -Ieigen
 #PLATFORM_FLAGS = -mcpu=cortex-a8 -mfpu=neon -ftree-vectorize -mfloat-abi=softfp
 PLATFORM_FLAGS = -mcpu=cortex-a8 -ftree-vectorize -mfloat-abi=softfp
 CXXFLAGS = ${PLATFORM_FLAGS} -O2 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
-LDFLAGS = -lrt -lboost_program_options-mt -lboost_thread-mt -lreadline
+LDFLAGS = -lrt -lboost_program_options -lboost_thread -lreadline
 
 .PHONY : all
 all : tracker tracker-otf

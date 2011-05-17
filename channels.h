@@ -61,4 +61,10 @@ struct test_outputs : output_channels<N> {
 	}
 };
 
-#include "hardware/tracker.h"
+extern input_channels<1>* photodiode_in;
+extern input_channels<3>* stage_in;
+extern input_channels<4>* psd_in;
+extern output_channels<3>* stage_out;
+
+extern void (*init_hardware)();
+

@@ -137,27 +137,11 @@ void feedback_ended() {
 
 int main(int argc, char** argv)
 {
-//#define TEST
-#ifndef TEST
-	max1302 psd_adc(psd_adc_dev);
-	max1302 fb_adc(fb_adc_dev);
-	max1302_inputs<4> psd_inputs(psd_adc, psd_chans, max1302::SE_MINUS_VREF_PLUS_VREF);
-	max1302_inputs<3> fb_inputs(fb_adc, fb_chans, max1302::SE_ZERO_PLUS_VREF);
-        max1302_inputs<1> pd_input(fb_adc, pd_chans, max1302::SE_ZERO_PLUS_VREF);
-
-	max5134 dac(stage_pos_dac_dev);
-	max5134_outputs<3> stage_outputs(dac, stage_chans);
-#else	
-	test_inputs<4> psd_inputs;
-	test_inputs<3> fb_inputs;
-	test_outputs<3> stage_outputs;
-#endif
-
-	pid_stage s(stage_outputs, fb_inputs);
-	s.smooth_move({0.5, 0.5, 0.5}, 10000);
+	pid_stage stage(*stage_out, *stage_in);
+	stage.smooth_move({0.5, 0.5, 0.5}, 10000);
 
 	usleep(10*1000);
-        otf_tracker tracker(psd_inputs, s);
+        otf_tracker tracker(*psd_in, stage);
         add_tracker_params(tracker);
         tracker.feedback_ended_cb = &feedback_ended;
 
@@ -204,10 +188,10 @@ int main(int argc, char** argv)
 			for (auto p=parameters.begin(); p != parameters.end(); p++)
 				std::cout << (**p).name << " = " << **p << "\n";
                 } else if (cmd == "read-psd") {
-                        Vector4f psd = psd_inputs.get();
+                        Vector4f psd = psd_in->get();
                         std::cout << psd.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "read-pos") {
-                        Vector3f fb = s.get_pos();
+                        Vector3f fb = stage.get_pos();
                         std::cout << fb.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "move") {
                         using boost::lexical_cast;
@@ -215,11 +199,11 @@ int main(int argc, char** argv)
                         pos.x() = lexical_cast<float>(*tok); tok++;
                         pos.y() = lexical_cast<float>(*tok); tok++;
                         pos.z() = lexical_cast<float>(*tok);
-                        s.smooth_move(pos, 10000);
+                        stage.smooth_move(pos, 10000);
                         std::cout << "OK\n";
                 } else if (cmd == "center") {
                         Vector3f pos = 0.5 * Vector3f::Ones();
-                        s.smooth_move(pos, 10000);
+                        stage.smooth_move(pos, 10000);
                         std::cout << "OK\n";
                 } else if (cmd == "feedback-start") {
                         if (tracker.running())

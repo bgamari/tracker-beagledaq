@@ -365,26 +365,9 @@ struct tracker_cli {
 
 int main(int argc, char** argv)
 {
-//#define TEST
-#ifndef TEST
-	max1302 psd_adc(psd_adc_dev);
-	max1302 fb_adc(fb_adc_dev);
-	max1302_inputs<4> psd_inputs(psd_adc, psd_chans, max1302::SE_MINUS_VREF_PLUS_VREF);
-	max1302_inputs<3> fb_inputs(fb_adc, fb_chans, max1302::SE_ZERO_PLUS_VREF);
-        max1302_inputs<1> pd_input(fb_adc, pd_chans, max1302::SE_ZERO_PLUS_VREF);
-
-	max5134 dac(stage_pos_dac_dev);
-	max5134_outputs<3> stage_outputs(dac, stage_chans);
-
-        //fb_stage stage(stage_outputs, fb_inputs);
-        pid_stage stage(stage_outputs, fb_inputs);
-#else	
-	test_inputs<4> psd_inputs;
-	test_inputs<3> fb_inputs;
-	test_outputs<3> stage_outputs;
-#endif
-
-        tracker_cli<pid_stage> cli(psd_inputs, stage);
+        //fb_stage stage(*stage_out, *stage_in);
+        pid_stage stage(*stage_out, *stage_in);
+        tracker_cli<pid_stage> cli(*psd_in, stage);
         cli.mainloop();
 
 	return 0;

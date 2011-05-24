@@ -26,9 +26,9 @@ clean :
 
 % : %.o
 
-hardware/tracker_dac_test : hardware/spi_device.o
-hardware/tracker_adc_test : hardware/spi_device.o
-hardware/tracker_adc_bench : hardware/spi_device.o
+hardware/dac_test : hardware/spi_device.o
+hardware/adc_test : hardware/spi_device.o
+hardware/adc_bench : hardware/spi_device.o
 
 .PHONY : tests
 tests : hardware/max5134_test hardware/max1302_test raster_dump

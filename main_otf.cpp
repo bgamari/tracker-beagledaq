@@ -137,6 +137,7 @@ void feedback_ended() {
 
 int main(int argc, char** argv)
 {
+	init_hardware();
 	pid_stage stage(*stage_out, *stage_in);
 	stage.smooth_move({0.5, 0.5, 0.5}, 10000);
 

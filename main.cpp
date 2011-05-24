@@ -365,6 +365,7 @@ struct tracker_cli {
 
 int main(int argc, char** argv)
 {
+	init_hardware();
         //fb_stage stage(*stage_out, *stage_in);
         pid_stage stage(*stage_out, *stage_in);
         tracker_cli<pid_stage> cli(*psd_in, stage);

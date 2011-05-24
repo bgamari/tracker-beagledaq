@@ -19,3 +19,58 @@
  */
 
 
+#pragma once
+
+void beagledaq_init();
+
+#include "channels.h"
+#include "beagledaq.h"
+
+template<unsigned int N>
+struct beagledaq_inputs : input_channels<N> {
+	beagle_daq& bd;
+	int adc;
+	array<int,N> channels;
+	
+	beagledaq_inputs(beagle_daq& bd, int adc, const array<int,N> channels) :
+		bd(bd), adc(adc), channels(channels) { }
+
+	Matrix<float,1,N> get() const
+	{
+		array<uint16_t, 8> samp = bd.adcs[adc]->read();
+		Matrix<float,1,N> ret;
+		for (int i=0; i<N; i++)
+			ret[i] = 1. * samp[channels[i]] / 0xffff;
+		return ret;
+	}
+};
+
+template<unsigned int N>
+struct beagledaq_outputs : output_channels<N> {
+	beagle_daq& bd;
+	int dac;
+	array<int,N> channels;
+
+	beagledaq_outputs(beagle_daq& bd, int dac, const array<int,N> channels) :
+		bd(bd), dac(dac), channels(channels) { }
+
+	void set(const Matrix<float,1,N> values) const
+	{
+		std::vector<dac8568::command*> cmds;
+		cmds.reserve(N);
+		for (unsigned int i=0; i<N; i++) {
+			if (values[i] < 0.0 || values[i] > 1.0)
+				throw clamped_output_error(values);
+			uint16_t out_val = lrint(values[i]*0xffff);
+			if (i < N-1)
+				cmds.push_back(new dac8568::write_cmd(WRITE, channels[i], out_val));
+			else
+				cmds.push_back(new dac8568::write_cmd(WRITE_UPDATE_ALL, channels[i], out_val));
+		}
+
+		bd.dacs[dac]->submit(cmds);
+		for (auto c=cmds.begin(); c != cmds.end(); c++)
+			delete *c;
+	}
+};
+

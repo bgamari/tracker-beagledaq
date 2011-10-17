@@ -21,7 +21,10 @@
 #include "stage.h"
 
 #include <fstream>
+#include <Eigen/SVD>
 #include "boost/format.hpp"
+
+using namespace Eigen;
 
 void stage::move(const Vector3f pos)
 {
@@ -73,7 +76,8 @@ void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
 		X.row(i).segment(4,3) = fb_mean.transpose().array().square();
 		Y.row(i) = out_pos;
 	}
-        R = X.svd().solve(Y);
+        JacobiSVD<Matrix<float, Dynamic,7> > svd(X);
+        R = svd.solve(Y);
 
 	{
 		std::ofstream of("stage-cal");

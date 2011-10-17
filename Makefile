@@ -1,4 +1,4 @@
-INCLUDES = -Ieigen
+INCLUDES = -Ieigen -I.
 #PLATFORM_FLAGS = -mcpu=cortex-a8 -mfpu=neon -ftree-vectorize -mfloat-abi=softfp
 PLATFORM_FLAGS = -mcpu=cortex-a8 -ftree-vectorize -mfloat-abi=softfp
 CXXFLAGS = ${PLATFORM_FLAGS} -O2 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
@@ -11,10 +11,10 @@ version.cpp ::
 	@echo "const char* version = \"$(shell git rev-parse HEAD)\";" > version.cpp
 	@echo "const char* branch = \"$(shell git name-rev HEAD | cut -d ' ' -f 2)\";" >> version.cpp
 
-tracker : main.o hardware/spi_device.o hardware/tracker.o channels.o tracker.o pid.o parameters.o stage.o version.o utils.o
+tracker : main.o hardware/spi_device.o hardware/beagledaq.o channels.o tracker.o pid.o parameters.o stage.o version.o utils.o
 	$(CXX) $(LDFLAGS) -o $@ $+
 
-tracker-otf : main_otf.o hardware/spi_device.o hardware/tracker.o channels.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o
+tracker-otf : main_otf.o hardware/spi_device.o hardware/beagledaq.o channels.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o
 	$(CXX) $(LDFLAGS) -o $@ $+
 
 raster_dump : hardware/spi_device.o stage.o

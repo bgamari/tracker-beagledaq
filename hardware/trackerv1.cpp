@@ -18,8 +18,7 @@
  * Author: Ben Gamari <bgamari@physics.umass.edu>
  */
 
-
-#include "hardware/tracker.h"
+#include <array>
 
 // ==== Configuration ====
 // Position sensitive device

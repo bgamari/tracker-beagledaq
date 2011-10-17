@@ -23,7 +23,6 @@
 
 void tracker_init();
 
-#include "hardware/tracker-devices.h"
 #include "channels.h"
 
 template<unsigned int N>

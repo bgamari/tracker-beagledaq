@@ -23,8 +23,8 @@
 
 void beagledaq_init();
 
+#include <beagledaq/beagledaq.h>
 #include "channels.h"
-#include "beagledaq.h"
 
 template<unsigned int N>
 struct beagledaq_inputs : input_channels<N> {
@@ -63,9 +63,9 @@ struct beagledaq_outputs : output_channels<N> {
 				throw clamped_output_error(values);
 			uint16_t out_val = lrint(values[i]*0xffff);
 			if (i < N-1)
-				cmds.push_back(new dac8568::write_cmd(WRITE, channels[i], out_val));
+				cmds.push_back(new dac8568::write_cmd(dac8568::write_cmd::write_mode::WRITE, channels[i], out_val));
 			else
-				cmds.push_back(new dac8568::write_cmd(WRITE_UPDATE_ALL, channels[i], out_val));
+				cmds.push_back(new dac8568::write_cmd(dac8568::write_cmd::write_mode::WRITE_UPDATE_ALL, channels[i], out_val));
 		}
 
 		bd.dacs[dac]->submit(cmds);

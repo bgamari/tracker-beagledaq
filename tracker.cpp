@@ -18,8 +18,8 @@
  * Author: Ben Gamari <bgamari@physics.umass.edu>
  */
 
-#include "tracker.h"
 #include "utils.h"
+#include "tracker.h"
 
 #include <time.h>
 #include <utility>
@@ -31,6 +31,7 @@
 #include <boost/random.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/format.hpp>
+#include <Eigen/SVD>
 
 using std::string;
 using std::vector;
@@ -236,7 +237,7 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
         Matrix<double, Dynamic,3> S = (fb_data.rowwise() - rough_pos.transpose()).cast<double>();
 
 	// Solve regression coefficients
-        SVD<Matrix<double, Dynamic,9> > svd(R);
+        JacobiSVD<Matrix<double, Dynamic,9> > svd(R);
         Matrix<double, 9,3> bt = svd.solve(S);
         res.singular_values = svd.singularValues();
         std::cout << "Singular values: " << svd.singularValues() << "\n";

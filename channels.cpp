@@ -20,12 +20,12 @@
 
 
 #include "channels.h"
-#include "hardware/tracker.h"
+#include "hardware/beagledaq.h"
 
 input_channels<1>* photodiode_in;
 input_channels<3>* stage_in;
 input_channels<4>* psd_in;
 output_channels<3>* stage_out;
 
-void (*init_hardware)() = tracker_init;
+void (*init_hardware)() = beagledaq_init;
 

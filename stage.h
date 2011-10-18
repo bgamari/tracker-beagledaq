@@ -25,8 +25,8 @@
 #include "pid.h"
 
 #include <vector>
-#include <boost/random.hpp>
-#include <boost/thread.hpp>
+#include <tr1/random>
+#include <thread>
 #include <Eigen/Eigen>
 
 using std::vector;
@@ -40,11 +40,11 @@ public:
         const output_channels<3>& out;
         stage(const output_channels<3>& out) :
                 target_pos(0.5*Vector3f::Ones()), out(out) { }
-	virtual void move(const Vector3f pos);
+        virtual void move(const Vector3f pos);
         virtual void move_rel(const Vector3f delta);
         void smooth_move(Vector3f to, unsigned int move_time);
         virtual Vector3f get_target_pos() const;
-	virtual Vector3f get_pos() const;
+        virtual Vector3f get_pos() const;
 };
 
 /*
@@ -56,23 +56,23 @@ public:
  *
  */
 class fb_stage : public stage {
-	Matrix<float, 7,3> R;
+        Matrix<float, 7,3> R;
 public:
-	const input_channels<3>& fb;
+        const input_channels<3>& fb;
         float cal_range;
 
-	fb_stage(const output_channels<3>& out, const input_channels<3>& fb, float cal_range=0.4)
-		: stage(out), fb(fb), cal_range(cal_range) {
-		calibrate();
-	}
+        fb_stage(const output_channels<3>& out, const input_channels<3>& fb, float cal_range=0.4)
+                : stage(out), fb(fb), cal_range(cal_range) {
+                calibrate();
+        }
 
-	/*
+        /*
          * calibrate():
          * Perform basic first-order OLS regression to map feedback coordinate
-	 * space to stage input space
-	 */
-	void calibrate(unsigned int n_pts=400, unsigned int n_samp=10);
-	void move(const Vector3f pos);
+         * space to stage input space
+         */
+        void calibrate(unsigned int n_pts=400, unsigned int n_samp=10);
+        void move(const Vector3f pos);
         Vector3f get_pos() const;
 };
 
@@ -83,23 +83,25 @@ public:
  * feedback sensor
  */
 class pid_stage : public stage {
-	Vector3f pos; // current output value
-	const input_channels<3>& fb;
+        Vector3f pos; // current output value
+        const input_channels<3>& fb;
 public:
-	pid_loop pidx, pidy, pidz;
-	unsigned int fb_delay;
+        pid_loop pidx, pidy, pidz;
+        unsigned int fb_delay;
 private:
-	boost::thread fb_worker;
-	void worker();
+        std::thread fb_worker;
+        void worker();
+        bool stop;
 
 public:
-	pid_stage(const output_channels<3>& out, const input_channels<3>& fb) :
-		stage(out), pos(0.5*Vector3f::Ones()), fb(fb),
+        pid_stage(const output_channels<3>& out, const input_channels<3>& fb) :
+                stage(out), pos(0.5*Vector3f::Ones()), fb(fb),
                 pidx(0.1), pidy(0.1), pidz(0.1),
-                fb_delay(6000), fb_worker(&pid_stage::worker, this) { }
+                fb_delay(6000), fb_worker(&pid_stage::worker, this),
+                stop(false) { }
         ~pid_stage();
 
-	void move(const Vector3f pos);
+        void move(const Vector3f pos);
         Vector3f get_pos() const;
 };
 
@@ -107,50 +109,38 @@ public:
  * route: Represents a path of points through 3-space
  */
 struct route {
-	virtual Vector3f get_pos() = 0;
-	virtual void operator++() = 0;
-	virtual bool has_more() = 0;
+        virtual Vector3f get_pos() = 0;
+        virtual void operator++() = 0;
+        virtual bool has_more() = 0;
 };
 
-template <class Engine, class Distribution>
 struct random_route : route {
-	array<boost::variate_generator<Engine&, Distribution>,3>& rngs;
-	unsigned int n_pts;
-	Vector3f a;
+        std::tr1::mt19937 eng;
+        std::tr1::uniform_real<float> rng;
+        std::array<float,3> ranges;
+        unsigned int n_pts;
+        Vector3f a;
 
-	random_route(array<boost::variate_generator<Engine&, Distribution>,3>& rngs,
-			unsigned int n_pts) :
-		rngs(rngs), n_pts(n_pts)
-	{
-		for (int i=0; i<3; i++)
-			a[i] = rngs[i]();
-	}
+        random_route(std::array<float,3> ranges, unsigned int n_pts) : 
+                rng(0, 1), ranges(ranges), n_pts(n_pts) { }
 
-	void operator++() {
-		n_pts--;
-		for (int i=0; i<3; i++)
-			a[i] = rngs[i]();
-	}
-
-	Vector3f get_pos() { return a; }
-
-	bool has_more() {
-		return n_pts > 0;
-	}
+        void operator++();
+        Vector3f get_pos();
+        bool has_more();
 };
 
 struct raster_route : route {
-	const Vector3f start;
-	const Vector3f step;
-	const Vector3u points;
+        const Vector3f start;
+        const Vector3f step;
+        const Vector3u points;
 
-	unsigned int n;
+        unsigned int n;
 
-	raster_route(Vector3f start, Vector3f step, Vector3u points) :
-		start(start), step(step), points(points), n(0) {  }
+        raster_route(Vector3f start, Vector3f step, Vector3u points) :
+                start(start), step(step), points(points), n(0) {  }
 
         Vector3f get_pos();
         void operator++();
-	bool has_more();
+        bool has_more();
 };
 

@@ -27,11 +27,9 @@
 #include <cstdint>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <sstream>
 #include <iostream>
 #include <array>
-#include <boost/format.hpp>
-#include <boost/tokenizer.hpp>
-#include <boost/lexical_cast.hpp>
 
 using std::array;
 using std::string;
@@ -43,7 +41,9 @@ struct pid_tau_param : parameter {
         pid_tau_param(string name, pid_loop& pid, string description) :
                 parameter(name, description), pid(pid) { }
         void operator=(string s) {
-                pid.set_tau(boost::lexical_cast<unsigned int>(s));
+                unsigned int a;
+                std::istringstream(s) >> a;
+                pid.set_tau(a);
         }
         void put(std::ostream& os) const {
                 os << pid.tau();
@@ -110,7 +110,7 @@ struct tracker_cli {
         tracker tr;
         Vector3f rough_pos;
         tracker::fine_cal_result fine_cal;
-	float auto_xy_range_factor;
+        float auto_xy_range_factor;
         Vector3f scan_center, scan_range;
         Vector3u scan_points;
         unsigned int scan_delay;
@@ -175,7 +175,7 @@ struct tracker_cli {
         tracker_cli(input_channels<4>& psd_inputs, Stage& s) :
                 psd_inputs(psd_inputs), s(s),
                 tr(psd_inputs, s),
-		auto_xy_range_factor(0),
+                auto_xy_range_factor(0),
                 scan_delay(100)
         {
                 s.smooth_move({0.5, 0.5, 0.5}, 10000);
@@ -190,7 +190,7 @@ struct tracker_cli {
                 def_param("rough_pos.y", rough_pos.y(), "Rough calibration position (Y axis)");
                 def_param("rough_pos.z", rough_pos.z(), "Rough calibration position (Z axis)");
 
-		def_param("auto_xy_range_factor", auto_xy_range_factor, "Fine calibration range as a fraction of rough calibration extrema separation");
+                def_param("auto_xy_range_factor", auto_xy_range_factor, "Fine calibration range as a fraction of rough calibration extrema separation");
 
                 scan_center << 0.5, 0.5, 0.5;
                 scan_range << 0.1, 0.1, 0.1;
@@ -225,25 +225,19 @@ struct tracker_cli {
 
         bool do_command(string cmdline)
         {
-                typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
-                boost::char_separator<char> sep("\t ");
-		tokenizer tokens(cmdline, sep);
-		tokenizer::iterator tok = tokens.begin();
-
-		string cmd = *tok; tok++;
-                vector<string> args;
-                for (; tok != tokens.end(); tok++)
-                        args.push_back(*tok);
+                std::istringstream ss(cmdline);
+                string cmd;
+                ss >> cmd;
 
                 if (cmd == "source") {
-                        if (args.size() != 1) throw invalid_syntax();
-                        source(args[0]);
+                        string file;
+                        ss >> file;
+                        source(file);
                 } else if (cmd == "set") {
-                        if (args.size() != 2) throw invalid_syntax();
-			string param = args[0];
-			string value = args[1];
-			parameter* p = find_parameter(params, param);
-			if (!p)
+                        string param, value;
+                        ss >> param; ss >> value;
+                        parameter* p = find_parameter(params, param);
+                        if (!p)
                                 std::cout << "! Unknown parameter\n";
                         else {
                                 try {
@@ -252,19 +246,27 @@ struct tracker_cli {
                                         std::cout << "! ERR\tInvalid value\n";
                                 }
                         }
-		} else if (cmd == "get") {
-                        if (args.size() != 1) throw invalid_syntax();
-			string param = args[0];
-			parameter* p = find_parameter(params, param);
-			if (!p)
+                } else if (cmd == "get") {
+                        string param;
+                        ss >> param;
+                        parameter* p = find_parameter(params, param);
+                        if (!p)
                                 std::cout << "! Unknown parameter\n";
                         else
                                 std::cout << param << " = " << *p << "\n";
-		} else if (cmd == "list") {
-                        string match = args.size() ? args[0] : "";
-			for (auto p=params.begin(); p != params.end(); p++)
-                                if ((**p).name.compare(0, match.size(), match) == 0)
-                                        std::cout << (boost::format("%-30s\t%10s\t\t%50s\n") % (**p).name % **p % (**p).description);
+                } else if (cmd == "list") {
+                        string match = "";
+                        if (!ss.eof())
+                                ss >> match;
+                        for (auto p=params.begin(); p != params.end(); p++)
+                                if ((**p).name.compare(0, match.size(), match) == 0) {
+                                        std::ostringstream tmp;
+                                        tmp << **p;
+                                        printf("%-30s\t%10s\t\t%50s\n",
+                                                (**p).name.c_str(),
+                                                tmp.str().c_str(),
+                                                (**p).description.c_str());
+                                }
                 } else if (cmd == "read-psd") {
                         Vector4f psd = psd_inputs.get();
                         std::cout << psd.transpose().format(mat_fmt) << "\n";
@@ -272,12 +274,10 @@ struct tracker_cli {
                         Vector3f fb = s.get_pos();
                         std::cout << fb.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "move") {
-                        using boost::lexical_cast;
-                        if (args.size() != 3) throw invalid_syntax();
                         Vector3f pos;
-                        pos.x() = lexical_cast<float>(args[0]);
-                        pos.y() = lexical_cast<float>(args[1]);
-                        pos.z() = lexical_cast<float>(args[2]);
+                        ss >> pos.x();
+                        ss >> pos.y();
+                        ss >> pos.z();
                         s.smooth_move(pos, 10000);
                         std::cout << "! OK\n";
                 } else if (cmd == "move-rough-pos") {
@@ -289,10 +289,10 @@ struct tracker_cli {
                         std::cout << "! OK\n";
                 } else if (cmd == "rough-cal") {
                         try {
-				tracker::rough_cal_result res = tr.rough_calibrate();
-				rough_pos = res.center;
-				if (auto_xy_range_factor)
-					tr.fine_cal_xy_range = res.xy_size * auto_xy_range_factor;
+                                tracker::rough_cal_result res = tr.rough_calibrate();
+                                rough_pos = res.center;
+                                if (auto_xy_range_factor)
+                                        tr.fine_cal_xy_range = res.xy_size * auto_xy_range_factor;
                                 s.smooth_move(rough_pos, 5000);
                                 std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
                         } catch (clamped_output_error e) {
@@ -328,15 +328,15 @@ struct tracker_cli {
                         Vector3f start = scan_center - scan_range / 2;
                         Vector3f step = scan_range.array() / scan_points.array().cast<float>();
                         raster_route rt(start, step, scan_points);
-			std::ofstream of("scan");
-			for (int i=0; rt.has_more(); ++i, ++rt) {
-				s.smooth_move(rt.get_pos(), 4000);
-				Vector3f fb = s.get_pos();
-				Vector4f psd = psd_inputs.get();
-				of << (Matrix<float,1,7>() << fb, psd).finished() << "\n";
-			}
-		} else
-			std::cout << "! ERR\tInvalid command\n";
+                        std::ofstream of("scan");
+                        for (int i=0; rt.has_more(); ++i, ++rt) {
+                                s.smooth_move(rt.get_pos(), 4000);
+                                Vector3f fb = s.get_pos();
+                                Vector4f psd = psd_inputs.get();
+                                of << (Matrix<float,1,7>() << fb, psd).finished() << "\n";
+                        }
+                } else
+                        std::cout << "! ERR\tInvalid command\n";
                 return false;
         }
 
@@ -365,12 +365,12 @@ struct tracker_cli {
 
 int main(int argc, char** argv)
 {
-	init_hardware();
+        init_hardware();
         //fb_stage stage(*stage_out, *stage_in);
         pid_stage stage(*stage_out, *stage_in);
         tracker_cli<pid_stage> cli(*psd_in, stage);
         cli.mainloop();
 
-	return 0;
+        return 0;
 }
 

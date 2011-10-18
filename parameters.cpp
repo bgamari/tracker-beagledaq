@@ -27,8 +27,8 @@ std::ostream& operator<<(std::ostream& os, const parameter& p) {
 }
 
 parameter* find_parameter(std::vector<parameter*> params, string name) {
-	for (auto p=params.begin(); p != params.end(); p++)
-		if ((**p).name == name) return *p;
-	return NULL;
+        for (auto p=params.begin(); p != params.end(); p++)
+                if ((**p).name == name) return *p;
+        return NULL;
 }
 

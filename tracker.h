@@ -26,9 +26,8 @@
 #include "stage.h"
 
 #include <array>
-#include <boost/function.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/thread/mutex.hpp>
+#include <tr1/functional>
+#include <thread>
 #include <Eigen/Eigen>
 
 using namespace Eigen;
@@ -48,7 +47,7 @@ struct tracker {
         unsigned int fine_cal_pts, fine_cal_dwell;
 
         // Feedback parameters
-        unsigned int fb_delay;  	// us
+        unsigned int fb_delay;          // us
         float fb_max_delta;             // Maximum allowed delta
         bool fb_show_rate;              // Show periodic messages reporting the update rate of the feedback loop
         float fb_rate_report_period;
@@ -64,25 +63,25 @@ struct tracker {
                 Matrix<double, 9,1> singular_values;
         };
 
-        boost::function<void()> feedback_ended_cb;
+        std::function<void()> feedback_ended_cb;
 
 private:
-        bool _running;
-        boost::thread feedback_thread;
+        bool _running, stop;
+        std::thread feedback_thread;
         Vector4f scale_psd_position(Vector4f in);
         void feedback(fine_cal_result cal);
 
 public:
-	struct rough_cal_xy_result {
-		Vector3f xmin, ymin, xmax, ymax;
-	};
-	rough_cal_xy_result rough_calibrate_xy(Vector3f center);
-	Vector3f rough_calibrate_z(Vector3f center);
+        struct rough_cal_xy_result {
+                Vector3f xmin, ymin, xmax, ymax;
+        };
+        rough_cal_xy_result rough_calibrate_xy(Vector3f center);
+        Vector3f rough_calibrate_z(Vector3f center);
 
-	struct rough_cal_result {
-		Vector3f center;
-		float xy_size, z_size;
-	};
+        struct rough_cal_result {
+                Vector3f center;
+                float xy_size, z_size;
+        };
         rough_cal_result rough_calibrate(Vector3f center=0.5*Vector3f::Ones());
 
         fine_cal_result fine_calibrate(Vector3f rough_pos);
@@ -91,7 +90,7 @@ public:
         void stop_feedback();
 
         tracker(input_channels<4>& psd_inputs,
-		stage& stage_outputs) :
+                stage& stage_outputs) :
                 scale_psd_inputs(false),
                 rough_cal_xy_range(0.4), rough_cal_z_range(0.4),
                 rough_cal_xy_pts(40), rough_cal_z_pts(200),

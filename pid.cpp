@@ -41,6 +41,6 @@ float pid_loop::get_response() {
 }
 
 void pid_loop::add_point(float x, float y) {
-        points.push_front(point(x, y));
+        points.add(point(x, y));
 }
 

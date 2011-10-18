@@ -21,17 +21,17 @@
 
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <vector>
-#include <boost/lexical_cast.hpp>
 
 using std::string;
 
 struct parameter {
         string name;
         string description;
-	parameter(string name, string description) :
-		name(name), description(description) { }
+        parameter(string name, string description) :
+                name(name), description(description) { }
         virtual void operator=(string s) = 0;
         virtual void put(std::ostream& os) const = 0;
 };
@@ -47,7 +47,7 @@ struct typed_value : parameter {
         typed_value(string name, string description, T& value) :
                 parameter(name, description), value(value) { }
         void operator=(string s) {
-                value = boost::lexical_cast<T>(s);
+                std::istringstream(s) >> value;
         }
         void put(std::ostream& os) const {
                 os << value;

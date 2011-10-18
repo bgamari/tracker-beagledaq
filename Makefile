@@ -1,8 +1,9 @@
-INCLUDES = -Ieigen -I.
+CXX = arm-linux-gnueabi-g++
+INCLUDES = -Ieigen -I. -I/usr/local/include
 #PLATFORM_FLAGS = -mcpu=cortex-a8 -mfpu=neon -ftree-vectorize -mfloat-abi=softfp
 PLATFORM_FLAGS = -mcpu=cortex-a8 -ftree-vectorize -mfloat-abi=softfp
 CXXFLAGS = ${PLATFORM_FLAGS} -O2 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
-LDFLAGS = -lrt -lboost_program_options -lboost_thread -lreadline
+LDFLAGS = -lrt -lreadline
 
 .PHONY : all
 all : tracker tracker-otf

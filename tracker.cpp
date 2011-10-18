@@ -28,9 +28,7 @@
 #include <cstdio>
 #include <iostream>
 #include <fstream>
-#include <boost/random.hpp>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/format.hpp>
+#include <tr1/random>
 #include <Eigen/SVD>
 
 using std::string;
@@ -49,81 +47,81 @@ Vector4f tracker::scale_psd_position(Vector4f in)
 
 template<typename Matrix>
 static unsigned int max_row(Matrix a) {
-	int row, col;
-	a.maxCoeff(&row, &col);
-	return row;
+        int row, col;
+        a.maxCoeff(&row, &col);
+        return row;
 }
 
 template<typename Matrix>
 static unsigned int min_row(Matrix a) {
-	int row, col;
-	a.minCoeff(&row, &col);
-	return row;
+        int row, col;
+        a.minCoeff(&row, &col);
+        return row;
 }
 
 tracker::rough_cal_xy_result tracker::rough_calibrate_xy(Vector3f center)
 {
-	Vector3f tmp;
-	Vector3f start, step;
+        Vector3f tmp;
+        Vector3f start, step;
         Vector3u pts;
 
         tmp << rough_cal_xy_range, rough_cal_xy_range, 0;
         start = center - tmp/2;
-	step << rough_cal_xy_range / rough_cal_xy_pts, rough_cal_xy_range / rough_cal_xy_pts, 0;
-	pts << rough_cal_xy_pts, rough_cal_xy_pts, 1;
+        step << rough_cal_xy_range / rough_cal_xy_pts, rough_cal_xy_range / rough_cal_xy_pts, 0;
+        pts << rough_cal_xy_pts, rough_cal_xy_pts, 1;
 
-	raster_route rt(start, step, pts);
-	Matrix<float, Dynamic, 3> pos_data(rough_cal_xy_pts*rough_cal_xy_pts, 3);
-	Matrix<float, Dynamic, 4> psd_data(rough_cal_xy_pts*rough_cal_xy_pts, 4);
-	Matrix<float, Dynamic, 3> fb_data(rough_cal_xy_pts*rough_cal_xy_pts, 3);
-	
+        raster_route rt(start, step, pts);
+        Matrix<float, Dynamic, 3> pos_data(rough_cal_xy_pts*rough_cal_xy_pts, 3);
+        Matrix<float, Dynamic, 4> psd_data(rough_cal_xy_pts*rough_cal_xy_pts, 4);
+        Matrix<float, Dynamic, 3> fb_data(rough_cal_xy_pts*rough_cal_xy_pts, 3);
+        
         // Run X/Y scan and preprocess data
-	for (int i=0; rt.has_more(); ++i, ++rt) {
-		Vector3f pos = rt.get_pos();
-		stage_outputs.move(pos);
-		usleep(rough_cal_xy_dwell);
-		pos_data.row(i) = pos;
-		psd_data.row(i) = scale_psd_position(psd_inputs.get());
-		fb_data.row(i) = stage_outputs.get_pos();
-	}
+        for (int i=0; rt.has_more(); ++i, ++rt) {
+                Vector3f pos = rt.get_pos();
+                stage_outputs.move(pos);
+                usleep(rough_cal_xy_dwell);
+                pos_data.row(i) = pos;
+                psd_data.row(i) = scale_psd_position(psd_inputs.get());
+                fb_data.row(i) = stage_outputs.get_pos();
+        }
 
-	dump_matrix((MatrixXf(rough_cal_xy_pts*rough_cal_xy_pts,10) << pos_data, fb_data, psd_data).finished(), "rough");
+        dump_matrix((MatrixXf(rough_cal_xy_pts*rough_cal_xy_pts,10) << pos_data, fb_data, psd_data).finished(), "rough");
 
-	// Find extrema of Vx, Vy
-	rough_cal_xy_result res;
-	res.xmin = fb_data.row(min_row(psd_data.col(0)));
-	res.xmax = fb_data.row(max_row(psd_data.col(0)));
-	res.ymin = fb_data.row(min_row(psd_data.col(1)));
-	res.ymax = fb_data.row(max_row(psd_data.col(1)));
-	return res;
+        // Find extrema of Vx, Vy
+        rough_cal_xy_result res;
+        res.xmin = fb_data.row(min_row(psd_data.col(0)));
+        res.xmax = fb_data.row(max_row(psd_data.col(0)));
+        res.ymin = fb_data.row(min_row(psd_data.col(1)));
+        res.ymax = fb_data.row(max_row(psd_data.col(1)));
+        return res;
 }
 
 
 Vector3f tracker::rough_calibrate_z(Vector3f center)
 {
-	Vector3f laser_pos = center;
-	laser_pos.z() -= rough_cal_z_range / 2;
+        Vector3f laser_pos = center;
+        laser_pos.z() -= rough_cal_z_range / 2;
         stage_outputs.smooth_move(laser_pos, 4000);
 
-	Vector3f step; 
-	Vector3u pts;
-	step << 0, 0, rough_cal_z_range / rough_cal_z_pts;
-	pts << 1, 1, rough_cal_z_pts;
+        Vector3f step; 
+        Vector3u pts;
+        step << 0, 0, rough_cal_z_range / rough_cal_z_pts;
+        pts << 1, 1, rough_cal_z_pts;
 
-	raster_route rt(laser_pos, step, pts);
-	Matrix<float, Dynamic, 3> pos_data(rough_cal_z_pts, 3);
-	Matrix<float, Dynamic, 4> psd_data(rough_cal_z_pts, 4);
-	Matrix<float, Dynamic, 3> fb_data(rough_cal_z_pts, 3);
+        raster_route rt(laser_pos, step, pts);
+        Matrix<float, Dynamic, 3> pos_data(rough_cal_z_pts, 3);
+        Matrix<float, Dynamic, 4> psd_data(rough_cal_z_pts, 4);
+        Matrix<float, Dynamic, 3> fb_data(rough_cal_z_pts, 3);
 
         // Run Z scan and preprocess data
-	for (int i=0; rt.has_more(); ++i, ++rt) {
-		Vector3f pos = rt.get_pos();
-		stage_outputs.move(pos);
-		usleep(rough_cal_z_dwell);
-		pos_data.row(i) = pos;
-		psd_data.row(i) = scale_psd_position(psd_inputs.get());
-		fb_data.row(i) = stage_outputs.get_pos();
-	}
+        for (int i=0; rt.has_more(); ++i, ++rt) {
+                Vector3f pos = rt.get_pos();
+                stage_outputs.move(pos);
+                usleep(rough_cal_z_dwell);
+                pos_data.row(i) = pos;
+                psd_data.row(i) = scale_psd_position(psd_inputs.get());
+                fb_data.row(i) = stage_outputs.get_pos();
+        }
 
         // Preprocess Z data with moving average
         if (rough_cal_z_avg_win) {
@@ -136,7 +134,7 @@ Vector3f tracker::rough_calibrate_z(Vector3f center)
                 }
         }
 
-	// Find extrema of dVz/dz
+        // Find extrema of dVz/dz
         float max_deriv = 0;
         for (unsigned int i = rough_cal_z_avg_win + 1; i < rough_cal_z_pts - rough_cal_z_avg_win - 1; i++) {
                 float sum1 = psd_data(i+1,2) - psd_data(i+1,3);
@@ -150,93 +148,84 @@ Vector3f tracker::rough_calibrate_z(Vector3f center)
                 }
         }
         dump_matrix((MatrixXf(rough_cal_z_pts,10) << pos_data, fb_data, psd_data).finished(), "rough_z");
-	return laser_pos;
+        return laser_pos;
 }
 
 tracker::rough_cal_result tracker::rough_calibrate(Vector3f center)
 {
-	rough_cal_xy_result res_xy = rough_calibrate_xy(center);
-	Vector3f laser_pos;
+        rough_cal_xy_result res_xy = rough_calibrate_xy(center);
+        Vector3f laser_pos;
 
-	float dist = (res_xy.xmin - res_xy.ymin).norm();
-	std::cout << "Extrema distance: " << dist << "\n";
-	laser_pos.x() = (res_xy.xmax.x() - res_xy.xmin.x())/2 + res_xy.xmin.x();
-	laser_pos.y() = (res_xy.ymax.y() - res_xy.ymin.y())/2 + res_xy.ymin.y();
-	laser_pos.z() = center.z();
+        float dist = (res_xy.xmin - res_xy.ymin).norm();
+        std::cout << "Extrema distance: " << dist << "\n";
+        laser_pos.x() = (res_xy.xmax.x() - res_xy.xmin.x())/2 + res_xy.xmin.x();
+        laser_pos.y() = (res_xy.ymax.y() - res_xy.ymin.y())/2 + res_xy.ymin.y();
+        laser_pos.z() = center.z();
 
-	Vector3f z = rough_calibrate_z(laser_pos);
-	laser_pos.z() = z.z();
+        Vector3f z = rough_calibrate_z(laser_pos);
+        laser_pos.z() = z.z();
 
-	rough_cal_result res;
-	res.center = laser_pos;
-	res.xy_size = dist;
-	res.z_size = 0.1;
-	return res;
+        rough_cal_result res;
+        res.center = laser_pos;
+        res.xy_size = dist;
+        res.z_size = 0.1;
+        return res;
 }
 
 /*
  * pack_psd_inputs(): Pack input data into vector with higher order terms
  */
 static Matrix<float,Dynamic,9> pack_psd_inputs(Matrix<float,Dynamic,4> data) {
-	Matrix<float,Dynamic,9> R(data.rows(), 9);
+        Matrix<float,Dynamic,9> R(data.rows(), 9);
 
-	// First order
-	R.col(0) = data.col(0);				// Vx
-	R.col(1) = data.col(1);				// Vy
-	R.col(2) = -data.col(2) + data.col(3);		// Vsum = -Vsum_x + Vsum_y
-	
-	// Second order
-	R.col(3) = R.col(0).array().square();		// Vx^2
-	R.col(4) = R.col(1).array().square();		// Vy^2
-	R.col(5) = R.col(2).array().square();		// Vsum^2
+        // First order
+        R.col(0) = data.col(0);                         // Vx
+        R.col(1) = data.col(1);                         // Vy
+        R.col(2) = -data.col(2) + data.col(3);          // Vsum = -Vsum_x + Vsum_y
+        
+        // Second order
+        R.col(3) = R.col(0).array().square();           // Vx^2
+        R.col(4) = R.col(1).array().square();           // Vy^2
+        R.col(5) = R.col(2).array().square();           // Vsum^2
 
-	// Cross terms
-	R.col(6) = R.col(0).array() * R.col(1).array();	// Vx*Vy
-	R.col(7) = R.col(0).array() * R.col(2).array();	// Vx*Vsum
-	R.col(8) = R.col(1).array() * R.col(2).array();	// Vy*Vsum
+        // Cross terms
+        R.col(6) = R.col(0).array() * R.col(1).array(); // Vx*Vy
+        R.col(7) = R.col(0).array() * R.col(2).array(); // Vx*Vsum
+        R.col(8) = R.col(1).array() * R.col(2).array(); // Vy*Vsum
 
-	return R;
+        return R;
 }
 
 tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 {
-	bool dump_matricies = true;
-	typedef boost::mt19937 engine;
-	typedef boost::uniform_real<float> distribution;
-	typedef boost::variate_generator<engine&, distribution> vg;
-	engine e;
-	array<vg,3> rngs = {{
-		vg(e, distribution(rough_pos.x()-fine_cal_xy_range, rough_pos.x()+fine_cal_xy_range)),
-		vg(e, distribution(rough_pos.y()-fine_cal_xy_range, rough_pos.y()+fine_cal_xy_range)),
-		vg(e, distribution(rough_pos.z()-fine_cal_z_range, rough_pos.z()+fine_cal_z_range))
-	}};
-	random_route<engine, distribution> rt(rngs, fine_cal_pts);
-	Matrix<float, Dynamic, 4> psd_data(fine_cal_pts,4);
-	Matrix<float, Dynamic, 3> fb_data(fine_cal_pts,3);
+        bool dump_matricies = true;
+        random_route rt(std::array<float,3>{{fine_cal_xy_range, fine_cal_xy_range, fine_cal_z_range}}, fine_cal_pts);
+        Matrix<float, Dynamic, 4> psd_data(fine_cal_pts,4);
+        Matrix<float, Dynamic, 3> fb_data(fine_cal_pts,3);
         fine_cal_result res;
 
-	// Setup stage
-	stage_outputs.smooth_move(rough_pos, 1000);
+        // Setup stage
+        stage_outputs.smooth_move(rough_pos, 1000);
 
-	// Collect data
-	for (int i=0; rt.has_more(); ++i, ++rt) {
-		Vector3f pos = rt.get_pos();
-		stage_outputs.move(pos);
-		usleep(fine_cal_dwell);
-		psd_data.row(i) = scale_psd_position(psd_inputs.get());
-		fb_data.row(i) = stage_outputs.get_pos();
-	}
+        // Collect data
+        for (int i=0; rt.has_more(); ++i, ++rt) {
+                Vector3f pos = rt.get_pos();
+                stage_outputs.move(pos);
+                usleep(fine_cal_dwell);
+                psd_data.row(i) = scale_psd_position(psd_inputs.get());
+                fb_data.row(i) = stage_outputs.get_pos();
+        }
 
-	// Find and subtract out PSD mean
+        // Find and subtract out PSD mean
         res.psd_mean = psd_data.colwise().mean();
-	psd_data.rowwise() -= res.psd_mean;
+        psd_data.rowwise() -= res.psd_mean;
         dump_matrix((MatrixXf(fine_cal_pts,7) << fb_data, psd_data).finished(), "fine");
 
-	// Fill R and S matricies with collected data
-	Matrix<double, Dynamic,9> R = pack_psd_inputs(psd_data).cast<double>();
+        // Fill R and S matricies with collected data
+        Matrix<double, Dynamic,9> R = pack_psd_inputs(psd_data).cast<double>();
         Matrix<double, Dynamic,3> S = (fb_data.rowwise() - rough_pos.transpose()).cast<double>();
 
-	// Solve regression coefficients
+        // Solve regression coefficients
         JacobiSVD<Matrix<double, Dynamic,9> > svd(R);
         Matrix<double, 9,3> bt = svd.solve(S);
         res.singular_values = svd.singularValues();
@@ -245,28 +234,29 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 
         bool compute_residuals = true;
         if (compute_residuals) {
-                std::ofstream of("fine-resid");
-                of << "# fb_x fb_y fb_z\tP_Lx P_Ly P_Lz\tresid_x resid_y resid_z\n";
+                FILE* of = fopen("fine-resid", "w");
+                fprintf(of, "# fb_x fb_y fb_z\tP_Lx P_Ly P_Lz\tresid_x resid_y resid_z\n");
                 Vector3d rms = Vector3d::Zero();
                 for (unsigned int i=0; i < fine_cal_pts; i++) {
                         Vector3f fb = fb_data.row(i);
                         Vector3d s = S.row(i).transpose().cast<double>();
                         Vector3d resid = bt.transpose() * R.row(i).transpose() - s;
-                        of << boost::format("%f %f %f\t%f %f %f\t%f %f %f\n") %
-                                fb.x() % fb.y() % fb.z() %
-                                s.x() % s.y() % s.z() %
-                                resid.x() % resid.y() % resid.z();
+                        fprintf(of, "%f %f %f\t%f %f %f\t%f %f %f\n",
+                                fb.x(), fb.y(), fb.z(),
+                                s.x(), s.y(), s.z(),
+                                resid.x(), resid.y(), resid.z());
                         rms += resid.cwiseProduct(resid);
                 }
                 rms = (rms / fine_cal_pts).cwiseSqrt();
                 fprintf(stderr, "RMS Residuals: %f %f %f\n", rms.x(), rms.y(), rms.z());
+                fclose(of);
         }
 
-	if (dump_matricies) {
-		dump_matrix(R, "R");
-		dump_matrix(S, "S");
-		dump_matrix(bt, "beta");
-	}
+        if (dump_matricies) {
+                dump_matrix(R, "R");
+                dump_matrix(S, "S");
+                dump_matrix(bt, "beta");
+        }
         return res;
 }
 
@@ -281,7 +271,7 @@ void tracker::feedback(fine_cal_result cal)
         unsigned int last_report_n = 0;
 
         _running = true;
-	while (!boost::this_thread::interruption_requested()) {
+        while (!stop) {
                 // Make sure recent points are generally sane
                 if (good_pts > 10)
                         good_pts = bad_pts = 0;
@@ -296,8 +286,8 @@ void tracker::feedback(fine_cal_result cal)
 
                 // Compute estimated position
                 psd = scale_psd_position(psd) - cal.psd_mean;
-		Matrix<float, Dynamic,9> psd_in = pack_psd_inputs(psd.transpose());
-		Vector3f delta = cal.beta * psd_in.transpose();
+                Matrix<float, Dynamic,9> psd_in = pack_psd_inputs(psd.transpose());
+                Vector3f delta = cal.beta * psd_in.transpose();
 
                 // Get PID response
                 struct timespec ts;
@@ -318,10 +308,9 @@ void tracker::feedback(fine_cal_result cal)
 
                 // Move stage
                 Vector3f new_pos = delta + fb_setpoint;
-		//new_pos.z() = 0.5 + fb_setpoint.z();
-		f << boost::format("%f\t%f\t%f\t%f\t%f\t%f\n") %
-				delta.x() % delta.y() % delta.z() %
-				new_pos.x() % new_pos.y() % new_pos.z();
+                //new_pos.z() = 0.5 + fb_setpoint.z();
+                f << delta.x() << delta.y() << delta.z() <<
+                     new_pos.x() << new_pos.y() << new_pos.z();
                 try {
                         stage_outputs.move_rel(delta + fb_setpoint);
                 } catch (clamped_output_error e) {
@@ -338,8 +327,8 @@ void tracker::feedback(fine_cal_result cal)
                         last_report_t = t;
                         last_report_n = n;
                 }
-		usleep(fb_delay);
-	}
+                usleep(fb_delay);
+        }
 
         _running = false;
         if (feedback_ended_cb)
@@ -348,7 +337,8 @@ void tracker::feedback(fine_cal_result cal)
 
 void tracker::start_feedback(fine_cal_result cal)
 {
-        feedback_thread = boost::thread(&tracker::feedback, this, cal);
+        stop = false;
+        feedback_thread = std::thread(&tracker::feedback, this, cal);
 }
 
 bool tracker::running()
@@ -358,7 +348,7 @@ bool tracker::running()
 
 void tracker::stop_feedback()
 {
-        feedback_thread.interrupt();
+        stop = true;
         feedback_thread.join();
 }
 

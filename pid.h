@@ -19,14 +19,15 @@
  */
 
 #pragma once
-#include <boost/circular_buffer.hpp>
+
+#include "ringbuffer.h"
 
 class pid_loop {
         struct point {
                 float x, y;
                 point(float x, float y) : x(x), y(y) { }
         };
-        boost::circular_buffer<point> points;
+        ring_buffer<point> points;
 public:
         float prop_gain, int_gain, diff_gain;
 
@@ -37,12 +38,13 @@ public:
                 assert(tau >= 1);
         }
 
-	void set_tau(unsigned int tau) {
-		points.set_capacity(tau);
-	}
-	unsigned int tau() {
-		return points.capacity();
-	}
+        void set_tau(unsigned int tau) {
+                points.resize(tau);
+        }
+
+        unsigned int tau() {
+                return points.capacity();
+        }
 
         void add_point(float x, float y);
         float get_response();

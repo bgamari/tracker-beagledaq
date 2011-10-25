@@ -37,9 +37,9 @@ struct beagledaq_inputs : input_channels<N> {
 
 	Matrix<float,1,N> get() const
 	{
-		array<uint16_t, 8> samp = bd.adcs[adc]->read();
+		array<int16_t, 8> samp = bd.adcs[adc]->read();
 		Matrix<float,1,N> ret;
-		for (int i=0; i<N; i++)
+		for (unsigned int i=0; i<N; i++)
 			ret[i] = 1. * samp[channels[i]] / 0xffff;
 		return ret;
 	}

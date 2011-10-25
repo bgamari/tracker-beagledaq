@@ -28,8 +28,6 @@
 #include <readline/history.h>
 #include <iostream>
 #include <array>
-#include <boost/tokenizer.hpp>
-#include <boost/lexical_cast.hpp>
 
 using std::array;
 using std::string;
@@ -47,7 +45,9 @@ struct pid_tau_param : parameter {
         pid_tau_param(string name, pid_loop& pid, string description) :
                 parameter(name, description), pid(pid) { }
         void operator=(string s) {
-                pid.set_tau(boost::lexical_cast<unsigned int>(s));
+                unsigned int a;
+                std::istringstream(s) >> a;
+                pid.set_tau(a);
         }
         void put(std::ostream& os) const {
                 os << pid.tau();
@@ -146,7 +146,6 @@ int main(int argc, char** argv)
         add_tracker_params(tracker);
         tracker.feedback_ended_cb = &feedback_ended;
 
-        boost::char_separator<char> sep("\t ");
 	Eigen::IOFormat mat_fmt = Eigen::IOFormat(Eigen::FullPrecision, 0, "\t", "\n");
 
         std::cout << "Tracker " << version << "\n";
@@ -160,14 +159,14 @@ int main(int argc, char** argv)
                 }
                 add_history(tmp);
                 free(tmp);
-                typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
-		tokenizer tokens(line, sep);
-		tokenizer::iterator tok = tokens.begin();
 
-		string cmd = *tok; tok++;
+		std::istringstream ss(line);
+		string cmd;
+		ss >> cmd;	
+
 		if (cmd == "set") {
-			string param = *tok; tok++;
-			string value = *tok;
+                        string param, value;
+                        ss >> param; ss >> value;
 			parameter* p = find_parameter(parameters, param);
 			if (!p)
                                 std::cout << "Unknown parameter\n";
@@ -179,7 +178,8 @@ int main(int argc, char** argv)
                                 }
                         }
 		} else if (cmd == "get") {
-			string param = *tok;
+                        string param;
+                        ss >> param;
 			parameter* p = find_parameter(parameters, param);
 			if (!p)
                                 std::cout << "Unknown parameter\n";
@@ -195,11 +195,10 @@ int main(int argc, char** argv)
                         Vector3f fb = stage.get_pos();
                         std::cout << fb.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "move") {
-                        using boost::lexical_cast;
                         Vector3f pos;
-                        pos.x() = lexical_cast<float>(*tok); tok++;
-                        pos.y() = lexical_cast<float>(*tok); tok++;
-                        pos.z() = lexical_cast<float>(*tok);
+                        ss >> pos.x();
+                        ss >> pos.y();
+                        ss >> pos.z();
                         stage.smooth_move(pos, 10000);
                         std::cout << "OK\n";
                 } else if (cmd == "center") {
@@ -223,9 +222,6 @@ int main(int argc, char** argv)
                 } else if (cmd == "pause") {
                         std::cout << "Press enter when ready\n";
                         getchar();
-                } else if (cmd == "wait") {
-                        float time = boost::lexical_cast<float>(*tok);
-                        usleep(time * 1e6);
                 } else if (cmd == "exit" || cmd == "quit") {
                         return 0;
                 } else if (cmd == "help") {

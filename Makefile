@@ -13,10 +13,10 @@ version.cpp ::
 	@echo "const char* branch = \"$(shell git name-rev HEAD | cut -d ' ' -f 2)\";" >> version.cpp
 
 tracker : main.o hardware/spi_device.o hardware/beagledaq.o channels.o tracker.o pid.o parameters.o stage.o version.o utils.o
-	$(CXX) $(LDFLAGS) -o $@ $+
+	$(CXX) $+ $(LDFLAGS) -o $@
 
 tracker-otf : main_otf.o hardware/spi_device.o hardware/beagledaq.o channels.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o
-	$(CXX) $(LDFLAGS) -o $@ $+
+	$(CXX) $+ $(LDFLAGS) -o $@
 
 raster_dump : hardware/spi_device.o stage.o
 

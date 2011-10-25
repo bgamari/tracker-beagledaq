@@ -24,11 +24,11 @@
 #include "channels.h"
 #include "pid.h"
 #include "stage.h"
+#include "ringbuffer.h"
 
 #include <array>
-#include <boost/function.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/thread/mutex.hpp>
+#include <tr1/functional>
+#include <thread>
 #include <Eigen/Eigen>
 
 using namespace Eigen;
@@ -62,25 +62,25 @@ private:
         // There are two ring buffers, one being filled with new data by the
         // feedback loop (the active log) and the other being consumed by the
         // calibration worker (the inactive log).
-        boost::circular_buffer<pos_log_entry> *active_log, *inactive_log;
-        boost::mutex log_mutex;
+        ring_buffer<pos_log_entry> *active_log, *inactive_log;
+	std::mutex log_mutex;
 
         struct perturb_response {
                 float phase, amp;
         };
         perturb_response find_perturb_response(
                         unsigned int axis, float freq,
-                        boost::circular_buffer<pos_log_entry>& log_data);
+                        ring_buffer<pos_log_entry>& log_data);
 
         Vector4f scale_psd_position(Vector4f in);
-        void recal_worker(Matrix<float, 3,9>& beta, boost::mutex* beta_mutex,
+        void recal_worker(Matrix<float, 3,9>& beta, std::mutex* beta_mutex,
 		       Vector4f& psd_mean, unsigned int& recal_count);
         void feedback();
-        boost::thread feedback_thread;
-        bool _running;
+        std::thread feedback_thread;
+        bool _running, stop;
 
 public:
-        boost::function<void()> feedback_ended_cb;
+        std::function<void()> feedback_ended_cb;
         void start_feedback();
         bool running();
         void stop_feedback();
@@ -101,8 +101,8 @@ public:
                 stage_outputs(stage_outputs),
 		_running(false)
         {
-		active_log = new boost::circular_buffer<pos_log_entry>(1000);
-		inactive_log = new boost::circular_buffer<pos_log_entry>(1000);
+		active_log = new ring_buffer<pos_log_entry>(1000);
+		inactive_log = new ring_buffer<pos_log_entry>(1000);
 
                 fb_pids[0] = pid_loop(0.6, 1e-3, 0, 10);
                 fb_pids[1] = pid_loop(0.6, 1e-3, 0, 10);

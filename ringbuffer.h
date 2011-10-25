@@ -56,6 +56,12 @@ public:
                         return v[off];
         }
 
+	void clear()
+	{
+		head = 0;
+		full = false;
+	}
+
         void resize(unsigned int capacity)
         {
                 assert(capacity >= 1);

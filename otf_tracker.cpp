@@ -28,9 +28,8 @@
 #include <cstdio>
 #include <iostream>
 #include <fstream>
-#include <boost/random.hpp>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/format.hpp>
+#include <tr1/random>
+#include <Eigen/SVD>
 
 using std::string;
 using std::vector;
@@ -50,29 +49,29 @@ Vector4f otf_tracker::scale_psd_position(Vector4f in)
  * pack_psd_inputs(): Pack input data into vector with higher order terms
  */
 static Matrix<float,9,1> pack_psd_inputs(Vector4f data) {
-	Matrix<float,9,1> R;
+        Matrix<float,9,1> R;
 
-	// First order
-	R[0] = data[0];			// Vx
-	R[1] = data[1];			// Vy
-	R[2] = -data[2] + data[3];	// Vsum = -Vsum_x + Vsum_y
-	
-	// Second order
-	R[3] = R[0]*R[0];		// Vx^2
-	R[4] = R[1]*R[1];		// Vy^2
-	R[5] = R[2]*R[2];		// Vsum^2
+        // First order
+        R[0] = data[0];			// Vx
+        R[1] = data[1];			// Vy
+        R[2] = -data[2] + data[3];	// Vsum = -Vsum_x + Vsum_y
 
-	// Cross terms
-	R[6] = R[0]*R[1];		// Vx*Vy
-	R[7] = R[0]*R[2];		// Vx*Vsum
-	R[8] = R[1]*R[2];		// Vy*Vsum
+        // Second order
+        R[3] = R[0]*R[0];		// Vx^2
+        R[4] = R[1]*R[1];		// Vy^2
+        R[5] = R[2]*R[2];		// Vsum^2
 
-	return R;
+        // Cross terms
+        R[6] = R[0]*R[1];		// Vx*Vy
+        R[7] = R[0]*R[2];		// Vx*Vsum
+        R[8] = R[1]*R[2];		// Vy*Vsum
+
+        return R;
 }
 
 otf_tracker::perturb_response otf_tracker::find_perturb_response(
                 unsigned int axis, float freq,
-                boost::circular_buffer<otf_tracker::pos_log_entry>& log_data)
+                ring_buffer<otf_tracker::pos_log_entry>& log_data)
 {
         std::vector<float> T(log_data.size());
         otf_tracker::perturb_response resp = {0, 0};
@@ -111,37 +110,35 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
  * Responsible for periodically updating the regression matrix from data
  * collected in the feedback thread.
  */
-void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, boost::mutex* beta_mutex,
+void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, std::mutex* beta_mutex,
                 Vector4f& psd_mean, unsigned int& recal_count)
 {
-	while (true) {
+	while (!stop) {
                 usleep(recal_delay);
-                try {
-                        boost::this_thread::interruption_point(); // Clear interrupt flag
-                } catch (boost::thread_interrupted e) {
-                        break;
-                }
 
                 // Swap log buffers
                 {
-                        boost::mutex::scoped_lock lock(log_mutex);
+                        std::lock_guard<std::mutex> lock(log_mutex);
                         std::swap(active_log, inactive_log);
                 }
 
                 unsigned int samples = inactive_log->size();
-		if (!samples) {
-			std::cout << "recal_worker: No samples.\n";
-			continue;
-		}
+                if (!samples) {
+                        std::cout << "recal_worker: No samples.\n";
+                        continue;
+                }
 
                 if (record_data_cnt) {
-                        std::ofstream f((boost::format("recal-data-%d") % recal_count).str());
+                        char fname[256];
+                        snprintf(fname, 256, "recal-data-%d", recal_count);
+                        FILE* f = fopen(fname, "w");
                         for (unsigned int i=0; i<samples; i++) {
-                                pos_log_entry& e = inactive_log->at(i);
-                                f << (boost::format("%f %f %f\t%f %f %f %f\n") %
-                                                e.fb[0] % e.fb[1] % e.fb[2] %
-                                                e.psd[0] % e.psd[1] % e.psd[2] % e.psd[3]);
+                                pos_log_entry& e = (*inactive_log)[i];
+                                fprintf(f, "%f %f %f\t%f %f %f %f\n",
+                                        e.fb[0], e.fb[1], e.fb[2],
+                                        e.psd[0], e.psd[1], e.psd[2], e.psd[3]);
                         }
+                        fclose(f);
                         record_data_cnt--;
                 }
 
@@ -154,7 +151,7 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, boost::mutex* beta_mute
                         perturb_response resp = find_perturb_response(axis, freq, *inactive_log);
                         printf("%f  %f\t", resp.phase, resp.amp);
                         for (unsigned int i=0; i<samples; i++) {
-                                pos_log_entry& ent = inactive_log->at(i);
+                                pos_log_entry& ent = (*inactive_log)[i];
                                 S(i,axis) = resp.amp * sin(2*M_PI*freq*ent.time + resp.phase);
                         }
                 }
@@ -163,19 +160,19 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, boost::mutex* beta_mute
                 // Compute new PSD mean
                 Vector4f new_psd_mean = Vector4f::Zero();
                 for (unsigned int i=0; i<samples; i++)
-                        new_psd_mean += inactive_log->at(i).psd;
+                        new_psd_mean += (*inactive_log)[i].psd;
                 new_psd_mean /= samples;
 
                 // Pack PSD inputs
                 for (unsigned int i=0; i<samples; i++)
-                        R.row(i) = pack_psd_inputs(inactive_log->at(i).psd - new_psd_mean).cast<double>();
+                        R.row(i) = pack_psd_inputs((*inactive_log)[i].psd - new_psd_mean).cast<double>();
 
                 // Solve regression
-                SVD<Matrix<double, Dynamic,9> > svd(R);
+                JacobiSVD<Matrix<double, Dynamic,9> > svd(R);
                 Matrix<double, 9,3> bt = svd.solve(S);
                 //std::cout << "Singular values: " << svd.singularValues() << "\n";
                 {
-                        boost::mutex::scoped_lock lock(*beta_mutex);
+                        std::lock_guard<std::mutex> lock(*beta_mutex);
                         beta = bt.transpose().cast<float>();
                         psd_mean = new_psd_mean;
                 }
@@ -195,21 +192,15 @@ void otf_tracker::feedback()
         unsigned int last_report_n = 0;
         std::ofstream f("pos");
         Matrix<float, 3,9> beta = Matrix<float,3,9>::Zero();
-        boost::mutex beta_mutex;
+        std::mutex beta_mutex;
         Vector4f psd_mean = Vector4f::Zero();
-        boost::thread recal_thread(&otf_tracker::recal_worker, this, beta, &beta_mutex, psd_mean, recal_count);
+        std::thread recal_thread(&otf_tracker::recal_worker, this, beta, &beta_mutex, psd_mean, recal_count);
         Vector3f last_pos = stage_outputs.get_pos();
 
         _running = true;
-	while (true) {
-                try {
-                        boost::this_thread::interruption_point(); // Clear interrupt flag
-                } catch (boost::thread_interrupted e) {
-                        break;
-                }
-
+        while (!stop) {
                 // Get sensor values
-		Vector3f fb = stage_outputs.get_pos();
+                Vector3f fb = stage_outputs.get_pos();
                 Vector4f psd = psd_inputs.get();
                 psd = scale_psd_position(psd);
                 n++;
@@ -220,16 +211,16 @@ void otf_tracker::feedback()
                 float t = (ts.tv_sec - start_time.tv_sec) +
                         (ts.tv_nsec - start_time.tv_nsec)*1e-9;
                 {
-                        boost::mutex::scoped_lock lock(log_mutex);
+                        std::lock_guard<std::mutex> lock(log_mutex);
                         pos_log_entry ent = { t, fb, psd };
-                        active_log->push_back(ent);
+                        active_log->add(ent);
                 }
 
                 // Compute estimated position
                 Matrix<float, 9,1> psd_in = pack_psd_inputs(psd);
                 Vector3f delta;
                 {
-                        boost::mutex::scoped_lock lock(beta_mutex);
+                        std::lock_guard<std::mutex> lock(beta_mutex);
                         psd -= psd_mean;
                         delta = beta * psd_in;
                 }
@@ -246,14 +237,13 @@ void otf_tracker::feedback()
                         delta[i] = fb_pids[i].get_response();
                 }
 
-		f << boost::format("%f %f %f\t%f %f %f\t%f %f %f\n") %
-				delta.x() % delta.y() % delta.z() %
-				fb.x() % fb.y() % fb.z() %
-                                last_pos.x() % last_pos.y() % last_pos.z();
+                f << delta.x() << delta.y() << delta.z()
+                  << fb.x() << fb.y() << fb.z()
+                  << last_pos.x() << last_pos.y() << last_pos.z();
 
                 // Move stage
-		if (n % move_skip_cycles == 0) {
-			Vector3f new_pos = fb_setpoint - delta;
+                if (n % move_skip_cycles == 0) {
+                        Vector3f new_pos = fb_setpoint - delta;
                         try {
                                 stage_outputs.move_rel(new_pos);
                                 last_pos = new_pos;
@@ -261,7 +251,7 @@ void otf_tracker::feedback()
                                 fprintf(stderr, "Clamped\n");
                                 continue;
                         }
-		}
+                }
 
                 // Show feedback rate report
                 if (fb_show_rate && t > (last_report_t + fb_rate_report_period)) {
@@ -273,7 +263,6 @@ void otf_tracker::feedback()
                 usleep(fb_delay);
         }
 
-	recal_thread.interrupt();
         recal_thread.join();
         _running = false;
         if (feedback_ended_cb)
@@ -288,14 +277,15 @@ unsigned int otf_tracker::get_log_length()
 
 void otf_tracker::set_log_length(unsigned int len)
 {
-        boost::mutex::scoped_lock lock(log_mutex);
-        active_log->set_capacity(len);
-        inactive_log->set_capacity(len);
+        std::lock_guard<std::mutex> lock(log_mutex);
+        active_log->resize(len);
+        inactive_log->resize(len);
 }
 
 void otf_tracker::start_feedback()
 {
-        feedback_thread = boost::thread(&otf_tracker::feedback, this);
+	stop = false;
+        feedback_thread = std::thread(&otf_tracker::feedback, this);
 }
 
 bool otf_tracker::running()
@@ -305,7 +295,7 @@ bool otf_tracker::running()
 
 void otf_tracker::stop_feedback()
 {
-        feedback_thread.interrupt();
+	stop = true;
         feedback_thread.join();
 }
 

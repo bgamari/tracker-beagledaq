@@ -90,8 +90,12 @@ void add_pid_params(std::vector<parameter*>& params, string name, pid_loop& pid)
 template<class Stage>
 void add_stage_params(std::vector<parameter*>& params, Stage& s)
 {
-        throw std::runtime_error("Unimplemented");
+        throw std::runtime_error("Stage parameters unimplemented for given stage\n");
 }
+
+template<>
+void add_stage_params<fb_stage>(std::vector<parameter*>& params, fb_stage& s)
+{ }
 
 template<>
 void add_stage_params<pid_stage>(std::vector<parameter*>& params, pid_stage& s)

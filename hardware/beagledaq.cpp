@@ -25,6 +25,6 @@ void beagledaq_init() {
 	beagle_daq bd;
 	//photodiode_in = new beagledaq_inputs(bd, 0, array<int,N>{{0,1,2}});
 	stage_in = new beagledaq_inputs<3>(bd, 0, array<int,3>{{0,1,2}});
-	psd_in = new beagledaq_inputs<4>(bd, 0, array<int,4>{{0,1,2}});
 	stage_out = new beagledaq_outputs<3>(bd, 0, array<int,3>{{0,1,2}});
+	psd_in = new beagledaq_inputs<4>(bd, 1, array<int,4>{{0,1,2,4}}, false);
 }

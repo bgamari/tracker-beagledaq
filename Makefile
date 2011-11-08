@@ -12,27 +12,23 @@ version.cpp ::
 	@echo "const char* version = \"$(shell git rev-parse HEAD)\";" > version.cpp
 	@echo "const char* branch = \"$(shell git name-rev HEAD | cut -d ' ' -f 2)\";" >> version.cpp
 
-tracker : main.o hardware/spi_device.o hardware/beagledaq.o channels.o tracker.o pid.o parameters.o stage.o version.o utils.o
+tracker : main.o hardware/beagledaq.o channels.o tracker.o pid.o parameters.o stage.o version.o utils.o
 	$(CXX) $+ $(LDFLAGS) -o $@
 
-tracker-otf : main_otf.o hardware/spi_device.o hardware/beagledaq.o channels.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o
+tracker-otf : main_otf.o hardware/beagledaq.o channels.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o
 	$(CXX) $+ $(LDFLAGS) -o $@
 
-raster_dump : hardware/spi_device.o stage.o
+raster_dump : stage.o
 
 .PHONY : clean
 clean :
-	rm -f *.o
+	rm -f *.o hardware/*.o
 	rm -Rf .deps
 
 % : %.o
 
-hardware/dac_test : hardware/spi_device.o
-hardware/adc_test : hardware/spi_device.o
-hardware/adc_bench : hardware/spi_device.o
-
 .PHONY : tests
-tests : hardware/max5134_test hardware/max1302_test raster_dump
+tests : raster_dump
 
 # For automatic header dependencies
 .deps/%.d : %

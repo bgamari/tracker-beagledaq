@@ -1,4 +1,3 @@
-
 /* tracker - Back-focal plane droplet tracker
  *
  * Copyright © 2010 Ben Gamari

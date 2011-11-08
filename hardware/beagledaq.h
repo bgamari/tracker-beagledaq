@@ -23,6 +23,7 @@
 
 void beagledaq_init();
 
+#include <algorithm>
 #include <beagledaq/beagledaq.h>
 #include "channels.h"
 
@@ -40,12 +41,13 @@ struct beagledaq_inputs : input_channels<N> {
 	{
 		array<int16_t, 8> samp = bd.adcs[adc]->read();
 		Matrix<float,1,N> ret;
-		if (posOnly)
+		if (posOnly) {
 			for (unsigned int i=0; i<N; i++)
-				ret[i] = 1. * samp[channels[i]] / 0x7fff;
-		else 
+				ret[i] = std::max(0.0, 1. * samp[channels[i]] / 0x7fff);
+		} else {
 			for (unsigned int i=0; i<N; i++)
 				ret[i] = 1. * (samp[channels[i]] + 0x7fff) / 0xffff;
+		}
 		return ret;
 	}
 };

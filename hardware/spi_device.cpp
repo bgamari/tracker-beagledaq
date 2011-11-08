@@ -20,6 +20,8 @@
 
 
 #include "spi_device.h"
+#include <string.h>
+#include <errno.h>
 
 // spi mode
 void spi_device::set_mode(uint8_t mode)
@@ -59,8 +61,8 @@ void spi_device::send_msg(void* tx, void* rx, int len)
 	tr.rx_buf = (unsigned long) rx;
 	tr.len = len;
 
-	if (ioctl(fd, SPI_IOC_MESSAGE(1), &tr) < 0) {
-		fprintf(stderr, "failed to send message\n");
+	if (ioctl(fd, SPI_IOC_MESSAGE(1), &tr) < -1) {
+		fprintf(stderr, "failed to send message: %s\n", strerror(errno));
 		exit(1);
 	}
 }

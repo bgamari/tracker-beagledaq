@@ -4,6 +4,7 @@ INCLUDES = -Ieigen -I. -I/usr/local/include
 PLATFORM_FLAGS = -mcpu=cortex-a8 -ftree-vectorize -mfloat-abi=softfp
 CXXFLAGS = ${PLATFORM_FLAGS} -O2 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
 LDFLAGS = -lrt -lreadline
+LIBBDAQ=../libbeagledaq/libbeagledaq.a
 
 .PHONY : all
 all : tracker tracker-otf
@@ -12,13 +13,13 @@ version.cpp ::
 	@echo "const char* version = \"$(shell git rev-parse HEAD)\";" > version.cpp
 	@echo "const char* branch = \"$(shell git name-rev HEAD | cut -d ' ' -f 2)\";" >> version.cpp
 
-tracker : main.o hardware/beagledaq.o channels.o tracker.o pid.o parameters.o stage.o version.o utils.o
+tracker : main.o hardware/beagledaq.o channels.o tracker.o pid.o parameters.o stage.o version.o utils.o $(LIBBDAQ)
 	$(CXX) $+ $(LDFLAGS) -o $@
 
-tracker-otf : main_otf.o hardware/beagledaq.o channels.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o
+tracker-otf : main_otf.o hardware/beagledaq.o channels.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o $(LIBBDAQ)
 	$(CXX) $+ $(LDFLAGS) -o $@
 
-raster_dump : stage.o
+raster_dump : stage.o $(LIBBDAQ)
 
 .PHONY : clean
 clean :

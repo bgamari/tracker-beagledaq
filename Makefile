@@ -36,7 +36,7 @@ tests : raster_dump
 	@mkdir -p .deps
 	@cpp -std=c++0x ${INCLUDES} -MM $< > $@
 
-SOURCES := $(wildcard *.cpp) $(wildcard *.c)
+SOURCES := $(wildcard *.cpp) $(wildcard *.c) $(wildcard hardware/*.cpp)
 SOURCES := $(filter-out version.cpp,$(SOURCES)) # Avoid circular dependency
 -include $(addprefix .deps/,$(addsuffix .d,$(SOURCES)))
 

@@ -75,6 +75,9 @@ tracker::rough_cal_xy_result tracker::rough_calibrate_xy(Vector3f center)
         Matrix<float, Dynamic, 4> psd_data(rough_cal_xy_pts*rough_cal_xy_pts, 4);
         Matrix<float, Dynamic, 3> fb_data(rough_cal_xy_pts*rough_cal_xy_pts, 3);
         
+        stage_outputs.move(rt.get_pos());
+        nsleep(1000*1000);
+
         // Run X/Y scan and preprocess data
         for (int i=0; rt.has_more(); ++i, ++rt) {
                 Vector3f pos = rt.get_pos();
@@ -101,7 +104,8 @@ Vector3f tracker::rough_calibrate_z(Vector3f center)
 {
         Vector3f laser_pos = center;
         laser_pos.z() -= rough_cal_z_range / 2;
-        stage_outputs.smooth_move(laser_pos, 4000);
+        stage_outputs.move(laser_pos);
+        nsleep(1000*1000);
 
         Vector3f step; 
         Vector3u pts;
@@ -205,7 +209,7 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
         fine_cal_result res;
 
         // Setup stage
-        stage_outputs.smooth_move(rough_pos, 1000);
+        stage_outputs.move(rough_pos);
 
         // Collect data
         for (int i=0; rt.has_more(); ++i, ++rt) {

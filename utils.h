@@ -35,3 +35,10 @@ void dump_matrix(Matrix A, string filename, string comment="")
         os.close();
 }
 
+inline void nsleep(unsigned int nsecs)
+{
+        timespec ts;
+        ts.tv_nsec = nsecs;
+        nanosleep(&ts, NULL);
+}
+

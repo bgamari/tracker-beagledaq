@@ -18,9 +18,11 @@
  * Author: Ben Gamari <bgamari@physics.umass.edu>
  */
 
+#include "config.h"
 #include "stage.h"
 
 #include <fstream>
+#include <time.h>
 #include <Eigen/SVD>
 
 using namespace Eigen;
@@ -104,8 +106,14 @@ Vector3f fb_stage::get_pos() const
 
 void pid_stage::worker() 
 {
+#ifdef STAGE_INSTRUMENTATION
+        std::ofstream fx("stage");
+        fx.width(8);
+        fx.precision(4);
+        fx.setf(std::ios::floatfield, std::ios::fixed);
+        fx.setf(std::ios::showpos);
+#endif
         unsigned int i=0; 
-        std::ofstream fx("stage-x"), fy("stage-y"), fz("stage-z");
         while (!stop) {
                 Vector3f fb_pos = fb.get();
                 Vector3f err = fb_pos - target_pos;
@@ -116,12 +124,23 @@ void pid_stage::worker()
 
                 Vector3f resp;
                 resp << pidx.get_response(), pidy.get_response(), pidz.get_response();
-                pos -= resp;
+                pos += resp;
                 for (int j=0; j<3; j++) {
                         pos[j] = std::min(1.0f, pos[j]);
                         pos[j] = std::max(0.0f, pos[j]);
                 }
                 out.set(pos);
+
+#ifdef STAGE_INSTRUMENTATION
+                timespec ts;
+                clock_gettime(CLOCK_MONOTONIC, &ts);
+                float t = 1e-9 * ts.tv_nsec + ts.tv_sec;
+                fx << t << "\t"
+                   << "target " << target_pos[0] << "  " << target_pos[1] << "  " << target_pos[2] << "\t"
+                   << "error  " << err[0] << "  " << err[1] << "  " << err[2] << "\t"
+                   << "resp   " << resp[0] << "  " << resp[1] << "  " << resp[2] << "\t"
+                   << "pos    " << pos[0] << "  " << pos[1] << "  " << pos[2] << "\n";
+#endif
                 i++;
                 usleep(fb_delay);
         }

@@ -27,20 +27,19 @@ float pid_loop::get_response() {
 
         // Proportional
         if (prop_gain != 0)
-                resp += prop_gain * points.front().y;
+                resp -= prop_gain * points.front().y;
 
         // Integral
         if (int_gain != 0 && points.size() > 2) {
                 float I = 0;
                 for (unsigned int i=1; i < points.size(); i++)
                         I += points[i].y * (points[i].x - points[i-1].x);
-                I /= points.front().x - points.back().x;
                 resp += int_gain * I;
         }
 
         // Derivative
         if (diff_gain != 0 && points.size() > 2)
-                resp += diff_gain * (points[0].y - points[1].y) / (points[0].x - points[1].x);
+                resp -= diff_gain * (points[0].y - points[1].y) / (points[0].x - points[1].x);
         return resp;
 }
 

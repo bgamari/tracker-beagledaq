@@ -45,14 +45,15 @@ public:
                 }
         }
 
-        // i=0 is last item added
+        // i=0 is element most-recently added
+        // i=capacity() - 1 is the least-recently added element
         T& operator[](unsigned int i)
         {
                 assert(i < capacity());
-                int off = head - i;
+                int off = head - i - 1;
                 assert(off >= 0 || full);
                 if (off < 0)
-                        return v[capacity() + off - 1];
+                        return v[capacity() + off];
                 else
                         return v[off];
         }

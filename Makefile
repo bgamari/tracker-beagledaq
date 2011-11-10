@@ -2,8 +2,8 @@ CXX = arm-linux-gnueabi-g++
 INCLUDES = -Ieigen -I. -I/usr/local/include
 #PLATFORM_FLAGS = -mcpu=cortex-a8 -mfpu=neon -ftree-vectorize -mfloat-abi=softfp
 PLATFORM_FLAGS = -mcpu=cortex-a8 -ftree-vectorize -mfloat-abi=softfp
-CXXFLAGS = ${PLATFORM_FLAGS} -O2 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
-LDFLAGS = -lrt -lreadline
+CXXFLAGS = ${PLATFORM_FLAGS} -O0 -ggdb -std=gnu++0x -Wall ${INCLUDES} #-pg
+LDFLAGS = -lrt -lreadline -lpthread
 LIBBDAQ=../libbeagledaq/libbeagledaq.a
 
 .PHONY : all
@@ -20,6 +20,10 @@ tracker-otf : main_otf.o hardware/beagledaq.o channels.o otf_tracker.o pid.o par
 	$(CXX) $+ $(LDFLAGS) -o $@
 
 raster_dump : stage.o $(LIBBDAQ)
+	$(CXX) $+ $(LDFLAGS) -o $@
+
+stage_test : stage_test.o hardware/beagledaq.o channels.o stage.o pid.o $(LIBBDAQ)
+	$(CXX) $+ $(LDFLAGS) -o $@
 
 .PHONY : clean
 clean :
@@ -33,10 +37,10 @@ tests : raster_dump
 
 # For automatic header dependencies
 .deps/%.d : %
-	@mkdir -p .deps
-	@cpp -std=c++0x ${INCLUDES} -MM $< > $@
+	@mkdir -p .deps/$(shell dirname $<)
+	@cpp -xc++ -std=c++0x ${INCLUDES} -MM $< > $@
 
-SOURCES := $(wildcard *.cpp) $(wildcard *.c) $(wildcard hardware/*.cpp)
+SOURCES := $(wildcard *.cpp) $(wildcard *.c) $(wildcard hardware/*.cpp) $(wildcard *.h) $(wildcard hardware/*.h)
 SOURCES := $(filter-out version.cpp,$(SOURCES)) # Avoid circular dependency
 -include $(addprefix .deps/,$(addsuffix .d,$(SOURCES)))
 

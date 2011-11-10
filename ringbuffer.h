@@ -37,7 +37,8 @@ public:
 
         void add(T a)
         {
-                v[head++] = a;
+                v[head] = a;
+                head++;
                 if (head == capacity()) {
                         head = 0;
                         full = true;
@@ -48,19 +49,19 @@ public:
         T& operator[](unsigned int i)
         {
                 assert(i < capacity());
-                int off = head - i - 1;
+                int off = head - i;
                 assert(off >= 0 || full);
                 if (off < 0)
-                        return v[capacity() + off];
+                        return v[capacity() + off - 1];
                 else
                         return v[off];
         }
 
-	void clear()
-	{
-		head = 0;
-		full = false;
-	}
+        void clear()
+        {
+                head = 0;
+                full = false;
+        }
 
         void resize(unsigned int capacity)
         {
@@ -87,7 +88,7 @@ public:
 
         T& back()
         {
-                return (*this)[size()];
+                return (*this)[size()-1];
         }
 };
 

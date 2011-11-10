@@ -39,6 +39,7 @@ struct beagledaq_inputs : input_channels<N> {
 
 	Matrix<float,1,N> get() const
 	{
+		bd.trigger_acquire();
 		array<int16_t, 8> samp = bd.adcs[adc]->read();
 		Matrix<float,1,N> ret;
 		if (posOnly) {

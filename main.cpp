@@ -69,6 +69,7 @@ static std::string cmd_help =
 "  feedback-start               Start feedback (requires fine-cal)\n"
 "  feedback-stop                Stop feedback loop\n"
 "  scan                         Run manual scan (configure with scan.* parameters)\n"
+"  wait [n]                     Wait n milliseconds\n"
 "  exit                         Exit\n"
 "  version                      Show version information\n"
 "  help                         This help message\n";
@@ -322,7 +323,13 @@ struct tracker_cli {
                                 tr.stop_feedback();
                                 std::cout << "OK\tFeedback stopped\n";
                         }
+                } else if (cmd == "wait") {
+                        int a;
+                        ss >> a;
+                        usleep(a*1000);
                 } else if (cmd == "exit") {
+                        return true;
+                } else if (cmd == "quit") {
                         return true;
                 } else if (cmd == "help") {
                         std::cout << cmd_help << "\n";

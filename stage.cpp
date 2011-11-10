@@ -20,6 +20,7 @@
 
 #include "config.h"
 #include "stage.h"
+#include "utils.h"
 
 #include <fstream>
 #include <time.h>
@@ -141,8 +142,9 @@ void pid_stage::worker()
                    << "resp   " << resp[0] << "  " << resp[1] << "  " << resp[2] << "\t"
                    << "pos    " << pos[0] << "  " << pos[1] << "  " << pos[2] << "\n";
 #endif
+
                 i++;
-                usleep(fb_delay);
+                nsleep(fb_delay * 1000 * 1000);
         }
 }
 

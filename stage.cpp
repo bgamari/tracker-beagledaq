@@ -47,7 +47,7 @@ Vector3f stage::get_pos() const {
 void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
         stage raw_stage(out);
         raw_stage.move({0.5, 0.5, 0.5});
-        
+
         std::tr1::mt19937 eng;
         std::tr1::uniform_real<float> rng(0.5-cal_range, 0.5+cal_range);
         Matrix<float, Dynamic,7> X(n_pts, 7);
@@ -106,7 +106,7 @@ void pid_stage::worker()
 {
         unsigned int i=0; 
         std::ofstream fx("stage-x"), fy("stage-y"), fz("stage-z");
-        while (stop) {
+        while (!stop) {
                 Vector3f fb_pos = fb.get();
                 Vector3f err = fb_pos - target_pos;
 

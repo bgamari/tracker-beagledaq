@@ -22,22 +22,26 @@
 #include "pid.h"
 
 float pid_loop::get_response() {
+        assert(points.size() > 0);
+        float resp = 0;
+
         // Proportional
-        float P = points.front().y;
+        if (prop_gain != 0)
+                resp += prop_gain * points.front().y;
 
         // Integral
-        float I = 0;
-        for (unsigned int i=1; i < points.size(); i++)
-                I += points[i].y * (points[i].x - points[i-1].x);
-        if (points.size() > 2) 
+        if (int_gain != 0 && points.size() > 2) {
+                float I = 0;
+                for (unsigned int i=1; i < points.size(); i++)
+                        I += points[i].y * (points[i].x - points[i-1].x);
                 I /= points.front().x - points.back().x;
+                resp += int_gain * I;
+        }
 
         // Derivative
-        float D = 0;
-        if (points.size() > 2)
-               D = (points[0].y - points[1].y) / (points[0].x - points[1].x);
-
-        return prop_gain*P + int_gain*I + diff_gain*D;
+        if (diff_gain != 0 && points.size() > 2)
+                resp += diff_gain * (points[0].y - points[1].y) / (points[0].x - points[1].x);
+        return resp;
 }
 
 void pid_loop::add_point(float x, float y) {

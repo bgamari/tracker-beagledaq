@@ -28,7 +28,7 @@ using std::array;
 
 template<unsigned int N>
 struct input_channels {
-	virtual Matrix<float,1,N> get() const = 0;
+	virtual Matrix<float,1,N> get(bool trigger=true) const = 0;
 };
 
 template<unsigned int N>
@@ -43,7 +43,7 @@ struct clamped_output_error {
 
 template<unsigned int N>
 struct test_inputs : input_channels<N> {
-	Matrix<float,1,N> get() const
+	Matrix<float,1,N> get(bool trigger=true) const
 	{
 		Matrix<float,1,N> v = Matrix<float,1,N>::Zero();
 		return v;

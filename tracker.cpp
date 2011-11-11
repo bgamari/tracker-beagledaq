@@ -84,8 +84,8 @@ tracker::rough_cal_xy_result tracker::rough_calibrate_xy(Vector3f center)
                 stage_outputs.move(pos);
                 usleep(rough_cal_xy_dwell);
                 pos_data.row(i) = pos;
-                psd_data.row(i) = scale_psd_position(psd_inputs.get());
                 fb_data.row(i) = stage_outputs.get_pos();
+                psd_data.row(i) = scale_psd_position(psd_inputs.get(false));
         }
 
         dump_matrix((MatrixXf(rough_cal_xy_pts*rough_cal_xy_pts,10) << pos_data, fb_data, psd_data).finished(), "rough");
@@ -123,8 +123,8 @@ Vector3f tracker::rough_calibrate_z(Vector3f center)
                 stage_outputs.move(pos);
                 usleep(rough_cal_z_dwell);
                 pos_data.row(i) = pos;
-                psd_data.row(i) = scale_psd_position(psd_inputs.get());
                 fb_data.row(i) = stage_outputs.get_pos();
+                psd_data.row(i) = scale_psd_position(psd_inputs.get(false));
         }
 
         // Preprocess Z data with moving average
@@ -219,8 +219,8 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
                 pos += rough_pos;
                 stage_outputs.move(pos);
                 usleep(fine_cal_dwell);
-                psd_data.row(i) = scale_psd_position(psd_inputs.get());
                 fb_data.row(i) = stage_outputs.get_pos();
+                psd_data.row(i) = scale_psd_position(psd_inputs.get(false));
         }
 
         // Find and subtract out PSD mean

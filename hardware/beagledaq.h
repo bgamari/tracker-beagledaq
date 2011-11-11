@@ -37,9 +37,9 @@ struct beagledaq_inputs : input_channels<N> {
 	beagledaq_inputs(beagle_daq& bd, int adc, const array<int,N> channels, bool posOnly=true) :
 		bd(bd), adc(adc), channels(channels), posOnly(posOnly) { }
 
-	Matrix<float,1,N> get() const
+	Matrix<float,1,N> get(bool trigger=true) const
 	{
-		bd.trigger_acquire();
+		if (trigger) bd.trigger_acquire();
 		array<int16_t, 8> samp = bd.adcs[adc]->read();
 		Matrix<float,1,N> ret;
 		if (posOnly) {

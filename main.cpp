@@ -307,7 +307,7 @@ struct tracker_cli {
                         std::cout << "! OK\n";
                 } else if (cmd == "rough-cal") {
                         try {
-                                rough_cal_result res = rough_calibrate(_stage, psd_inputs, rough_params, rough_pos);
+                                rough_cal_result res = rough_calibrate(_stage, psd_inputs, rough_params, Vector3f(0.5, 0.5, 0.5));
                                 rough_pos = res.center;
                                 if (auto_xy_range_factor)
                                         fine_params.xy_range = res.xy_size * auto_xy_range_factor;

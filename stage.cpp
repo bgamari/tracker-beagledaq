@@ -51,8 +51,8 @@ void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
         stage raw_stage(out);
         raw_stage.move({0.5, 0.5, 0.5});
 
-        std::tr1::mt19937 eng;
-        std::tr1::uniform_real<float> rng(0.5-cal_range, 0.5+cal_range);
+        std::default_random_engine eng;
+        std::uniform_real_distribution<float> rng(0.5-cal_range, 0.5+cal_range);
         Matrix<float, Dynamic,7> X(n_pts, 7);
         Matrix<float, Dynamic,3> Y(n_pts, 3);
         Matrix<float, Dynamic,3> dev(n_pts, 3);

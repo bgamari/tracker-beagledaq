@@ -114,21 +114,6 @@ struct route {
         virtual bool has_more() = 0;
 };
 
-struct random_route : route {
-        std::tr1::mt19937 eng;
-        std::tr1::uniform_real<float> rng;
-        std::array<float,3> ranges;
-        unsigned int n_pts;
-        Vector3f a;
-
-        random_route(std::array<float,3> ranges, unsigned int n_pts) : 
-                rng(0, 1), ranges(ranges), n_pts(n_pts) { }
-
-        void operator++();
-        Vector3f get_pos();
-        bool has_more();
-};
-
 struct raster_route : route {
         const Vector3f start;
         const Vector3f step;

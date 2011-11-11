@@ -188,18 +188,6 @@ void stage::smooth_move(Vector3f to, unsigned int move_time)
         move(to);
 }
 
-void random_route::operator++() {
-        n_pts--;
-        for (int i=0; i<3; i++)
-                a[i] = 0.5 + ranges[i] * rng(eng) / 3;
-}
-
-Vector3f random_route::get_pos() { return a; }
-
-bool random_route::has_more() {
-        return n_pts > 0;
-}
-
 Vector3f raster_route::get_pos() {
         Vector3i pos;
         unsigned int m = n;

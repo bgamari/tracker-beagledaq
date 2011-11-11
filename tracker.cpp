@@ -75,7 +75,7 @@ tracker::rough_cal_xy_result tracker::rough_calibrate_xy(Vector3f center)
         Matrix<float, Dynamic, 4> psd_data(rough_cal_xy_pts*rough_cal_xy_pts, 4);
         Matrix<float, Dynamic, 3> fb_data(rough_cal_xy_pts*rough_cal_xy_pts, 3);
         
-        stage_outputs.move(rt.get_pos());
+        stage_outputs.move(start);
         nsleep(1000*1000);
 
         // Run X/Y scan and preprocess data
@@ -203,17 +203,20 @@ static Matrix<float,Dynamic,9> pack_psd_inputs(Matrix<float,Dynamic,4> data) {
 tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
 {
         bool dump_matricies = true;
-        random_route rt(std::array<float,3>{{fine_cal_xy_range, fine_cal_xy_range, fine_cal_z_range}}, fine_cal_pts);
+        Vector3f range(fine_cal_xy_range, fine_cal_xy_range, fine_cal_z_range);
         Matrix<float, Dynamic, 4> psd_data(fine_cal_pts,4);
         Matrix<float, Dynamic, 3> fb_data(fine_cal_pts,3);
         fine_cal_result res;
+        std::default_random_engine eng;
+        std::uniform_real_distribution<float> rng;
 
         // Setup stage
         stage_outputs.move(rough_pos);
 
         // Collect data
-        for (int i=0; rt.has_more(); ++i, ++rt) {
-                Vector3f pos = rt.get_pos();
+        for (unsigned int i=0; i < fine_cal_pts; i++) {
+                Vector3f pos = Vector3f(rng(eng), rng(eng), rng(eng)).cwiseProduct(range);
+                pos += rough_pos;
                 stage_outputs.move(pos);
                 usleep(fine_cal_dwell);
                 psd_data.row(i) = scale_psd_position(psd_inputs.get());

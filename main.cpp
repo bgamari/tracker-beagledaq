@@ -111,8 +111,8 @@ template<class Stage>
 struct tracker_cli {
         std::vector<parameter*> params;
         input_channels<4>& psd_inputs;
-        stage& raw_stage;
-        stage& _stage;
+        Stage& _stage;
+        stage& fb_stage;
         Vector3f rough_pos;
 
         rough_cal_params rough_params;
@@ -179,21 +179,24 @@ struct tracker_cli {
                 add_pid_params(params, "pids.z", fb_params.pids[2]);
         }
 
-        static void feedback_ended() {
+        void feedback_ended() {
                 std::cout << "$ FB-ERR\n";
+                fb_stage.stop();
+                _stage.start();
         }
 
         tracker_cli( input_channels<4>& psd_inputs
-                   , stage& raw_stage
-                   , stage& _stage
+                   , Stage& _stage
+                   , stage& fb_stage
                    ) : psd_inputs(psd_inputs)
-                     , raw_stage(raw_stage), _stage(_stage)
+                     , _stage(_stage), fb_stage(fb_stage)
                      , rough_params(def_rough_cal_params())
                      , fine_params(def_fine_cal_params())
                      , fb_params(def_feedback_params())
                      , auto_xy_range_factor(0)
                      , scan_delay(100)
         {
+                _stage.start();
                 _stage.smooth_move({0.5, 0.5, 0.5}, 10000);
                 usleep(10*1000);
 
@@ -323,9 +326,10 @@ struct tracker_cli {
                         if (fb && fb->running())
                                 std::cout << "! ERR\tAlready running\n";
                         else {
+                                _stage.stop();
                                 if (fb) delete fb;
-                                fb = new feedback(psd_inputs, raw_stage, fine_cal, fb_params);
-                                fb->feedback_ended_cb = &tracker_cli::feedback_ended;
+                                fb = new feedback(psd_inputs, fb_stage, fine_cal, fb_params);
+                                fb->feedback_ended_cb = [&](){ this->feedback_ended(); };
                                 fb->start();
                                 std::cout << "! OK\tFeedback running\n";
                         }
@@ -337,6 +341,8 @@ struct tracker_cli {
                                 delete fb;
                                 fb = NULL;
                                 std::cout << "OK\tFeedback stopped\n";
+                                fb_stage.stop();
+                                _stage.start();
                         }
                 } else if (cmd == "wait") {
                         int a;
@@ -395,7 +401,7 @@ int main(int argc, char** argv)
         //fb_stage stage(*stage_out, *stage_in);
         stage raw_stage(*stage_out);
         pid_stage stage(*stage_out, *stage_in);
-        tracker_cli<pid_stage> cli(*psd_in, raw_stage, stage);
+        tracker_cli<pid_stage> cli(*psd_in, stage, raw_stage);
         cli.mainloop();
 
         return 0;

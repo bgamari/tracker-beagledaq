@@ -105,6 +105,18 @@ Vector3f fb_stage::get_pos() const
         return fb.get();
 }
 
+void pid_stage::start()
+{
+        _stop = false;
+        fb_worker = new std::thread(&pid_stage::worker, this);
+}
+
+void pid_stage::stop()
+{
+        _stop = true;
+        fb_worker->join();
+}
+
 void pid_stage::worker() 
 {
 #ifdef STAGE_INSTRUMENTATION
@@ -115,7 +127,7 @@ void pid_stage::worker()
         fx.setf(std::ios::showpos);
 #endif
         unsigned int i=0; 
-        while (!stop) {
+        while (!_stop) {
                 Vector3f fb_pos = fb.get();
                 Vector3f err = fb_pos - target_pos;
 
@@ -149,8 +161,7 @@ void pid_stage::worker()
 }
 
 pid_stage::~pid_stage() {
-        stop = true;
-        fb_worker.join();
+        stop();
 }
 
 void pid_stage::move(const Vector3f pos)

@@ -40,6 +40,8 @@ public:
         output_channels<3>& out;
         stage(output_channels<3>& out) :
                 target_pos(out.get()), out(out) { }
+        virtual void start() { }
+        virtual void stop() { }
         virtual void move(const Vector3f pos);
         virtual void move_rel(const Vector3f delta);
         void smooth_move(Vector3f to, unsigned int move_time);
@@ -89,17 +91,19 @@ public:
         pid_loop pidx, pidy, pidz;
         unsigned int fb_delay;
 private:
-        std::thread fb_worker;
+        std::thread* fb_worker;
         void worker();
-        bool stop;
+        bool _stop;
 
 public:
         pid_stage(output_channels<3>& out, const input_channels<3>& fb) :
                 stage(out), pos(0.5*Vector3f::Ones()), fb(fb),
                 pidx(0.1), pidy(0.1), pidz(0.1),
-                fb_delay(6000), fb_worker(&pid_stage::worker, this),
-                stop(false) { }
+                fb_delay(6000) { }
         ~pid_stage();
+
+        void start();
+        void stop();
 
         void move(const Vector3f pos);
         Vector3f get_pos() const;

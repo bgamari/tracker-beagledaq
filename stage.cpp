@@ -74,7 +74,7 @@ void fb_stage::calibrate(unsigned int n_pts, unsigned int n_samp) {
                 X.row(i).segment(4,3) = fb_mean.transpose().array().square();
                 Y.row(i) = out_pos;
         }
-        JacobiSVD<Matrix<float, Dynamic,7> > svd(X);
+        JacobiSVD<Matrix<float, Dynamic,7> > svd = X.jacobiSvd(ComputeFullU | ComputeFullV);
         R = svd.solve(Y);
 
         {

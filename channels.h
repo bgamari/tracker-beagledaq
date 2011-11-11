@@ -33,7 +33,15 @@ struct input_channels {
 
 template<unsigned int N>
 struct output_channels {
-	virtual void set(const Matrix<float,1,N> values) const = 0;
+protected:
+        Matrix<float,1,N> last;
+public:
+        const Matrix<float,1,N> get() const {
+                return last;
+        }
+	virtual void set(const Matrix<float,1,N> values) {
+                last = values;
+        }
 };
 
 struct clamped_output_error {
@@ -52,8 +60,9 @@ struct test_inputs : input_channels<N> {
 
 template<unsigned int N>
 struct test_outputs : output_channels<N> {
-	void set(const Matrix<float,1,N> values) const
+	void set(const Matrix<float,1,N> values)
 	{
+                this->last = values;
 		for (unsigned int i=0; i<N; i++)
 			printf(" %f", values[i]);
 		printf("\n");

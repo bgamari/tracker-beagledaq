@@ -37,9 +37,9 @@ class stage {
 protected:
         Vector3f target_pos;
 public:
-        const output_channels<3>& out;
-        stage(const output_channels<3>& out) :
-                target_pos(0.5*Vector3f::Ones()), out(out) { }
+        output_channels<3>& out;
+        stage(output_channels<3>& out) :
+                target_pos(out.get()), out(out) { }
         virtual void move(const Vector3f pos);
         virtual void move_rel(const Vector3f delta);
         void smooth_move(Vector3f to, unsigned int move_time);
@@ -61,7 +61,7 @@ public:
         const input_channels<3>& fb;
         float cal_range;
 
-        fb_stage(const output_channels<3>& out, const input_channels<3>& fb, float cal_range=0.4)
+        fb_stage(output_channels<3>& out, const input_channels<3>& fb, float cal_range=0.4)
                 : stage(out), fb(fb), cal_range(cal_range) {
                 calibrate();
         }
@@ -94,7 +94,7 @@ private:
         bool stop;
 
 public:
-        pid_stage(const output_channels<3>& out, const input_channels<3>& fb) :
+        pid_stage(output_channels<3>& out, const input_channels<3>& fb) :
                 stage(out), pos(0.5*Vector3f::Ones()), fb(fb),
                 pidx(0.1), pidy(0.1), pidz(0.1),
                 fb_delay(6000), fb_worker(&pid_stage::worker, this),

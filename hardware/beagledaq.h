@@ -62,7 +62,7 @@ struct beagledaq_outputs : output_channels<N> {
 	beagledaq_outputs(beagle_daq& bd, int dac, const array<int,N> channels) :
 		bd(bd), dac(dac), channels(channels) { }
 
-	void set(const Matrix<float,1,N> values) const
+	void set(const Matrix<float,1,N> values)
 	{
 		std::vector<dac8568::command*> cmds;
 		cmds.reserve(N);
@@ -77,6 +77,7 @@ struct beagledaq_outputs : output_channels<N> {
 		}
 
 		bd.dacs[dac]->submit(cmds);
+		this->last = values;
 		for (auto c=cmds.begin(); c != cmds.end(); c++)
 			delete *c;
 	}

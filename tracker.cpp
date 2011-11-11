@@ -95,7 +95,7 @@ rough_cal_xy_result rough_calibrate_xy( stage& _stage
         for (int i=0; rt.has_more(); ++i, ++rt) {
                 Vector3f pos = rt.get_pos();
                 _stage.move(pos);
-                usleep(params.xy_dwell);
+                nsleep(1000*params.xy_dwell);
                 pos_data.row(i) = pos;
                 fb_data.row(i) = _stage.get_pos();
                 psd_data.row(i) = scale_psd_position(psd.get(false));
@@ -136,7 +136,7 @@ Vector3f rough_calibrate_z( stage& _stage
         for (int i=0; rt.has_more(); ++i, ++rt) {
                 Vector3f pos = rt.get_pos();
                 _stage.move(pos);
-                usleep(params.z_dwell);
+                nsleep(1000*params.z_dwell);
                 pos_data.row(i) = pos;
                 fb_data.row(i) = _stage.get_pos();
                 psd_data.row(i) = scale_psd_position(psd.get(false));
@@ -239,7 +239,7 @@ fine_cal_result fine_calibrate( stage& stage
                 Vector3f pos = Vector3f(rng(eng), rng(eng), rng(eng)).cwiseProduct(range);
                 pos += rough_pos;
                 stage.move(pos);
-                nsleep(params.dwell);
+                nsleep(1000*params.dwell);
                 fb_data.row(i) = stage.get_pos();
                 psd_data.row(i) = scale_psd_position(psd.get(false));
         }
@@ -358,7 +358,7 @@ void feedback::loop()
                         last_report_t = t;
                         last_report_n = n;
                 }
-                usleep(params.delay);
+                nsleep(1000*params.delay);
         }
 
         _running = false;

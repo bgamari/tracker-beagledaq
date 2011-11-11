@@ -36,7 +36,7 @@ using std::vector;
 using std::array;
 using Eigen::Dynamic;
 
-Vector4f tracker::scale_psd_position(Vector4f in)
+Vector4f scale_psd_position(Vector4f in)
 {
         if (scale_psd_inputs) {
                 float sum = in[3] - in[2];
@@ -59,36 +59,49 @@ static unsigned int min_row(Matrix a) {
         return row;
 }
 
-tracker::rough_cal_xy_result tracker::rough_calibrate_xy(Vector3f center)
+struct rough_cal_xy_result {
+	Vector3f xmin, ymin, xmax, ymax;
+};
+
+rough_cal_xy_result rough_calibrate_xy( stage& _stage
+                                      , input_channels<4>& psd
+                                      , rough_cal_params& params
+                                      , Vector3f center)
 {
         Vector3f tmp;
         Vector3f start, step;
         Vector3u pts;
 
-        tmp << rough_cal_xy_range, rough_cal_xy_range, 0;
+        tmp << params.xy_range
+             , params.xy_range
+             , 0;
         start = center - tmp/2;
-        step << rough_cal_xy_range / rough_cal_xy_pts, rough_cal_xy_range / rough_cal_xy_pts, 0;
-        pts << rough_cal_xy_pts, rough_cal_xy_pts, 1;
+        step << params.xy_range / params.xy_npts
+              , params.xy_range / params.xy_npts
+              , 0;
+        pts << params.xy_npts
+             , params.xy_npts
+             , 1;
 
         raster_route rt(start, step, pts);
-        Matrix<float, Dynamic, 3> pos_data(rough_cal_xy_pts*rough_cal_xy_pts, 3);
-        Matrix<float, Dynamic, 4> psd_data(rough_cal_xy_pts*rough_cal_xy_pts, 4);
-        Matrix<float, Dynamic, 3> fb_data(rough_cal_xy_pts*rough_cal_xy_pts, 3);
+        Matrix<float, Dynamic, 3> pos_data(params.xy_npts*params.xy_npts, 3);
+        Matrix<float, Dynamic, 4> psd_data(params.xy_npts*params.xy_npts, 4);
+        Matrix<float, Dynamic, 3> fb_data(params.xy_npts*params.xy_npts, 3);
         
-        stage_outputs.move(start);
+        _stage.move(start);
         nsleep(1000*1000);
 
         // Run X/Y scan and preprocess data
         for (int i=0; rt.has_more(); ++i, ++rt) {
                 Vector3f pos = rt.get_pos();
-                stage_outputs.move(pos);
-                usleep(rough_cal_xy_dwell);
+                _stage.move(pos);
+                usleep(params.xy_dwell);
                 pos_data.row(i) = pos;
-                fb_data.row(i) = stage_outputs.get_pos();
-                psd_data.row(i) = scale_psd_position(psd_inputs.get(false));
+                fb_data.row(i) = _stage.get_pos();
+                psd_data.row(i) = scale_psd_position(psd.get(false));
         }
 
-        dump_matrix((MatrixXf(rough_cal_xy_pts*rough_cal_xy_pts,10) << pos_data, fb_data, psd_data).finished(), "rough");
+        dump_matrix((MatrixXf(params.xy_npts*params.xy_npts,10) << pos_data, fb_data, psd_data).finished(), "rough");
 
         // Find extrema of Vx, Vy
         rough_cal_xy_result res;
@@ -99,48 +112,50 @@ tracker::rough_cal_xy_result tracker::rough_calibrate_xy(Vector3f center)
         return res;
 }
 
-
-Vector3f tracker::rough_calibrate_z(Vector3f center)
+Vector3f rough_calibrate_z( stage& _stage
+                          , input_channels<4>& psd
+                          , rough_cal_params& params
+                          , Vector3f center)
 {
         Vector3f laser_pos = center;
-        laser_pos.z() -= rough_cal_z_range / 2;
-        stage_outputs.move(laser_pos);
+        laser_pos.z() -= params.z_range / 2;
+        _stage.move(laser_pos);
         nsleep(1000*1000);
 
         Vector3f step; 
         Vector3u pts;
-        step << 0, 0, rough_cal_z_range / rough_cal_z_pts;
-        pts << 1, 1, rough_cal_z_pts;
+        step << 0, 0, params.z_range / params.z_npts;
+        pts << 1, 1, params.z_npts;
 
         raster_route rt(laser_pos, step, pts);
-        Matrix<float, Dynamic, 3> pos_data(rough_cal_z_pts, 3);
-        Matrix<float, Dynamic, 4> psd_data(rough_cal_z_pts, 4);
-        Matrix<float, Dynamic, 3> fb_data(rough_cal_z_pts, 3);
+        Matrix<float, Dynamic, 3> pos_data(params.z_npts, 3);
+        Matrix<float, Dynamic, 4> psd_data(params.z_npts, 4);
+        Matrix<float, Dynamic, 3> fb_data(params.z_npts, 3);
 
         // Run Z scan and preprocess data
         for (int i=0; rt.has_more(); ++i, ++rt) {
                 Vector3f pos = rt.get_pos();
-                stage_outputs.move(pos);
-                usleep(rough_cal_z_dwell);
+                _stage.move(pos);
+                usleep(params.z_dwell);
                 pos_data.row(i) = pos;
-                fb_data.row(i) = stage_outputs.get_pos();
-                psd_data.row(i) = scale_psd_position(psd_inputs.get(false));
+                fb_data.row(i) = _stage.get_pos();
+                psd_data.row(i) = scale_psd_position(psd.get(false));
         }
 
         // Preprocess Z data with moving average
-        if (rough_cal_z_avg_win) {
-                for (unsigned int i = rough_cal_z_avg_win; i < rough_cal_z_pts - rough_cal_z_avg_win; i++) {
+        if (params.z_avg_window) {
+                for (unsigned int i = params.z_avg_window; i < params.z_npts - params.z_avg_window; i++) {
                         Vector4f mean = Vector4f::Zero();
-                        for (int j = -rough_cal_z_avg_win; j < (int) rough_cal_z_avg_win; j++)
+                        for (int j = -params.z_avg_window; j < (int) +params.z_avg_window; j++)
                                 mean += psd_data.row(i+j);
-                        mean /= 2.0*rough_cal_z_avg_win;
+                        mean /= 2.0*params.z_avg_window;
                         psd_data.row(i) = mean;
                 }
         }
 
         // Find extrema of dVz/dz
         float max_deriv = 0;
-        for (unsigned int i = rough_cal_z_avg_win + 1; i < rough_cal_z_pts - rough_cal_z_avg_win - 1; i++) {
+        for (unsigned int i = params.z_avg_window + 1; i < params.z_npts - params.z_avg_window - 1; i++) {
                 float sum1 = psd_data(i+1,2) - psd_data(i+1,3);
                 float z1 = fb_data(i+1,2);
                 float sum2 = psd_data(i-1,2) - psd_data(i-1,3);
@@ -151,13 +166,16 @@ Vector3f tracker::rough_calibrate_z(Vector3f center)
                         laser_pos.z() = fb_data(i,2);
                 }
         }
-        dump_matrix((MatrixXf(rough_cal_z_pts,10) << pos_data, fb_data, psd_data).finished(), "rough_z");
+        dump_matrix((MatrixXf(params.z_npts,10) << pos_data, fb_data, psd_data).finished(), "rough_z");
         return laser_pos;
 }
 
-tracker::rough_cal_result tracker::rough_calibrate(Vector3f center)
+rough_cal_result rough_calibrate( stage& _stage
+                                , input_channels<4>& psd
+				, rough_cal_params& params
+		                , Vector3f center)
 {
-        rough_cal_xy_result res_xy = rough_calibrate_xy(center);
+        rough_cal_xy_result res_xy = rough_calibrate_xy(_stage, psd, params, center);
         Vector3f laser_pos;
 
         float dist = (res_xy.xmin - res_xy.ymin).norm();
@@ -166,7 +184,7 @@ tracker::rough_cal_result tracker::rough_calibrate(Vector3f center)
         laser_pos.y() = (res_xy.ymax.y() - res_xy.ymin.y())/2 + res_xy.ymin.y();
         laser_pos.z() = center.z();
 
-        Vector3f z = rough_calibrate_z(laser_pos);
+        Vector3f z = rough_calibrate_z(_stage, psd, params, laser_pos);
         laser_pos.z() = z.z();
 
         rough_cal_result res;
@@ -200,33 +218,36 @@ static Matrix<float,Dynamic,9> pack_psd_inputs(Matrix<float,Dynamic,4> data) {
         return R;
 }
 
-tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
+fine_cal_result fine_calibrate( stage& stage
+                              , input_channels<4>& psd
+		              , fine_cal_params& params
+			      , Vector3f rough_pos)
 {
-        bool dump_matricies = true;
-        Vector3f range(fine_cal_xy_range, fine_cal_xy_range, fine_cal_z_range);
-        Matrix<float, Dynamic, 4> psd_data(fine_cal_pts,4);
-        Matrix<float, Dynamic, 3> fb_data(fine_cal_pts,3);
+        bool dump_matrices = true;
+        Vector3f range(params.xy_range, params.xy_range, params.z_range);
+        Matrix<float, Dynamic, 4> psd_data(params.npts,4);
+        Matrix<float, Dynamic, 3> fb_data(params.npts,3);
         fine_cal_result res;
         std::default_random_engine eng;
         std::uniform_real_distribution<float> rng;
 
         // Setup stage
-        stage_outputs.move(rough_pos);
+        stage.move(rough_pos);
 
         // Collect data
-        for (unsigned int i=0; i < fine_cal_pts; i++) {
+        for (unsigned int i=0; i < params.npts; i++) {
                 Vector3f pos = Vector3f(rng(eng), rng(eng), rng(eng)).cwiseProduct(range);
                 pos += rough_pos;
-                stage_outputs.move(pos);
-                usleep(fine_cal_dwell);
-                fb_data.row(i) = stage_outputs.get_pos();
-                psd_data.row(i) = scale_psd_position(psd_inputs.get(false));
+                stage.move(pos);
+                nsleep(params.dwell);
+                fb_data.row(i) = stage.get_pos();
+                psd_data.row(i) = scale_psd_position(psd.get(false));
         }
 
         // Find and subtract out PSD mean
         res.psd_mean = psd_data.colwise().mean();
         psd_data.rowwise() -= res.psd_mean;
-        dump_matrix((MatrixXf(fine_cal_pts,7) << fb_data, psd_data).finished(), "fine");
+        dump_matrix((MatrixXf(params.npts,7) << fb_data, psd_data).finished(), "fine");
 
         // Fill R and S matricies with collected data
         Matrix<double, Dynamic,9> R = pack_psd_inputs(psd_data).cast<double>();
@@ -244,7 +265,7 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
                 FILE* of = fopen("fine-resid", "w");
                 fprintf(of, "# fb_x fb_y fb_z\tP_Lx P_Ly P_Lz\tresid_x resid_y resid_z\n");
                 Vector3d rms = Vector3d::Zero();
-                for (unsigned int i=0; i < fine_cal_pts; i++) {
+                for (unsigned int i=0; i < params.npts; i++) {
                         Vector3f fb = fb_data.row(i);
                         Vector3d s = S.row(i).transpose().cast<double>();
                         Vector3d resid = bt.transpose() * R.row(i).transpose() - s;
@@ -254,12 +275,12 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
                                 resid.x(), resid.y(), resid.z());
                         rms += resid.cwiseProduct(resid);
                 }
-                rms = (rms / fine_cal_pts).cwiseSqrt();
+                rms = (rms / params.npts).cwiseSqrt();
                 fprintf(stderr, "RMS Residuals: %f %f %f\n", rms.x(), rms.y(), rms.z());
                 fclose(of);
         }
 
-        if (dump_matricies) {
+        if (dump_matrices) {
                 dump_matrix(R, "R");
                 dump_matrix(S, "S");
                 dump_matrix(bt, "beta");
@@ -267,7 +288,7 @@ tracker::fine_cal_result tracker::fine_calibrate(Vector3f rough_pos)
         return res;
 }
 
-void tracker::feedback(fine_cal_result cal)
+void feedback::loop()
 {
         unsigned int n = 0;
         unsigned int bad_pts = 0, good_pts = 0;
@@ -278,7 +299,10 @@ void tracker::feedback(fine_cal_result cal)
         unsigned int last_report_n = 0;
 
         _running = true;
-        while (!stop) {
+        for (int i=0; i<3; i++)
+                params.pids[i].clear();
+
+        while (!_stop) {
                 // Make sure recent points are generally sane
                 if (good_pts > 10)
                         good_pts = bad_pts = 0;
@@ -288,12 +312,12 @@ void tracker::feedback(fine_cal_result cal)
                 }
 
                 // Get sensor values
-                Vector4f psd = psd_inputs.get();
+                Vector4f psd_sample = psd.get();
                 n++;
 
                 // Compute estimated position
-                psd = scale_psd_position(psd) - cal.psd_mean;
-                Matrix<float, Dynamic,9> psd_in = pack_psd_inputs(psd.transpose());
+                psd_sample = scale_psd_position(psd_sample) - cal.psd_mean;
+                Matrix<float, Dynamic,9> psd_in = pack_psd_inputs(psd_sample.transpose());
                 Vector3f delta = cal.beta * psd_in.transpose();
 
                 // Get PID response
@@ -302,24 +326,24 @@ void tracker::feedback(fine_cal_result cal)
                 float t = (ts.tv_sec - start_time.tv_sec) +
                         (ts.tv_nsec - start_time.tv_nsec)*1e-9;
                 for (int i=0; i<3; i++) {
-                        fb_pids[i].add_point(t, delta[i]);
-                        delta[i] = fb_pids[i].get_response();
+                        params.pids[i].add_point(t, delta[i]);
+                        delta[i] = params.pids[i].get_response();
                 }
 
                 // Check sanity of point
-                if (delta.norm() > fb_max_delta) {
+                if (delta.norm() > params.max_delta) {
                         fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");
                         bad_pts++;
                         continue;
                 }
 
                 // Move stage
-                Vector3f new_pos = delta + fb_setpoint;
+                Vector3f new_pos = delta + params.setpoint;
                 //new_pos.z() = 0.5 + fb_setpoint.z();
                 f << delta.x() << delta.y() << delta.z() <<
                      new_pos.x() << new_pos.y() << new_pos.z();
                 try {
-                        stage_outputs.move_rel(delta + fb_setpoint);
+                        _stage.move_rel(delta + params.setpoint);
                 } catch (clamped_output_error e) {
                         bad_pts++;
                         fprintf(stderr, "Clamped\n");
@@ -328,13 +352,13 @@ void tracker::feedback(fine_cal_result cal)
                 good_pts++;
 
                 // Show feedback rate report
-                if (fb_show_rate && t > (last_report_t + fb_rate_report_period)) {
+                if (params.show_rate && t > (last_report_t + params.rate_report_period)) {
                         float rate = (n - last_report_n) / (t - last_report_t);
                         fprintf(stderr, "Feedback loop rate: %f updates/sec\n", rate);
                         last_report_t = t;
                         last_report_n = n;
                 }
-                usleep(fb_delay);
+                usleep(params.delay);
         }
 
         _running = false;
@@ -342,24 +366,24 @@ void tracker::feedback(fine_cal_result cal)
                 feedback_ended_cb();
 }
 
-void tracker::start_feedback(fine_cal_result cal)
+void feedback::start()
 {
-        stop = false;
-        feedback_thread = std::thread(&tracker::feedback, this, cal);
+        _stop = false;
+        worker = std::thread(&feedback::loop, this);
 }
 
-bool tracker::running()
+bool feedback::running()
 {
         return _running;
 }
 
-void tracker::stop_feedback()
+void feedback::stop()
 {
-        stop = true;
-        feedback_thread.join();
+        _stop = true;
+        worker.join();
 }
 
-tracker::~tracker() {
-        stop_feedback();
+feedback::~feedback() {
+        stop();
 }
 

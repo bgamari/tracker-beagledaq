@@ -47,3 +47,7 @@ void pid_loop::add_point(float x, float y) {
         points.add(point(x, y));
 }
 
+void pid_loop::clear() {
+        points.clear();
+}
+

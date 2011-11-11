@@ -13,10 +13,10 @@ version.cpp ::
 	@echo "const char* version = \"$(shell git rev-parse HEAD)\";" > version.cpp
 	@echo "const char* branch = \"$(shell git name-rev HEAD | cut -d ' ' -f 2)\";" >> version.cpp
 
-tracker : main.o hardware/beagledaq.o channels.o tracker.o pid.o parameters.o stage.o version.o utils.o $(LIBBDAQ)
+tracker : config.o main.o hardware/beagledaq.o channels.o tracker.o pid.o parameters.o stage.o version.o utils.o $(LIBBDAQ)
 	$(CXX) $+ $(LDFLAGS) -o $@
 
-tracker-otf : main_otf.o hardware/beagledaq.o channels.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o $(LIBBDAQ)
+tracker-otf : config.o main_otf.o hardware/beagledaq.o channels.o otf_tracker.o pid.o parameters.o stage.o version.o utils.o $(LIBBDAQ)
 	$(CXX) $+ $(LDFLAGS) -o $@
 
 raster_dump : stage.o $(LIBBDAQ)

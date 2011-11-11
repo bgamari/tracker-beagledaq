@@ -46,6 +46,7 @@ public:
                 return points.capacity();
         }
 
+        void clear();
         void add_point(float x, float y);
         float get_response();
 };

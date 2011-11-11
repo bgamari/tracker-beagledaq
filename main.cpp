@@ -111,10 +111,16 @@ template<class Stage>
 struct tracker_cli {
         std::vector<parameter*> params;
         input_channels<4>& psd_inputs;
-        Stage& s;
-        tracker tr;
+        stage& raw_stage;
+        stage& _stage;
         Vector3f rough_pos;
-        tracker::fine_cal_result fine_cal;
+
+        rough_cal_params rough_params;
+        fine_cal_params fine_params;
+        feedback_params fb_params;
+        fine_cal_result fine_cal;
+        feedback* fb;
+
         float auto_xy_range_factor;
         Vector3f scan_center, scan_range;
         Vector3u scan_points;
@@ -126,69 +132,73 @@ struct tracker_cli {
                 params.push_back(p);
         }
 
-        void add_tracker_params(tracker& tracker)
+        void add_tracker_params()
         {
-                def_param("scale_psd_inputs", tracker.scale_psd_inputs,
+                def_param("scale_psd_inputs", scale_psd_inputs,
                                 "Scale PSD positions by sums");
 
-                def_param("rough_cal.xy_range", tracker.rough_cal_xy_range,
+                def_param("rough_cal.xy_range", rough_params.xy_range,
                                 "Scan size of rough calibration raster scan (X/Y scan");
-                def_param("rough_cal.xy_points", tracker.rough_cal_xy_pts,
+                def_param("rough_cal.xy_points", rough_params.xy_npts,
                                 "Number of points in rough calibration raster scan (X/Y scan");
-                def_param("rough_cal.xy_dwell", tracker.rough_cal_xy_dwell,
+                def_param("rough_cal.xy_dwell", rough_params.xy_dwell,
                                 "Rough calibration point dwell time (X/Y scan)");
-                def_param("rough_cal.z_range", tracker.rough_cal_z_range,
+                def_param("rough_cal.z_range", rough_params.z_range,
                                 "Scan size of rough calibration raster scan (Z scan)");
-                def_param("rough_cal.z_points", tracker.rough_cal_z_pts,
+                def_param("rough_cal.z_points", rough_params.z_npts,
                                 "Number of points in rough calibration raster scan (Z scan)");
-                def_param("rough_cal.z_dwell", tracker.rough_cal_z_dwell,
+                def_param("rough_cal.z_dwell", rough_params.z_dwell,
                                 "Rough calibration point dwell time (Z scan)");
-                def_param("rough_cal.z_avg_win", tracker.rough_cal_z_avg_win,
+                def_param("rough_cal.z_avg_win", rough_params.z_avg_window,
                                 "Averaging window for filtering of Z axis rough calibration data");
 
-                def_param("fine_cal.xy_range", tracker.fine_cal_xy_range,
+                def_param("fine_cal.xy_range", fine_params.xy_range,
                                 "Amplitude of fine calibration perturbations (X and Y axes)");
-                def_param("fine_cal.z_range", tracker.fine_cal_z_range,
+                def_param("fine_cal.z_range", fine_params.z_range,
                                 "Amplitude of fine calibration perturbations (Z axis)");
-                def_param("fine_cal.points", tracker.fine_cal_pts,
+                def_param("fine_cal.points", fine_params.npts,
                                 "Number of points in fine calibration scan");
-                def_param("fine_cal.dwell", tracker.fine_cal_dwell,
+                def_param("fine_cal.dwell", fine_params.dwell,
                                 "Delay in usec between fine calibration points");
 
-                def_param("feedback.delay", tracker.fb_delay,
+                def_param("feedback.delay", fb_params.delay,
                                 "Delay between feedback loop iterations");
-                def_param("feedback.max_delta", tracker.fb_max_delta,
+                def_param("feedback.max_delta", fb_params.max_delta,
                                 "Maximum allowed position change during feedback");
-                def_param("feedback.show_rate", tracker.fb_show_rate,
+                def_param("feedback.show_rate", fb_params.show_rate,
                                 "Report on feedback loop iteration rate");
-                def_param("feedback.setpoint_x", tracker.fb_setpoint.x(),
+                def_param("feedback.setpoint_x", fb_params.setpoint.x(),
                                 "X axis setpoint");
-                def_param("feedback.setpoint_y", tracker.fb_setpoint.y(),
+                def_param("feedback.setpoint_y", fb_params.setpoint.y(),
                                 "Y axis setpoint");
-                def_param("feedback.setpoint_z", tracker.fb_setpoint.z(),
+                def_param("feedback.setpoint_z", fb_params.setpoint.z(),
                                 "Z axis setpoint");
 
-                add_pid_params(params, "pids.x", tracker.fb_pids[0]);
-                add_pid_params(params, "pids.y", tracker.fb_pids[1]);
-                add_pid_params(params, "pids.z", tracker.fb_pids[2]);
+                add_pid_params(params, "pids.x", fb_params.pids[0]);
+                add_pid_params(params, "pids.y", fb_params.pids[1]);
+                add_pid_params(params, "pids.z", fb_params.pids[2]);
         }
 
         static void feedback_ended() {
                 std::cout << "$ FB-ERR\n";
         }
 
-        tracker_cli(input_channels<4>& psd_inputs, Stage& s) :
-                psd_inputs(psd_inputs), s(s),
-                tr(psd_inputs, s),
-                auto_xy_range_factor(0),
-                scan_delay(100)
+        tracker_cli( input_channels<4>& psd_inputs
+                   , stage& raw_stage
+                   , stage& _stage
+                   ) : psd_inputs(psd_inputs)
+                     , raw_stage(raw_stage), _stage(_stage)
+                     , rough_params(def_rough_cal_params())
+                     , fine_params(def_fine_cal_params())
+                     , fb_params(def_feedback_params())
+                     , auto_xy_range_factor(0)
+                     , scan_delay(100)
         {
-                s.smooth_move({0.5, 0.5, 0.5}, 10000);
+                _stage.smooth_move({0.5, 0.5, 0.5}, 10000);
                 usleep(10*1000);
 
-                add_tracker_params(tr);
-                add_stage_params(params, s);
-                tr.feedback_ended_cb = &tracker_cli::feedback_ended;
+                add_tracker_params();
+                add_stage_params(params, _stage);
 
                 rough_pos << 0.5, 0.5, 0.5;
                 def_param("rough_pos.x", rough_pos.x(), "Rough calibration position (X axis)");
@@ -276,51 +286,56 @@ struct tracker_cli {
                         Vector4f psd = psd_inputs.get();
                         std::cout << psd.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "read-pos") {
-                        Vector3f fb = s.get_pos();
+                        Vector3f fb = _stage.get_pos();
                         std::cout << fb.transpose().format(mat_fmt) << "\n";
                 } else if (cmd == "move") {
                         Vector3f pos;
                         ss >> pos.x();
                         ss >> pos.y();
                         ss >> pos.z();
-                        s.smooth_move(pos, 10000);
+                        _stage.smooth_move(pos, 10000);
                         std::cout << "! OK\n";
                 } else if (cmd == "move-rough-pos") {
-                        s.smooth_move(rough_pos, 10000);
+                        _stage.smooth_move(rough_pos, 10000);
                         std::cout << "! OK\n";
                 } else if (cmd == "center") {
                         Vector3f pos = 0.5 * Vector3f::Ones();
-                        s.smooth_move(pos, 10000);
+                        _stage.smooth_move(pos, 10000);
                         std::cout << "! OK\n";
                 } else if (cmd == "rough-cal") {
                         try {
-                                tracker::rough_cal_result res = tr.rough_calibrate();
+                                rough_cal_result res = rough_calibrate(_stage, psd_inputs, rough_params, rough_pos);
                                 rough_pos = res.center;
                                 if (auto_xy_range_factor)
-                                        tr.fine_cal_xy_range = res.xy_size * auto_xy_range_factor;
-                                s.smooth_move(rough_pos, 5000);
+                                        fine_params.xy_range = res.xy_size * auto_xy_range_factor;
+                                _stage.move(rough_pos);
                                 std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
                         } catch (clamped_output_error e) {
                                 std::cout << "! ERR Clamped output\n";
                         }
                 } else if (cmd == "fine-cal") {
-                        fine_cal = tr.fine_calibrate(rough_pos);
-                        s.smooth_move(rough_pos, 1000);
+                        fine_cal = fine_calibrate(_stage, psd_inputs, fine_params, rough_pos);
+                        _stage.move(rough_pos);
                         std::cout << "! OK\n";
                 } else if (cmd == "show-coeffs") {
                         std::cout << fine_cal.beta.format(mat_fmt) << "\n";
                 } else if (cmd == "feedback-start") {
-                        if (tr.running())
+                        if (fb && fb->running())
                                 std::cout << "! ERR\tAlready running\n";
                         else {
-                                tr.start_feedback(fine_cal);
+                                if (fb) delete fb;
+                                fb = new feedback(psd_inputs, raw_stage, fine_cal, fb_params);
+                                fb->feedback_ended_cb = &tracker_cli::feedback_ended;
+                                fb->start();
                                 std::cout << "! OK\tFeedback running\n";
                         }
                 } else if (cmd == "feedback-stop") {
-                        if (!tr.running())
+                        if (fb == NULL || !fb->running())
                                 std::cout << "ERR\tNot running\n";
                         else {
-                                tr.stop_feedback();
+                                fb->stop();
+                                delete fb;
+                                fb = NULL;
                                 std::cout << "OK\tFeedback stopped\n";
                         }
                 } else if (cmd == "wait") {
@@ -341,8 +356,8 @@ struct tracker_cli {
                         raster_route rt(start, step, scan_points);
                         std::ofstream of("scan");
                         for (int i=0; rt.has_more(); ++i, ++rt) {
-                                s.smooth_move(rt.get_pos(), 4000);
-                                Vector3f fb = s.get_pos();
+                                _stage.smooth_move(rt.get_pos(), 4000);
+                                Vector3f fb = _stage.get_pos();
                                 Vector4f psd = psd_inputs.get();
                                 of << (Matrix<float,1,7>() << fb, psd).finished() << "\n";
                         }
@@ -378,8 +393,9 @@ int main(int argc, char** argv)
 {
         init_hardware();
         //fb_stage stage(*stage_out, *stage_in);
+        stage raw_stage(*stage_out);
         pid_stage stage(*stage_out, *stage_in);
-        tracker_cli<pid_stage> cli(*psd_in, stage);
+        tracker_cli<pid_stage> cli(*psd_in, raw_stage, stage);
         cli.mainloop();
 
         return 0;

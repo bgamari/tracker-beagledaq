@@ -32,83 +32,86 @@
 
 using namespace Eigen;
 
-struct tracker {
-        // General parameters
-        bool scale_psd_inputs;
+// General
+extern bool scale_psd_inputs;
 
-        // Rough calibration parameters
-        float rough_cal_xy_range, rough_cal_z_range;
-        unsigned int rough_cal_xy_pts, rough_cal_z_pts;
-        unsigned int rough_cal_xy_dwell, rough_cal_z_dwell;
-        unsigned int rough_cal_z_avg_win;
+Vector4f scale_psd_position(Vector4f in);
 
-        // Fine calibration parameters
-        float fine_cal_xy_range, fine_cal_z_range;
-        unsigned int fine_cal_pts, fine_cal_dwell;
+// Rough Calibration
+struct rough_cal_params {
+        float xy_range, z_range;
+        unsigned int xy_npts, z_npts;
+        unsigned int xy_dwell, z_dwell;
+        unsigned int z_avg_window;
+};
 
-        // Feedback parameters
-        unsigned int fb_delay;          // us
-        float fb_max_delta;             // Maximum allowed delta
-        bool fb_show_rate;              // Show periodic messages reporting the update rate of the feedback loop
-        float fb_rate_report_period;
-        array<pid_loop,3> fb_pids;
-        Vector3f fb_setpoint;
-        
-        input_channels<4>& psd_inputs;
-        stage& stage_outputs;
+struct rough_cal_result {
+	Vector3f center;
+	float xy_size, z_size;
+};
 
-        struct fine_cal_result {
-                Matrix<float, 3,9> beta;
-                Vector4f psd_mean;
-                Matrix<double, 9,1> singular_values;
-        };
+rough_cal_result rough_calibrate( stage& stage
+                                , input_channels<4>& psd
+				, rough_cal_params& params
+		                , Vector3f center);
+
+// Fine calibration
+struct fine_cal_params {
+        float xy_range, z_range;
+        unsigned int npts, dwell;
+};
+
+struct fine_cal_result {
+	Matrix<float, 3,9> beta;
+	Vector4f psd_mean;
+	Matrix<double, 9,1> singular_values;
+};
+
+fine_cal_result fine_calibrate( stage& stage
+                              , input_channels<4>& psd
+		              , fine_cal_params& params
+			      , Vector3f rough_pos);
+
+// Feedback
+struct feedback_params {
+        unsigned int delay;          // us
+        float max_delta;             // Maximum allowed delta
+        bool show_rate;              // Show periodic messages reporting the update rate of the feedback loop
+        float rate_report_period;
+        array<pid_loop,3> pids;
+        Vector3f setpoint;
+};
+
+struct feedback {
+        input_channels<4>& psd;
+        stage& _stage;
+        fine_cal_result& cal;
+        feedback_params& params;
 
         std::function<void()> feedback_ended_cb;
 
 private:
-        bool _running, stop;
-        std::thread feedback_thread;
-        Vector4f scale_psd_position(Vector4f in);
-        void feedback(fine_cal_result cal);
+        bool _running, _stop;
+        std::thread worker;
+        void loop();
 
 public:
-        struct rough_cal_xy_result {
-                Vector3f xmin, ymin, xmax, ymax;
-        };
-        rough_cal_xy_result rough_calibrate_xy(Vector3f center);
-        Vector3f rough_calibrate_z(Vector3f center);
-
-        struct rough_cal_result {
-                Vector3f center;
-                float xy_size, z_size;
-        };
-        rough_cal_result rough_calibrate(Vector3f center=0.5*Vector3f::Ones());
-
-        fine_cal_result fine_calibrate(Vector3f rough_pos);
-        void start_feedback(fine_cal_result cal);
+        void start();
         bool running();
-        void stop_feedback();
+        void stop();
 
-        tracker(input_channels<4>& psd_inputs,
-                stage& stage_outputs) :
-                scale_psd_inputs(false),
-                rough_cal_xy_range(0.4), rough_cal_z_range(0.4),
-                rough_cal_xy_pts(40), rough_cal_z_pts(200),
-                rough_cal_xy_dwell(1000), rough_cal_z_dwell(1000),
-                rough_cal_z_avg_win(5),
-                fine_cal_xy_range(0.008), fine_cal_z_range(0.02), 
-                fine_cal_pts(1000), fine_cal_dwell(1000),
-                fb_delay(2000), fb_max_delta(0.05),
-                fb_show_rate(false), fb_rate_report_period(5),
-                fb_setpoint(Vector3f::Zero()),
-                psd_inputs(psd_inputs),
-                stage_outputs(stage_outputs),
-                _running(false)
-        {
-                fb_pids[0] = pid_loop(0.6, 1e-3, 0, 10);
-                fb_pids[1] = pid_loop(0.6, 1e-3, 0, 10);
-                fb_pids[2] = pid_loop(1, 0, 0, 1);
-        }
-        ~tracker();
+        feedback( input_channels<4>& psd
+                , stage& _stage
+                , fine_cal_result& cal
+                , feedback_params& params
+                )
+                : psd(psd)
+                , _stage(_stage)
+                , cal(cal)
+                , params(params)
+                , _running(false)
+        { }
+
+        ~feedback();
 };
 

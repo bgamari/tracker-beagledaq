@@ -37,8 +37,7 @@ void dump_matrix(Matrix A, string filename, string comment="")
 
 inline void nsleep(unsigned int nsecs)
 {
-        timespec ts;
-        ts.tv_nsec = nsecs;
+        timespec ts = { 0, nsecs };
         nanosleep(&ts, NULL);
 }
 

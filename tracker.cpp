@@ -332,16 +332,17 @@ void feedback::loop()
                         delta[i] = params.pids[i].get_response();
                 }
 
+                fprintf(f, "%f  %f  %f  %f      %f  %f  %f     %f  %f  %f\n",
+                        psd_sample[0], psd_sample[1], psd_sample[2], psd_sample[3],
+                        delta.x(), delta.y(), delta.z(),
+                        _stage.get_target_pos().x(), _stage.get_target_pos().y(), _stage.get_target_pos().z());
+
                 // Check sanity of point
                 if (delta.norm() > params.max_delta) {
                         fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");
                         bad_pts++;
                         continue;
                 }
-
-                fprintf(f, "%f  %f  %f  %f      %f  %f  %f\n",
-                        psd_sample[0], psd_sample[1], psd_sample[2], psd_sample[3],
-                        delta.x(), delta.y(), delta.z());
 
                 // Move stage
                 try {

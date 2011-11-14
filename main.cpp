@@ -327,6 +327,7 @@ struct tracker_cli {
                                 std::cout << "! ERR\tAlready running\n";
                         else {
                                 _stage.stop();
+                                fb_stage.move(fb_stage.out.get());
                                 if (fb) delete fb;
                                 fb = new feedback(psd_inputs, fb_stage, fine_cal, fb_params);
                                 fb->feedback_ended_cb = [&](){ this->feedback_ended(); };

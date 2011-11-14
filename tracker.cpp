@@ -236,7 +236,9 @@ fine_cal_result fine_calibrate( stage& stage
 
         // Collect data
         for (unsigned int i=0; i < params.npts; i++) {
-                Vector3f pos = Vector3f(rng(eng), rng(eng), rng(eng)).cwiseProduct(range);
+                Vector3f pos;
+                pos = Vector3f(rng(eng), rng(eng), rng(eng)).cwiseProduct(range/2);
+                pos += range/2;
                 pos += rough_pos;
                 stage.move(pos);
                 nsleep(1000*params.dwell);

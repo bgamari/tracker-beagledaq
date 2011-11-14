@@ -292,7 +292,7 @@ void feedback::loop()
 {
         unsigned int n = 0;
         unsigned int bad_pts = 0, good_pts = 0;
-        std::ofstream f("pos");
+        FILE* f = fopen("pos", "w");
         struct timespec start_time;
         clock_gettime(CLOCK_REALTIME, &start_time);
         float last_report_t = 0;
@@ -337,11 +337,11 @@ void feedback::loop()
                         continue;
                 }
 
+                fprintf(f, "%f  %f  %f  %f      %f  %f  %f\n",
+                        psd_sample[0], psd_sample[1], psd_sample[2], psd_sample[3],
+                        delta.x(), delta.y(), delta.z());
+
                 // Move stage
-                Vector3f new_pos = delta + params.setpoint;
-                //new_pos.z() = 0.5 + fb_setpoint.z();
-                f << delta.x() << delta.y() << delta.z() <<
-                     new_pos.x() << new_pos.y() << new_pos.z();
                 try {
                         _stage.move_rel(delta);
                 } catch (clamped_output_error e) {
@@ -361,6 +361,7 @@ void feedback::loop()
                 nsleep(1000*params.delay);
         }
 
+        fclose(f);
         _running = false;
         if (feedback_ended_cb)
                 feedback_ended_cb();

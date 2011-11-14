@@ -343,7 +343,7 @@ void feedback::loop()
                 f << delta.x() << delta.y() << delta.z() <<
                      new_pos.x() << new_pos.y() << new_pos.z();
                 try {
-                        _stage.move_rel(delta + params.setpoint);
+                        _stage.move_rel(delta);
                 } catch (clamped_output_error e) {
                         bad_pts++;
                         fprintf(stderr, "Clamped\n");

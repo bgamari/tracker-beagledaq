@@ -225,9 +225,8 @@ void otf_tracker::feedback()
                         continue;
                 }
 
-                // Get PID response and apply perturbation
+                // Get PID response
                 for (int i=0; i<3; i++) {
-                        delta[i] += perturb_amp[i] * sin(2*M_PI*perturb_freqs[i]*t);
                         fb_pids[i].add_point(t, delta[i]);
                         delta[i] = fb_pids[i].get_response();
                 }
@@ -237,11 +236,17 @@ void otf_tracker::feedback()
                          , fb.x(), fb.y(), fb.z()
                          , last_pos.x(), last_pos.y(), last_pos.z());
 
+                // Compute perturbation
+                Vector3f perturb;
+                for (int i=0; i<3; i++)
+                        perturb[i] = perturb_amp[i] * sin(2*M_PI*perturb_freqs[i]*t);
+
+
                 // Move stage
                 if (n % move_skip_cycles == 0) {
                         try {
-                                stage_outputs.move_rel(delta);
-                                last_pos += delta;
+                                stage_outputs.move(last_pos + delta + perturb);
+                                last_pos = last_pos + delta;
                         } catch (clamped_output_error e) {
                                 fprintf(stderr, "Clamped\n");
                                 continue;

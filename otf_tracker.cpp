@@ -73,13 +73,8 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
                 unsigned int axis, float freq,
                 ring_buffer<otf_tracker::pos_log_entry>& log_data)
 {
-        std::vector<float> T(log_data.size());
         otf_tracker::perturb_response resp = {0, 0};
         float Ts = fb_delay * 1e-6;
-        
-        // Generate template sinusoid
-        for (unsigned int i=0; i < log_data.size(); i++)
-                T[i] = sin(2*M_PI*freq*i*Ts);
         
         // Cross-correlate for phase
         float max_corr = 0;

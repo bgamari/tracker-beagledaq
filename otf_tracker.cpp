@@ -202,7 +202,7 @@ void otf_tracker::feedback()
 
                 // Add datum to log
                 struct timespec ts;
-                clock_gettime(CLOCK_REALTIME, &ts);
+                clock_gettime(CLOCK_MONOTONIC, &ts);
                 float t = (ts.tv_sec - start_time.tv_sec) +
                         (ts.tv_nsec - start_time.tv_nsec)*1e-9;
                 {

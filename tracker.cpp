@@ -151,22 +151,39 @@ Vector3f rough_calibrate_z( stage& _stage
                         mean /= 2.0*params.z_avg_window;
                         psd_data.row(i) = mean;
                 }
+
+                pos_data = pos_data.bottomRows(params.z_npts - params.z_avg_window)
+                                   .topRows(params.z_npts - 2*params.z_avg_window);
+                psd_data = psd_data.bottomRows(params.z_npts - params.z_avg_window)
+                                   .topRows(params.z_npts - 2*params.z_avg_window);
+                fb_data = fb_data.bottomRows(params.z_npts - params.z_avg_window)
+                                 .topRows(params.z_npts - 2*params.z_avg_window);
         }
 
+//#define ROUGH_Z_DERIV
+#ifdef ROUGH_Z_DERIV
         // Find extrema of dVz/dz
         float max_deriv = 0;
-        for (unsigned int i = params.z_avg_window + 1; i < params.z_npts - params.z_avg_window - 1; i++) {
+        for (unsigned int i = 0; i < psd_data.rows(); i++) {
                 float sum1 = psd_data(i+1,2) - psd_data(i+1,3);
                 float z1 = fb_data(i+1,2);
                 float sum2 = psd_data(i-1,2) - psd_data(i-1,3);
                 float z2 = fb_data(i-1,2);
                 float deriv = (sum1 - sum2) / (z1 - z2);
-                if (deriv > max_deriv) {
+                if (fabs(deriv) > fabs(max_deriv)) {
                         max_deriv = deriv;
                         laser_pos.z() = fb_data(i,2);
                 }
         }
-        dump_matrix((MatrixXf(params.z_npts,10) << pos_data, fb_data, psd_data).finished(), "rough_z");
+#else
+        int min_idx, max_idx;
+        psd_data.col(3).minCoeff(&min_idx);
+        psd_data.col(3).maxCoeff(&max_idx);
+        int center_idx = (max_idx - min_idx) / 2 + min_idx;
+        laser_pos.z() = fb_data(center_idx,2);
+#endif
+
+        dump_matrix((MatrixXf(pos_data.rows(),10) << pos_data, fb_data, psd_data).finished(), "rough_z");
         return laser_pos;
 }
 

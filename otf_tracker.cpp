@@ -239,10 +239,9 @@ void otf_tracker::feedback()
 
                 // Move stage
                 if (n % move_skip_cycles == 0) {
-                        Vector3f new_pos = fb_setpoint - delta;
                         try {
-                                stage_outputs.move_rel(new_pos);
-                                last_pos = new_pos;
+                                stage_outputs.move_rel(delta);
+                                last_pos += delta;
                         } catch (clamped_output_error e) {
                                 fprintf(stderr, "Clamped\n");
                                 continue;
@@ -264,7 +263,6 @@ void otf_tracker::feedback()
         _running = false;
         if (feedback_ended_cb)
                 feedback_ended_cb();
-	recal_thread.join();
 }
 
 unsigned int otf_tracker::get_log_length()

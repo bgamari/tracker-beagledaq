@@ -163,9 +163,9 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, std::mutex* beta_mutex,
                         R.row(i) = pack_psd_inputs((*inactive_log)[i].psd - new_psd_mean).cast<double>();
 
                 // Solve regression
-                JacobiSVD<Matrix<double, Dynamic,9> > svd(R);
+                JacobiSVD<Matrix<double, Dynamic,9> > svd = R.jacobiSvd(ComputeFullU | ComputeFullV);
                 Matrix<double, 9,3> bt = svd.solve(S);
-                //std::cout << "Singular values: " << svd.singularValues() << "\n";
+                std::cout << "First singular value: " << svd.singularValues()[0] << "\n";
                 {
                         std::lock_guard<std::mutex> lock(*beta_mutex);
                         beta = bt.transpose().cast<float>();

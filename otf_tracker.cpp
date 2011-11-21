@@ -185,7 +185,7 @@ void otf_tracker::feedback()
         clock_gettime(CLOCK_REALTIME, &start_time);
         float last_report_t = 0;
         unsigned int last_report_n = 0;
-        std::ofstream f("pos");
+        FILE* f = fopen("pos", "w");
         Matrix<float, 3,9> beta = Matrix<float,3,9>::Zero();
         std::mutex beta_mutex;
         Vector4f psd_mean = Vector4f::Zero();
@@ -232,9 +232,10 @@ void otf_tracker::feedback()
                         delta[i] = fb_pids[i].get_response();
                 }
 
-                f << delta.x() << delta.y() << delta.z()
-                  << fb.x() << fb.y() << fb.z()
-                  << last_pos.x() << last_pos.y() << last_pos.z();
+                fprintf(f, "%f  %f  %f      %f  %f  %f     %f  %f  %f\n"
+                         , delta.x(), delta.y(), delta.z()
+                         , fb.x(), fb.y(), fb.z()
+                         , last_pos.x(), last_pos.y(), last_pos.z());
 
                 // Move stage
                 if (n % move_skip_cycles == 0) {
@@ -258,6 +259,7 @@ void otf_tracker::feedback()
                 usleep(fb_delay);
         }
 
+        fclose(f);
         recal_thread.join();
         _running = false;
         if (feedback_ended_cb)

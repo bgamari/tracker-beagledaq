@@ -72,9 +72,11 @@ private:
                         unsigned int axis, float freq,
                         ring_buffer<pos_log_entry>& log_data);
 
+        std::mutex beta_mutex;
+        Matrix<float, 3,9> beta;
+
         Vector4f scale_psd_position(Vector4f in);
-        void recal_worker(Matrix<float, 3,9>& beta, std::mutex* beta_mutex,
-		       Vector4f& psd_mean, unsigned int& recal_count);
+        void recal_worker(Vector4f& psd_mean, unsigned int& recal_count);
         void feedback();
         std::thread feedback_thread;
         bool _running, stop;
@@ -99,6 +101,7 @@ public:
 		phase_max(1.0*M_PI), phase_step(0.1*M_PI),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),
+                beta(Matrix<float,3,9>::Zero()),
 		_running(false)
         {
 		active_log = new ring_buffer<pos_log_entry>(1000);

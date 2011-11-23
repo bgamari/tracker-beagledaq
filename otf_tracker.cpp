@@ -104,8 +104,7 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
  * Responsible for periodically updating the regression matrix from data
  * collected in the feedback thread.
  */
-void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, std::mutex* beta_mutex,
-                Vector4f& psd_mean, unsigned int& recal_count)
+void otf_tracker::recal_worker(Vector4f& psd_mean, unsigned int& recal_count)
 {
 	while (!stop) {
                 usleep(recal_delay);
@@ -166,7 +165,7 @@ void otf_tracker::recal_worker(Matrix<float, 3,9>& beta, std::mutex* beta_mutex,
                 Matrix<double, 9,3> bt = svd.solve(S);
                 std::cout << "First singular value: " << svd.singularValues()[0] << "\n";
                 {
-                        std::lock_guard<std::mutex> lock(*beta_mutex);
+                        std::lock_guard<std::mutex> lock(beta_mutex);
                         beta = bt.transpose().cast<float>();
                         psd_mean = new_psd_mean;
                 }
@@ -185,10 +184,8 @@ void otf_tracker::feedback()
         float last_report_t = 0;
         unsigned int last_report_n = 0;
         FILE* f = fopen("pos", "w");
-        Matrix<float, 3,9> beta = Matrix<float,3,9>::Zero();
-        std::mutex beta_mutex;
         Vector4f psd_mean = Vector4f::Zero();
-        std::thread recal_thread(&otf_tracker::recal_worker, this, beta, &beta_mutex, psd_mean, recal_count);
+        std::thread recal_thread(&otf_tracker::recal_worker, this, psd_mean, recal_count);
         Vector3f last_pos = stage_outputs.get_pos();
 
         _running = true;

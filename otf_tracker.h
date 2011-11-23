@@ -46,8 +46,8 @@ struct otf_tracker {
         array<pid_loop,3> fb_pids;
         bool fb_show_rate;
         float fb_rate_report_period;
-	int record_data_cnt;
-	float phase_max, phase_step;
+        int record_data_cnt;
+        float phase_max, phase_step;
 
         input_channels<4>& psd_inputs;
         stage& stage_outputs;
@@ -63,7 +63,7 @@ private:
         // feedback loop (the active log) and the other being consumed by the
         // calibration worker (the inactive log).
         ring_buffer<pos_log_entry> *active_log, *inactive_log;
-	std::mutex log_mutex;
+        std::mutex log_mutex;
 
         struct perturb_response {
                 float phase, amp;
@@ -97,15 +97,15 @@ public:
                 fb_max_delta(0.1),
                 fb_setpoint(Vector3f::Zero()),
                 fb_show_rate(false), fb_rate_report_period(5),
-		record_data_cnt(0),
-		phase_max(1.0*M_PI), phase_step(0.1*M_PI),
+                record_data_cnt(10),
+                phase_max(1.0*M_PI), phase_step(0.1*M_PI),
                 psd_inputs(psd_inputs),
                 stage_outputs(stage_outputs),
                 beta(Matrix<float,3,9>::Zero()),
-		_running(false)
+                _running(false)
         {
-		active_log = new ring_buffer<pos_log_entry>(1000);
-		inactive_log = new ring_buffer<pos_log_entry>(1000);
+                active_log = new ring_buffer<pos_log_entry>(1000);
+                inactive_log = new ring_buffer<pos_log_entry>(1000);
 
                 fb_pids[0] = pid_loop(0.6, 1e-3, 0, 10);
                 fb_pids[1] = pid_loop(0.6, 1e-3, 0, 10);

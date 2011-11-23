@@ -113,6 +113,7 @@ void otf_tracker::recal_worker(Vector4f& psd_mean, unsigned int& recal_count)
                 {
                         std::lock_guard<std::mutex> lock(log_mutex);
                         std::swap(active_log, inactive_log);
+                        active_log->clear();
                 }
 
                 unsigned int samples = inactive_log->size();

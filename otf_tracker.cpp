@@ -217,9 +217,15 @@ void otf_tracker::feedback()
                         delta = beta * psd_in;
                 }
 
+                if (n % 1 == 0)
+                        fprintf(f, "%f  %f  %f      %f  %f  %f     %f  %f  %f\n"
+                                 , delta.x(), delta.y(), delta.z()
+                                 , fb.x(), fb.y(), fb.z()
+                                 , last_pos.x(), last_pos.y(), last_pos.z());
+
                 if (delta.norm() > fb_max_delta) {
                         fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");
-                        continue;
+                        delta = Vector3f::Zero();
                 }
 
                 // Get PID response
@@ -228,16 +234,10 @@ void otf_tracker::feedback()
                         delta[i] = fb_pids[i].get_response();
                 }
 
-                fprintf(f, "%f  %f  %f      %f  %f  %f     %f  %f  %f\n"
-                         , delta.x(), delta.y(), delta.z()
-                         , fb.x(), fb.y(), fb.z()
-                         , last_pos.x(), last_pos.y(), last_pos.z());
-
                 // Compute perturbation
                 Vector3f perturb;
                 for (int i=0; i<3; i++)
                         perturb[i] = perturb_amp[i] * sin(2*M_PI*perturb_freqs[i]*t);
-
 
                 // Move stage
                 if (n % move_skip_cycles == 0) {

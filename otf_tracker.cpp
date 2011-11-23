@@ -209,11 +209,11 @@ void otf_tracker::feedback()
                 }
 
                 // Compute estimated position
-                Matrix<float, 9,1> psd_in = pack_psd_inputs(psd);
                 Vector3f delta;
                 {
                         std::lock_guard<std::mutex> lock(beta_mutex);
                         psd -= psd_mean;
+                        Matrix<float, 9,1> psd_in = pack_psd_inputs(psd);
                         delta = beta * psd_in;
                 }
 

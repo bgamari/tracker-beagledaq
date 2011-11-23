@@ -177,8 +177,8 @@ Vector3f rough_calibrate_z( stage& _stage
         }
 #else
         int min_idx, max_idx;
-        psd_data.col(3).minCoeff(&min_idx);
-        psd_data.col(3).maxCoeff(&max_idx);
+        psd_data.col(2).minCoeff(&min_idx);
+        psd_data.col(2).maxCoeff(&max_idx);
         int center_idx = (max_idx - min_idx) / 2 + min_idx;
         laser_pos.z() = fb_data(center_idx,2);
 #endif

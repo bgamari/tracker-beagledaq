@@ -74,14 +74,13 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
                 ring_buffer<otf_tracker::pos_log_entry>& log_data)
 {
         otf_tracker::perturb_response resp = {0, 0};
-        float Ts = fb_delay * 1e-6;
         
         // Cross-correlate for phase
         float max_corr = 0;
         for (float ph=0; ph < phase_max; ph += phase_step) {
                 float corr = 0;
                 for (unsigned int i=0; i < log_data.size(); i++)
-                        corr += sin(2*M_PI*freq*i*Ts + ph) * log_data[i].fb[axis];
+                        corr += sin(2*M_PI*freq*log_data[i].time + ph) * log_data[i].fb[axis];
 
                 if (corr > max_corr) {
                         max_corr = corr;
@@ -92,7 +91,7 @@ otf_tracker::perturb_response otf_tracker::find_perturb_response(
         // Find amplitude
         float a=0, b=0;
         for (unsigned int i=0; i < log_data.size(); i++) {
-                float y = sin(2*M_PI*freq*i*Ts + resp.phase);
+                float y = sin(2*M_PI*freq*log_data[i].time + resp.phase);
                 a += log_data[i].fb[axis] * y;
                 b += y*y;
         }

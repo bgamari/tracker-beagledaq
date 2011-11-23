@@ -262,6 +262,7 @@ fine_cal_result fine_calibrate( stage& stage
                 fb_data.row(i) = stage.get_pos();
                 psd_data.row(i) = scale_psd_position(psd.get(false));
         }
+        printf("Finished collecting fine calibration\n");
 
         // Find and subtract out PSD mean
         res.psd_mean = psd_data.colwise().mean();

@@ -120,7 +120,7 @@ Vector3f rough_calibrate_z( stage& _stage
         Vector3f laser_pos = center;
         laser_pos.z() -= params.z_range / 2;
         _stage.move(laser_pos);
-        nsleep(1000*1000);
+        nsleep(10*1000*1000);
 
         Vector3f step; 
         Vector3u pts;

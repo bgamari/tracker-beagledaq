@@ -404,7 +404,8 @@ bool feedback::running()
 void feedback::stop()
 {
         _stop = true;
-        worker.join();
+        if (worker.joinable())
+                worker.join();
 }
 
 feedback::~feedback() {

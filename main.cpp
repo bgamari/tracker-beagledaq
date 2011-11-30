@@ -237,7 +237,7 @@ struct tracker_cli {
                         try {
                                 do_command(line);
                         } catch (std::exception e) {
-                                std::cout << "! Command failed\n";
+                                std::cout << "! ERR\tCommand failed during source\n";
                         }
                 }
         }
@@ -257,7 +257,7 @@ struct tracker_cli {
                         ss >> param; ss >> value;
                         parameter* p = find_parameter(params, param);
                         if (!p)
-                                std::cout << "! Unknown parameter\n";
+                                std::cout << "! ERR\tUnknown parameter\n";
                         else {
                                 try {
                                         *p = value;
@@ -270,7 +270,7 @@ struct tracker_cli {
                         ss >> param;
                         parameter* p = find_parameter(params, param);
                         if (!p)
-                                std::cout << "! Unknown parameter\n";
+                                std::cout << "! ERR\tUnknown parameter\n";
                         else
                                 std::cout << param << " = " << *p << "\n";
                 } else if (cmd == "list") {
@@ -315,7 +315,7 @@ struct tracker_cli {
                                 _stage.move(rough_pos);
                                 std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
                         } catch (clamped_output_error e) {
-                                std::cout << "! ERR Clamped output\n";
+                                std::cout << "! ERR\tClamped output\n";
                         }
                 } else if (cmd == "fine-cal") {
                         fine_cal = fine_calibrate(_stage, psd_inputs, fine_params, rough_pos);

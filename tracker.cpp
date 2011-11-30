@@ -204,6 +204,9 @@ rough_cal_result rough_calibrate( stage& _stage
         Vector3f z = rough_calibrate_z(_stage, psd, params, laser_pos);
         laser_pos.z() = z.z();
 
+        std::ofstream f("rough_pos");
+        f << laser_pos.x() << "\t" << laser_pos.y() << "\t" << laser_pos.z() << "\n";
+
         rough_cal_result res;
         res.center = laser_pos;
         res.xy_size = dist;

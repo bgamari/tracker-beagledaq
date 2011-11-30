@@ -418,9 +418,9 @@ struct tracker_cli {
                         try {
                                 stop = do_command(line);
                         } catch (invalid_syntax e) {
-                                std::cout << "! Invalid syntax\n";
+                                std::cout << "! ERR\tInvalid syntax\n";
                         } catch (std::exception& e) {
-                                std::cout << "! Command failed\n";
+                                std::cout << "! ERR\tCommand failed: " << e.what() << "\n";
                         }
                 }
         }

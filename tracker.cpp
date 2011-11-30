@@ -219,6 +219,7 @@ rough_cal_result rough_calibrate( stage& _stage
  */
 static Matrix<float,Dynamic,9> pack_psd_inputs(Matrix<float,Dynamic,4> data) {
         Matrix<float,Dynamic,9> R(data.rows(), 9);
+        Matrix<float,Dynamic,1> z = Matrix<float,Dynamic,1>::Zero(data.rows());
 
         // First order
         R.col(0) = data.col(0);                         // Vx
@@ -226,14 +227,14 @@ static Matrix<float,Dynamic,9> pack_psd_inputs(Matrix<float,Dynamic,4> data) {
         R.col(2) = -data.col(2) + data.col(3);          // Vsum = -Vsum_x + Vsum_y
         
         // Second order
-        R.col(3) = R.col(0).array().square();           // Vx^2
-        R.col(4) = R.col(1).array().square();           // Vy^2
-        R.col(5) = R.col(2).array().square();           // Vsum^2
+        R.col(3) = z; // R.col(0).array().square();           // Vx^2
+        R.col(4) = z; // R.col(1).array().square();           // Vy^2
+        R.col(5) = z; // R.col(2).array().square();           // Vsum^2
 
         // Cross terms
-        R.col(6) = R.col(0).array() * R.col(1).array(); // Vx*Vy
-        R.col(7) = R.col(0).array() * R.col(2).array(); // Vx*Vsum
-        R.col(8) = R.col(1).array() * R.col(2).array(); // Vy*Vsum
+        R.col(6) = z; // R.col(0).array() * R.col(1).array(); // Vx*Vy
+        R.col(7) = z; // R.col(0).array() * R.col(2).array(); // Vx*Vsum
+        R.col(8) = z; // R.col(1).array() * R.col(2).array(); // Vy*Vsum
 
         return R;
 }

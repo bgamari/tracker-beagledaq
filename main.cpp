@@ -194,6 +194,7 @@ struct tracker_cli {
                      , rough_params(def_rough_cal_params())
                      , fine_params(def_fine_cal_params())
                      , fb_params(def_feedback_params())
+                     , fb(NULL)
                      , auto_xy_range_factor(0)
                      , scan_delay(100)
         {

@@ -70,7 +70,6 @@ static std::string cmd_help =
 "  load-coeffs [file]           Load fine calibration regression matrix from file\n"
 "  feedback-start               Start feedback (requires fine-cal)\n"
 "  feedback-stop                Stop feedback loop\n"
-"  scan                         Run manual scan (configure with scan.* parameters)\n"
 "  wait [n]                     Wait n milliseconds\n"
 "  exit                         Exit\n"
 "  version                      Show version information\n"

@@ -246,7 +246,7 @@ fine_cal_result fine_calibrate( stage& stage
         Matrix<float, Dynamic, 3> fb_data(params.npts,3);
         fine_cal_result res;
         std::default_random_engine eng;
-        std::uniform_real_distribution<float> rng;
+        std::uniform_real_distribution<float> rng(-1,+1);
 
         // Setup stage
         stage.move(rough_pos);
@@ -255,8 +255,7 @@ fine_cal_result fine_calibrate( stage& stage
         for (unsigned int i=0; i < params.npts; i++) {
                 Vector3f pos;
                 pos = Vector3f(rng(eng), rng(eng), rng(eng)).cwiseProduct(range/2);
-                pos += range/2;
-                pos += rough_pos;
+                pos += rough_pos + range/2;
                 stage.move(pos);
                 nsleep(1000*params.dwell);
                 fb_data.row(i) = stage.get_pos();

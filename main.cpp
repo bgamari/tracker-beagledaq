@@ -66,6 +66,8 @@ static std::string cmd_help =
 "  rough-cal                    Run rough calibration\n"
 "  fine-cal                     Run fine calibration (requires rough-cal)\n"
 "  show-coeffs                  Show fine calibration regression matrix\n"
+"  save-coeffs [file]           Save fine calibration regression matrix from file\n"
+"  load-coeffs [file]           Load fine calibration regression matrix from file\n"
 "  feedback-start               Start feedback (requires fine-cal)\n"
 "  feedback-stop                Stop feedback loop\n"
 "  scan                         Run manual scan (configure with scan.* parameters)\n"
@@ -322,6 +324,35 @@ struct tracker_cli {
                         std::cout << "! OK\n";
                 } else if (cmd == "show-coeffs") {
                         std::cout << fine_cal.beta.format(mat_fmt) << "\n";
+                } else if (cmd == "save-coeffs") {
+                        std::string s;
+                        ss >> s;
+                        try {
+                                std::ofstream f(s);
+                                for (int r=0; r<fine_cal.beta.rows(); r++) {
+                                        for (int c=0; c<fine_cal.beta.cols(); c++) {
+                                                if (c > 0) f << "\t";
+                                                f << fine_cal.beta(r,c);
+                                        }
+                                        f << "\n";
+                                }
+                                std::cout << "! OK\n";
+                        } catch (std::exception& e) {
+                                std::cout << "! ERR\t" << e.what() << "\n";
+                        }
+                } else if (cmd == "load-coeffs") {
+                        std::string s;
+                        ss >> s;
+                        try {
+                                std::ifstream f(s);
+                                for (int r=0; r<fine_cal.beta.rows(); r++) {
+                                        for (int c=0; c<fine_cal.beta.cols(); c++)
+                                                ss >> fine_cal.beta(r,c);
+                                }
+                                std::cout << "! OK\n";
+                        } catch (std::exception& e) {
+                                std::cout << "! ERR\t" << e.what() << "\n";
+                        }
                 } else if (cmd == "feedback-start") {
                         if (fb && fb->running())
                                 std::cout << "! ERR\tAlready running\n";

@@ -313,6 +313,119 @@ fine_cal_result fine_calibrate( stage& stage
         return res;
 }
 
+feedback::perturb_response feedback::find_perturb_response(
+                unsigned int axis, float freq,
+                ring_buffer<feedback::pos_log_entry>& log_data)
+{
+        feedback::perturb_response resp = {0, 0};
+        
+        // Cross-correlate for phase
+        float max_corr = 0;
+        for (float ph=0; ph < params.phase_max; ph += params.phase_step) {
+                float corr = 0;
+                for (unsigned int i=0; i < log_data.size(); i++)
+                        corr += sin(2*M_PI*freq*log_data[i].time + ph) * log_data[i].fb[axis];
+
+                if (corr > max_corr) {
+                        max_corr = corr;
+                        resp.phase = corr;
+                }
+        }
+
+        // Find amplitude
+        float a=0, b=0;
+        for (unsigned int i=0; i < log_data.size(); i++) {
+                float y = sin(2*M_PI*freq*log_data[i].time + resp.phase);
+                a += log_data[i].fb[axis] * y;
+                b += y*y;
+        }
+        resp.amp = a / b;
+
+        return resp;
+}
+
+/*
+ * Responsible for periodically updating the regression matrix from data
+ * collected in the feedback thread.
+ */
+void feedback::recal()
+{
+	while (!_stop) {
+                if (params.recal_delay == 0)
+                        break;
+
+                usleep(params.recal_delay);
+
+                // Swap log buffers
+                {
+                        std::lock_guard<std::mutex> lock(log_mutex);
+                        std::swap(active_log, inactive_log);
+                        active_log->clear();
+                }
+
+                unsigned int samples = inactive_log->size();
+                if (!samples) {
+                        std::cout << "recal_worker: No samples.\n";
+                        continue;
+                }
+
+#if 0
+                if (0) {
+                        char fname[256];
+                        snprintf(fname, 256, "recal-data-%d", recal_count);
+                        FILE* f = fopen(fname, "w");
+                        for (unsigned int i=0; i<samples; i++) {
+                                pos_log_entry& e = (*inactive_log)[i];
+                                fprintf(f, "%f %f %f\t%f %f %f %f\n",
+                                        e.fb[0], e.fb[1], e.fb[2],
+                                        e.psd[0], e.psd[1], e.psd[2], e.psd[3]);
+                        }
+                        fclose(f);
+                        record_data_cnt--;
+                }
+#endif
+
+                // Generate sinusoid data for regression
+                Matrix<double, Dynamic,9> R(samples,9);
+                Matrix<double, Dynamic,3> S(samples,3);
+                printf("phase/amp\t");
+                for (unsigned int axis=0; axis<3; axis++) {
+                        float freq = params.perturb_freqs[axis];
+                        perturb_response resp = find_perturb_response(axis, freq, *inactive_log);
+                        printf("%f  %f\t", resp.phase, resp.amp);
+                        for (unsigned int i=0; i<samples; i++) {
+                                pos_log_entry& ent = (*inactive_log)[i];
+                                S(i,axis) = resp.amp * sin(2*M_PI*freq*ent.time + resp.phase);
+                        }
+                }
+                printf("\n");
+
+                // Compute new PSD mean
+                Vector4f psd_mean = Vector4f::Zero();
+                for (unsigned int i=0; i<samples; i++)
+                        psd_mean += (*inactive_log)[i].psd;
+                psd_mean /= samples;
+
+                // Pack PSD inputs
+                for (unsigned int i=0; i<samples; i++)
+                        R.row(i) = pack_psd_inputs(((*inactive_log)[i].psd - psd_mean).transpose()).cast<double>();
+
+                // Solve regression
+                JacobiSVD<Matrix<double, Dynamic,9> > svd = R.jacobiSvd(ComputeFullU | ComputeFullV);
+                Matrix<double, 9,3> bt = svd.solve(S);
+                std::cout << "First singular value: " << svd.singularValues()[0] << "\n";
+                {
+                        std::lock_guard<std::mutex> lock(cal_mutex);
+                        // TODO: Check non-NULL
+                        cal->beta += params.recal_weight * bt.transpose().cast<float>();
+                        cal->psd_mean = psd_mean;
+                        cal->singular_values = svd.singularValues();
+                }
+
+                inactive_log->clear();
+        }
+}
+
 void feedback::loop()
 {
         unsigned int n = 0;
@@ -328,6 +441,10 @@ void feedback::loop()
                 params.pids[i].clear();
 
         while (!_stop) {
+                // Start recal worker if necessary
+                if (params.recal_delay != 0 && recal_worker == NULL)
+                        recal_worker = new std::thread(&feedback::recal, this);
+
                 // Make sure recent points are generally sane
                 if (good_pts > 10)
                         good_pts = bad_pts = 0;
@@ -404,6 +521,9 @@ void feedback::loop()
                 }
                 nsleep(1000*params.delay);
         }
+
+        if (recal_worker)
+                recal_worker->join();
 
         fclose(f);
         _running = false;

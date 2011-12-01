@@ -83,14 +83,20 @@ struct feedback_params {
         float min_sing_value;        // Minimum singular value necessary to use feedback signal
 
         // On-the-fly recalibration
+        unsigned int recal_delay;    // Delay in us between recalibrations
+                                     // 0 disables recalibration
+        float recal_weight;          // Amount to weigh recalibration by
         Vector3f perturb_freqs;
         Vector3f perturb_amp;
+        double phase_max;            // Maximum compute to probe in cross-correlation
+        double phase_step;
 };
 
 struct feedback {
         input_channels<4>& psd;
         input_channels<3>& fb;
         stage& _stage;
+        std::mutex cal_mutex;
         fine_cal_result* cal;
         feedback_params& params;
 
@@ -113,6 +119,15 @@ private:
         // calibration worker (the inactive log).
         ring_buffer<pos_log_entry> *active_log, *inactive_log;
         std::mutex log_mutex;
+
+        struct perturb_response {
+                float phase, amp;
+        };
+        perturb_response find_perturb_response(
+                unsigned int axis, float freq,
+                ring_buffer<pos_log_entry>& log_data);
+        void recal();
+        std::thread* recal_worker;
 
 public:
         void start();

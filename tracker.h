@@ -115,6 +115,9 @@ public:
         bool running();
         void stop();
 
+        void set_log_length(unsigned int length);
+        unsigned int get_log_length();
+
         feedback( input_channels<4>& psd
                 , input_channels<3>& fb
                 , stage& _stage

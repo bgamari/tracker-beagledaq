@@ -407,6 +407,18 @@ void feedback::loop()
                 feedback_ended_cb();
 }
 
+unsigned int feedback::get_log_length()
+{
+        return active_log->capacity();
+}
+
+void feedback::set_log_length(unsigned int length)
+{
+        std::lock_guard<std::mutex> lock(log_mutex);
+        active_log->resize(length);
+        inactive_log->resize(length);
+}
+
 void feedback::start()
 {
         _stop = false;

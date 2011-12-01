@@ -342,6 +342,7 @@ void feedback::loop()
                 psd_sample = scale_psd_position(psd_sample) - cal.psd_mean;
                 Matrix<float, Dynamic,9> psd_in = pack_psd_inputs(psd_sample.transpose());
                 Vector3f error = cal.beta * psd_in.transpose();
+                error -= params.setpoint;
 
                 // Get PID response
                 struct timespec ts;

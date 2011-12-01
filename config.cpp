@@ -37,6 +37,12 @@ feedback_params def_feedback_params() {
         p.pids[2] = pid_loop(1.0, 1e-3, 0, 10);
 
 	p.setpoint = Vector3f::Zero();
+
+        p.recal_delay = 0;
+        p.recal_weight = 0.1;
+        p.perturb_freqs << 61, 67, 53;
+        p.perturb_amp << 0.008, 0.008, 0.008;
+
         return p;
 }
 

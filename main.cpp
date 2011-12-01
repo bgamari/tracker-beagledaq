@@ -174,6 +174,22 @@ struct tracker_cli {
                                 "Y axis setpoint");
                 def_param("feedback.setpoint_z", fb_params.setpoint.z(),
                                 "Z axis setpoint");
+                def_param("feedback.recal_delay", fb_params.recal_delay,
+                                "Recalibration delay (in microseconds)");
+                def_param("feedback.recal_weight", fb_params.recal_weight,
+                                "Recalibration weight");
+                def_param("feedback.perturb_freq_x", fb_params.perturb_freqs.x(),
+                                "X axis perturbation frequency");
+                def_param("feedback.perturb_freq_y", fb_params.perturb_freqs.y(),
+                                "Y axis perturbation frequency");
+                def_param("feedback.perturb_freq_z", fb_params.perturb_freqs.z(),
+                                "Z axis perturbation frequency");
+                def_param("feedback.perturb_amp_x", fb_params.perturb_amp.x(),
+                                "X axis perturbation frequency");
+                def_param("feedback.perturb_amp_y", fb_params.perturb_amp.y(),
+                                "Y axis perturbation frequency");
+                def_param("feedback.perturb_amp_z", fb_params.perturb_amp.z(),
+                                "Z axis perturbation frequency");
 
                 add_pid_params(params, "pids.x", fb_params.pids[0]);
                 add_pid_params(params, "pids.y", fb_params.pids[1]);

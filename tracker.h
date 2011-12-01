@@ -80,12 +80,13 @@ struct feedback_params {
         float rate_report_period;
         array<pid_loop,3> pids;
         Vector3f setpoint;
+        float min_sing_value;        // Minimum singular value necessary to use feedback signal
 };
 
 struct feedback {
         input_channels<4>& psd;
         stage& _stage;
-        fine_cal_result& cal;
+        fine_cal_result* cal;
         feedback_params& params;
 
         std::function<void()> feedback_ended_cb;
@@ -102,12 +103,11 @@ public:
 
         feedback( input_channels<4>& psd
                 , stage& _stage
-                , fine_cal_result& cal
                 , feedback_params& params
                 )
                 : psd(psd)
                 , _stage(_stage)
-                , cal(cal)
+                , cal(NULL)
                 , params(params)
                 , _running(false)
         { }

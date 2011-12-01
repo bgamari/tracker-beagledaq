@@ -341,10 +341,12 @@ void feedback::loop()
                 n++;
 
                 // Compute estimated position
-                psd_sample = scale_psd_position(psd_sample) - cal.psd_mean;
-                Matrix<float, Dynamic,9> psd_in = pack_psd_inputs(psd_sample.transpose());
-                Vector3f error = cal.beta * psd_in.transpose();
-                error -= params.setpoint;
+                Vector3f error = Vector3f::Zero();
+                if (cal && cal->singular_values[0] > params.min_sing_value) {
+                        Vector4f samp = scale_psd_position(psd_sample) - cal->psd_mean;
+                        Matrix<float, Dynamic,9> psd_in = pack_psd_inputs(samp.transpose());
+                        error = cal->beta * psd_in.transpose();
+                }
 
                 // Get PID response
                 struct timespec ts;

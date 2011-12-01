@@ -85,6 +85,7 @@ struct feedback_params {
 
 struct feedback {
         input_channels<4>& psd;
+        input_channels<3>& fb;
         stage& _stage;
         fine_cal_result* cal;
         feedback_params& params;
@@ -96,21 +97,40 @@ private:
         std::thread worker;
         void loop();
 
+private:
+        struct pos_log_entry {
+                float time;
+                Vector3f fb;
+                Vector4f psd;
+        };
+        // These are where the position data is stored for the on-the-fly calibration
+        // There are two ring buffers, one being filled with new data by the
+        // feedback loop (the active log) and the other being consumed by the
+        // calibration worker (the inactive log).
+        ring_buffer<pos_log_entry> *active_log, *inactive_log;
+        std::mutex log_mutex;
+
 public:
         void start();
         bool running();
         void stop();
 
         feedback( input_channels<4>& psd
+                , input_channels<3>& fb
                 , stage& _stage
                 , feedback_params& params
+                , unsigned int log_length=1000
                 )
                 : psd(psd)
+                , fb(fb)
                 , _stage(_stage)
                 , cal(NULL)
                 , params(params)
                 , _running(false)
-        { }
+        {
+                active_log = new ring_buffer<pos_log_entry>(log_length);
+                inactive_log = new ring_buffer<pos_log_entry>(log_length);
+        }
 
         ~feedback();
 };

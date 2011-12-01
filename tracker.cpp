@@ -338,7 +338,21 @@ void feedback::loop()
 
                 // Get sensor values
                 Vector4f psd_sample = psd.get();
+                Vector3f fb_sample = fb.get();
                 n++;
+
+                // Figure out time
+                struct timespec ts;
+                clock_gettime(CLOCK_MONOTONIC, &ts);
+                float t = (ts.tv_sec - start_time.tv_sec) +
+                        (ts.tv_nsec - start_time.tv_nsec)*1e-9;
+
+                // Add datum to log
+                {
+                        std::lock_guard<std::mutex> lock(log_mutex);
+                        pos_log_entry ent = { t, fb_sample, psd_sample };
+                        active_log->add(ent);
+                }
 
                 // Compute estimated position
                 Vector3f error = Vector3f::Zero();
@@ -349,10 +363,6 @@ void feedback::loop()
                 }
 
                 // Get PID response
-                struct timespec ts;
-                clock_gettime(CLOCK_REALTIME, &ts);
-                float t = (ts.tv_sec - start_time.tv_sec) +
-                        (ts.tv_nsec - start_time.tv_nsec)*1e-9;
                 Vector3f delta;
                 for (int i=0; i<3; i++) {
                         params.pids[i].add_point(t, error[i]);

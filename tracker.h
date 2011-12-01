@@ -76,7 +76,8 @@ fine_cal_result fine_calibrate( stage& stage
 struct feedback_params {
         unsigned int delay;          // us
         float max_delta;             // Maximum allowed delta
-        bool show_rate;              // Show periodic messages reporting the update rate of the feedback loop
+        bool show_rate;              // Show periodic messages reporting the
+                                     // update rate of the feedback loop
         float rate_report_period;
         array<pid_loop,3> pids;
         Vector3f setpoint;

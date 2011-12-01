@@ -152,12 +152,12 @@ Vector3f rough_calibrate_z( stage& _stage
                         psd_data.row(i) = mean;
                 }
 
-                pos_data = pos_data.bottomRows(params.z_npts - params.z_avg_window)
-                                   .topRows(params.z_npts - 2*params.z_avg_window);
-                psd_data = psd_data.bottomRows(params.z_npts - params.z_avg_window)
-                                   .topRows(params.z_npts - 2*params.z_avg_window);
-                fb_data = fb_data.bottomRows(params.z_npts - params.z_avg_window)
-                                 .topRows(params.z_npts - 2*params.z_avg_window);
+                pos_data = pos_data.bottomRows(params.z_npts - params.z_avg_window - 1)
+                                   .topRows(params.z_npts - 2*params.z_avg_window - 1);
+                psd_data = psd_data.bottomRows(params.z_npts - params.z_avg_window - 1)
+                                   .topRows(params.z_npts - 2*params.z_avg_window - 1);
+                fb_data = fb_data.bottomRows(params.z_npts - params.z_avg_window - 1)
+                                 .topRows(params.z_npts - 2*params.z_avg_window - 1);
         }
 
 //#define ROUGH_Z_DERIV

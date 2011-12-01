@@ -151,6 +151,7 @@ public:
                 , cal(cal)
                 , params(params)
                 , _running(false)
+                , recal_worker(NULL)
         {
                 active_log = new ring_buffer<pos_log_entry>(log_length);
                 inactive_log = new ring_buffer<pos_log_entry>(log_length);

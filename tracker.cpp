@@ -378,8 +378,12 @@ void feedback::loop()
                 if (delta.norm() > params.max_delta) {
                         fprintf(stderr, "Error: Delta exceeded maximum, likely lost tracking\n");
                         bad_pts++;
-                        continue;
+                        delta = Vector3f::Zero();
                 }
+
+                // Compute perturbation
+                for (int i=0; i<3; i++)
+                        delta[i] += params.perturb_amp[i] * sin(2*M_PI*params.perturb_freqs[i]*t);
 
                 // Move stage
                 try {

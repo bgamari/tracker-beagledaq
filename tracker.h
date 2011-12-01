@@ -81,6 +81,10 @@ struct feedback_params {
         array<pid_loop,3> pids;
         Vector3f setpoint;
         float min_sing_value;        // Minimum singular value necessary to use feedback signal
+
+        // On-the-fly recalibration
+        Vector3f perturb_freqs;
+        Vector3f perturb_amp;
 };
 
 struct feedback {

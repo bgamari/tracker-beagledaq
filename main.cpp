@@ -182,7 +182,9 @@ struct tracker_cli {
 
         void feedback_ended() {
                 std::cout << "$ FB-ERR\n";
+                Vector3f pos = fb_stage.get_pos();
                 fb_stage.stop();
+                _stage.move(pos);
                 _stage.start();
         }
 

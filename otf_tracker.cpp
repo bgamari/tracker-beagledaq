@@ -164,6 +164,7 @@ void otf_tracker::recal_worker(Vector4f& psd_mean, unsigned int& recal_count)
                 // Solve regression
                 JacobiSVD<Matrix<double, Dynamic,9> > svd = R.jacobiSvd(ComputeFullU | ComputeFullV);
                 Matrix<double, 9,3> bt = svd.solve(S);
+                std::cout << bt << "\n";
                 std::cout << "First singular value: " << svd.singularValues()[0] << "\n";
                 {
                         std::lock_guard<std::mutex> lock(beta_mutex);

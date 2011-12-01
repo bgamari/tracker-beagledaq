@@ -341,15 +341,16 @@ void feedback::loop()
                 // Compute estimated position
                 psd_sample = scale_psd_position(psd_sample) - cal.psd_mean;
                 Matrix<float, Dynamic,9> psd_in = pack_psd_inputs(psd_sample.transpose());
-                Vector3f delta = cal.beta * psd_in.transpose();
+                Vector3f error = cal.beta * psd_in.transpose();
 
                 // Get PID response
                 struct timespec ts;
                 clock_gettime(CLOCK_REALTIME, &ts);
                 float t = (ts.tv_sec - start_time.tv_sec) +
                         (ts.tv_nsec - start_time.tv_nsec)*1e-9;
+                Vector3f delta;
                 for (int i=0; i<3; i++) {
-                        params.pids[i].add_point(t, delta[i]);
+                        params.pids[i].add_point(t, error[i]);
                         delta[i] = params.pids[i].get_response();
                 }
 

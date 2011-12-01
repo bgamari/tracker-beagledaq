@@ -197,8 +197,9 @@ rough_cal_result rough_calibrate( stage& _stage
 
         float dist = (res_xy.xmin - res_xy.ymin).norm();
         std::cout << "Extrema distance: " << dist << "\n";
-        laser_pos.x() = (res_xy.xmax.x() - res_xy.xmin.x())/2 + res_xy.xmin.x();
-        laser_pos.y() = (res_xy.ymax.y() - res_xy.ymin.y())/2 + res_xy.ymin.y();
+        Vector3f x_center = (res_xy.xmax - res_xy.xmin)/2 + res_xy.xmin;
+        Vector3f y_center = (res_xy.ymax - res_xy.ymin)/2 + res_xy.ymin;
+        laser_pos = (x_center + y_center) / 2;
         laser_pos.z() = center.z();
 
         Vector3f z = rough_calibrate_z(_stage, psd, params, laser_pos);

@@ -98,7 +98,7 @@ struct feedback {
         input_channels<3>& fb;
         stage& _stage;
         std::mutex cal_mutex;
-        fine_cal_result* cal;
+        fine_cal_result& cal;
         feedback_params& params;
 
         std::function<void()> feedback_ended_cb;
@@ -142,12 +142,13 @@ public:
                 , input_channels<3>& fb
                 , stage& _stage
                 , feedback_params& params
+                , fine_cal_result& cal
                 , unsigned int log_length=1000
                 )
                 : psd(psd)
                 , fb(fb)
                 , _stage(_stage)
-                , cal(NULL)
+                , cal(cal)
                 , params(params)
                 , _running(false)
         {

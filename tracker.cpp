@@ -355,6 +355,7 @@ void feedback::recal()
                         break;
 
                 usleep(params.recal_delay);
+                if (_stop) break;
 
                 // Swap log buffers
                 {

@@ -522,6 +522,7 @@ void feedback::loop()
                 nsleep(1000*params.delay);
         }
 
+        _stop = true;
         if (recal_worker)
                 recal_worker->join();
 

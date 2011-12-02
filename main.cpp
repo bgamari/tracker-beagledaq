@@ -83,10 +83,10 @@ void def_param(std::vector<parameter*>& params, string name, T& value, string de
 
 void add_pid_params(std::vector<parameter*>& params, string name, pid_loop& pid)
 {
-        def_param(params, name + "_prop", pid.prop_gain, "PID Proportional gain");
-        def_param(params, name + "_int", pid.int_gain, "PID Integral gain");
+        def_param(params, name + ".prop", pid.prop_gain, "PID Proportional gain");
+        def_param(params, name + ".int", pid.int_gain, "PID Integral gain");
         params.push_back(new pid_tau_param(name + "_tau", pid, "PID Integral time constant"));
-        def_param(params, name + "_diff", pid.diff_gain, "PID Differential gain");
+        def_param(params, name + ".diff", pid.diff_gain, "PID Differential gain");
 }
 
 template<class Stage>
@@ -102,9 +102,9 @@ void add_stage_params<fb_stage>(std::vector<parameter*>& params, fb_stage& s)
 template<>
 void add_stage_params<pid_stage>(std::vector<parameter*>& params, pid_stage& s)
 {
-        add_pid_params(params, "stage.pidx", s.pidx);
-        add_pid_params(params, "stage.pidy", s.pidy);
-        add_pid_params(params, "stage.pidz", s.pidz);
+        add_pid_params(params, "stage.pid.x", s.pidx);
+        add_pid_params(params, "stage.pid.y", s.pidy);
+        add_pid_params(params, "stage.pid.z", s.pidz);
         def_param(params, "stage.delay", s.fb_delay, "Stage feedback loop delay");
 }
 
@@ -138,24 +138,25 @@ struct tracker_cli {
                 def_param("scale_psd_inputs", scale_psd_inputs,
                                 "Scale PSD positions by sums");
 
-                def_param("rough_cal.xy_range", rough_params.xy_range,
+                def_param("rough_cal.xy.range", rough_params.xy_range,
                                 "Scan size of rough calibration raster scan (X/Y scan");
-                def_param("rough_cal.xy_points", rough_params.xy_npts,
+                def_param("rough_cal.xy.points", rough_params.xy_npts,
                                 "Number of points in rough calibration raster scan (X/Y scan");
-                def_param("rough_cal.xy_dwell", rough_params.xy_dwell,
+                def_param("rough_cal.xy.dwell", rough_params.xy_dwell,
                                 "Rough calibration point dwell time (X/Y scan)");
-                def_param("rough_cal.z_range", rough_params.z_range,
+
+                def_param("rough_cal.z.range", rough_params.z_range,
                                 "Scan size of rough calibration raster scan (Z scan)");
-                def_param("rough_cal.z_points", rough_params.z_npts,
+                def_param("rough_cal.z.points", rough_params.z_npts,
                                 "Number of points in rough calibration raster scan (Z scan)");
-                def_param("rough_cal.z_dwell", rough_params.z_dwell,
+                def_param("rough_cal.z.dwell", rough_params.z_dwell,
                                 "Rough calibration point dwell time (Z scan)");
-                def_param("rough_cal.z_avg_win", rough_params.z_avg_window,
+                def_param("rough_cal.z.avg_win", rough_params.z_avg_window,
                                 "Averaging window for filtering of Z axis rough calibration data");
 
-                def_param("fine_cal.xy_range", fine_params.xy_range,
+                def_param("fine_cal.range.xy", fine_params.xy_range,
                                 "Amplitude of fine calibration perturbations (X and Y axes)");
-                def_param("fine_cal.z_range", fine_params.z_range,
+                def_param("fine_cal.range.z", fine_params.z_range,
                                 "Amplitude of fine calibration perturbations (Z axis)");
                 def_param("fine_cal.points", fine_params.npts,
                                 "Number of points in fine calibration scan");
@@ -168,31 +169,31 @@ struct tracker_cli {
                                 "Maximum allowed position change during feedback");
                 def_param("feedback.show_rate", fb_params.show_rate,
                                 "Report on feedback loop iteration rate");
-                def_param("feedback.setpoint_x", fb_params.setpoint.x(),
+                def_param("feedback.setpoint.x", fb_params.setpoint.x(),
                                 "X axis setpoint");
-                def_param("feedback.setpoint_y", fb_params.setpoint.y(),
+                def_param("feedback.setpoint.y", fb_params.setpoint.y(),
                                 "Y axis setpoint");
-                def_param("feedback.setpoint_z", fb_params.setpoint.z(),
+                def_param("feedback.setpoint.z", fb_params.setpoint.z(),
                                 "Z axis setpoint");
                 def_param("feedback.min_singular_value", fb_params.min_singular_value,
                                 "Minimum singular value of a reasonable regression");
-                def_param("feedback.recal_delay", fb_params.recal_delay,
+                def_param("feedback.recal.delay", fb_params.recal_delay,
                                 "Recalibration delay (in microseconds)");
-                def_param("feedback.recal_weight", fb_params.recal_weight,
+                def_param("feedback.recal.weight", fb_params.recal_weight,
                                 "Recalibration weight");
-                def_param("feedback.min_recal_samples", fb_params.min_recal_samples,
+                def_param("feedback.recal.min_samples", fb_params.min_recal_samples,
                                 "Minimum number of samples to perform recalibration");
-                def_param("feedback.perturb_freq_x", fb_params.perturb_freqs.x(),
+                def_param("feedback.perturb.freq.x", fb_params.perturb_freqs.x(),
                                 "X axis perturbation frequency");
-                def_param("feedback.perturb_freq_y", fb_params.perturb_freqs.y(),
+                def_param("feedback.perturb.freq.y", fb_params.perturb_freqs.y(),
                                 "Y axis perturbation frequency");
-                def_param("feedback.perturb_freq_z", fb_params.perturb_freqs.z(),
+                def_param("feedback.perturb.freq.z", fb_params.perturb_freqs.z(),
                                 "Z axis perturbation frequency");
-                def_param("feedback.perturb_amp_x", fb_params.perturb_amp.x(),
+                def_param("feedback.perturb.amp.x", fb_params.perturb_amp.x(),
                                 "X axis perturbation frequency");
-                def_param("feedback.perturb_amp_y", fb_params.perturb_amp.y(),
+                def_param("feedback.perturb.amp.y", fb_params.perturb_amp.y(),
                                 "Y axis perturbation frequency");
-                def_param("feedback.perturb_amp_z", fb_params.perturb_amp.z(),
+                def_param("feedback.perturb.amp.z", fb_params.perturb_amp.z(),
                                 "Z axis perturbation frequency");
 
                 add_pid_params(params, "pids.x", fb_params.pids[0]);
@@ -237,15 +238,15 @@ struct tracker_cli {
                 scan_center << 0.5, 0.5, 0.5;
                 scan_range << 0.1, 0.1, 0.1;
                 scan_points << 100, 100, 100;
-                def_param("scan.center_x", scan_center.x(), "Center of manual scan (X axis)");
-                def_param("scan.center_y", scan_center.y(), "Center of manual scan (Y axis)");
-                def_param("scan.center_z", scan_center.z(), "Center of manual scan (Z axis)");
-                def_param("scan.range_x", scan_range.x(), "Range of manual scan (X axis)");
-                def_param("scan.range_y", scan_range.y(), "Range of manual scan (Y axis)");
-                def_param("scan.range_z", scan_range.z(), "Range of manual scan (Z axis)");
-                def_param("scan.points_x", scan_points.x(), "Number of points in manual scan (X axis)");
-                def_param("scan.points_y", scan_points.y(), "Number of points in manual scan (Y axis)");
-                def_param("scan.points_z", scan_points.z(), "Number of points in manual scan (Z axis)");
+                def_param("scan.center.x", scan_center.x(), "Center of manual scan (X axis)");
+                def_param("scan.center.y", scan_center.y(), "Center of manual scan (Y axis)");
+                def_param("scan.center.z", scan_center.z(), "Center of manual scan (Z axis)");
+                def_param("scan.range.x", scan_range.x(), "Range of manual scan (X axis)");
+                def_param("scan.range.y", scan_range.y(), "Range of manual scan (Y axis)");
+                def_param("scan.range.z", scan_range.z(), "Range of manual scan (Z axis)");
+                def_param("scan.points.x", scan_points.x(), "Number of points in manual scan (X axis)");
+                def_param("scan.points.y", scan_points.y(), "Number of points in manual scan (Y axis)");
+                def_param("scan.points.z", scan_points.z(), "Number of points in manual scan (Z axis)");
                 def_param("scan.delay", scan_delay, "Delay between points in manual scan");
 
                 std::cout << "Tracker " << version << "\n";

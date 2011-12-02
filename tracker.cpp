@@ -426,7 +426,7 @@ void feedback::loop()
 
         while (!_stop) {
                 // Start recal worker if necessary
-                if (params.recal_delay != 0 && recal_worker == NULL)
+                if (params.recal_delay != 0 && (recal_worker == NULL || !recal_worker->joinable()))
                         recal_worker = new std::thread(&feedback::recal, this);
 
                 // Make sure recent points are generally sane

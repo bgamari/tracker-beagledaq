@@ -41,7 +41,7 @@ feedback_params def_feedback_params() {
         p.recal_delay = 0;
         p.recal_weight = 0.1;
         p.perturb_freqs << 61, 67, 53;
-        p.perturb_amp << 0.008, 0.008, 0.008;
+        p.perturb_amp << 0, 0, 0;
 
         return p;
 }

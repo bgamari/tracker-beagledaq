@@ -370,36 +370,17 @@ void feedback::recal()
                         continue;
                 }
 
-#if 0
-                if (0) {
-                        char fname[256];
-                        snprintf(fname, 256, "recal-data-%d", recal_count);
-                        FILE* f = fopen(fname, "w");
-                        for (unsigned int i=0; i<samples; i++) {
-                                pos_log_entry& e = (*inactive_log)[i];
-                                fprintf(f, "%f %f %f\t%f %f %f %f\n",
-                                        e.fb[0], e.fb[1], e.fb[2],
-                                        e.psd[0], e.psd[1], e.psd[2], e.psd[3]);
-                        }
-                        fclose(f);
-                        record_data_cnt--;
-                }
-#endif
-
                 // Generate sinusoid data for regression
                 Matrix<double, Dynamic,9> R(samples,9);
                 Matrix<double, Dynamic,3> S(samples,3);
-                printf("phase/amp\t");
                 for (unsigned int axis=0; axis<3; axis++) {
                         float freq = params.perturb_freqs[axis];
                         perturb_response resp = find_perturb_response(axis, freq, *inactive_log);
-                        printf("%f  %f\t", resp.phase, resp.amp);
                         for (unsigned int i=0; i<samples; i++) {
                                 pos_log_entry& ent = (*inactive_log)[i];
                                 S(i,axis) = resp.amp * sin(2*M_PI*freq*ent.time + resp.phase);
                         }
                 }
-                printf("\n");
 
                 // Compute new PSD mean
                 Vector4f psd_mean = Vector4f::Zero();

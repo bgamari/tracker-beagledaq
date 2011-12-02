@@ -364,7 +364,7 @@ void feedback::recal()
                 }
 
                 unsigned int samples = inactive_log->size();
-                if (!samples) {
+                if (samples < params.min_recal_samples) {
                         std::cout << "recal_worker: No samples.\n";
                         continue;
                 }

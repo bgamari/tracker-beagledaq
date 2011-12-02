@@ -178,6 +178,8 @@ struct tracker_cli {
                                 "Recalibration delay (in microseconds)");
                 def_param("feedback.recal_weight", fb_params.recal_weight,
                                 "Recalibration weight");
+                def_param("feedback.min_recal_samples", fb_params.min_recal_samples,
+                                "Minimum number of samples to perform recalibration");
                 def_param("feedback.perturb_freq_x", fb_params.perturb_freqs.x(),
                                 "X axis perturbation frequency");
                 def_param("feedback.perturb_freq_y", fb_params.perturb_freqs.y(),

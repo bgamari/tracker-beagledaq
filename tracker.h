@@ -87,6 +87,7 @@ struct feedback_params {
         unsigned int recal_delay;    // Delay in us between recalibrations
                                      // 0 disables recalibration
         float recal_weight;          // Amount to weigh recalibration by
+        unsigned int min_recal_samples; // Minimum number of samples to require for recalibration
         Vector3f perturb_freqs;
         Vector3f perturb_amp;
         double phase_max;            // Maximum compute to probe in cross-correlation

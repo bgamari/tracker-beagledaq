@@ -281,7 +281,7 @@ fine_cal_result fine_calibrate( stage& stage
         // Solve regression coefficients
         JacobiSVD<Matrix<double, Dynamic,9> > svd = R.jacobiSvd(ComputeFullU | ComputeFullV);
         Matrix<double, 9,3> bt = svd.solve(S);
-        res.singular_values = svd.singularValues();
+        res.max_singular_value = svd.singularValues()[0];
         std::cout << "Singular values: " << svd.singularValues() << "\n";
         res.beta = bt.transpose().cast<float>();
 
@@ -418,7 +418,7 @@ void feedback::recal()
                         std::lock_guard<std::mutex> lock(cal_mutex);
                         cal.beta += params.recal_weight * bt.transpose().cast<float>();
                         cal.psd_mean = psd_mean;
-                        cal.singular_values = svd.singularValues();
+                        cal.max_singular_value = svd.singularValues()[0];
                 }
 
                 inactive_log->clear();
@@ -472,7 +472,7 @@ void feedback::loop()
 
                 // Compute estimated position
                 Vector3f error = Vector3f::Zero();
-                if (cal.singular_values[0] > params.min_sing_value) {
+                if (cal.max_singular_value > params.min_sing_value) {
                         Vector4f samp = scale_psd_position(psd_sample) - cal.psd_mean;
                         Matrix<float, Dynamic,9> psd_in = pack_psd_inputs(samp.transpose());
                         error = cal.beta * psd_in.transpose();

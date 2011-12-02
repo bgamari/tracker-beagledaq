@@ -64,7 +64,7 @@ struct fine_cal_params {
 struct fine_cal_result {
 	Matrix<float, 3,9> beta;
 	Vector4f psd_mean;
-	Matrix<double, 9,1> singular_values;
+	double max_singular_value;
 };
 
 fine_cal_result fine_calibrate( stage& stage

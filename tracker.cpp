@@ -413,7 +413,6 @@ void feedback::recal()
                 // Solve regression
                 JacobiSVD<Matrix<double, Dynamic,9> > svd = R.jacobiSvd(ComputeFullU | ComputeFullV);
                 Matrix<double, 9,3> bt = svd.solve(S);
-                std::cout << "First singular value: " << svd.singularValues()[0] << "\n";
 
                 // Update beta
                 if (svd.singularValues()[0] > params.min_singular_value) {

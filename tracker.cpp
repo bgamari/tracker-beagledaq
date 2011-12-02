@@ -528,6 +528,8 @@ void feedback::loop()
         _stop = true;
         if (recal_worker)
                 recal_worker->join();
+        inactive_log->clear();
+        active_log->clear();
 
         fclose(f);
         _running = false;

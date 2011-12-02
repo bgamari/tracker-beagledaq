@@ -144,7 +144,7 @@ public:
                 , stage& _stage
                 , feedback_params& params
                 , fine_cal_result& cal
-                , unsigned int log_length=10000
+                , unsigned int log_length=4000
                 )
                 : psd(psd)
                 , fb(fb)

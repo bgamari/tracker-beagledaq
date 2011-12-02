@@ -431,7 +431,7 @@ void feedback::loop()
         unsigned int bad_pts = 0, good_pts = 0;
         FILE* f = fopen("pos", "w");
         struct timespec start_time;
-        clock_gettime(CLOCK_REALTIME, &start_time);
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
         float last_report_t = 0;
         unsigned int last_report_n = 0;
 

@@ -414,13 +414,16 @@ void feedback::recal()
                 JacobiSVD<Matrix<double, Dynamic,9> > svd = R.jacobiSvd(ComputeFullU | ComputeFullV);
                 Matrix<double, 9,3> bt = svd.solve(S);
                 std::cout << "First singular value: " << svd.singularValues()[0] << "\n";
-                {
+
+                // Update beta
+                if (svd.singularValues()[0] > params.min_sing_value) {
+                        std::cout << "! Recal\n";
                         std::lock_guard<std::mutex> lock(cal_mutex);
                         cal.beta *= 1 - params.recal_weight;
                         cal.beta += params.recal_weight * bt.transpose().cast<float>();
                         cal.psd_mean = psd_mean;
                         cal.max_singular_value = svd.singularValues()[0];
-                }
+                } else std::cout << "! Rejected Recal\n";
 
                 inactive_log->clear();
         }

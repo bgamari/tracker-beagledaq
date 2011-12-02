@@ -31,6 +31,7 @@ feedback_params def_feedback_params() {
         p.max_delta = 0.05;
         p.show_rate = false;
         p.rate_report_period = 5;
+        p.min_singular_value = 2e-3;
 
         p.pids[0] = pid_loop(0.6, 1e-3, 0, 10);
         p.pids[1] = pid_loop(0.6, 1e-3, 0, 10);

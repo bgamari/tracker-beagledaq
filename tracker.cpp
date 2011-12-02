@@ -416,7 +416,7 @@ void feedback::recal()
                 std::cout << "First singular value: " << svd.singularValues()[0] << "\n";
 
                 // Update beta
-                if (svd.singularValues()[0] > params.min_sing_value) {
+                if (svd.singularValues()[0] > params.min_singular_value) {
                         std::cout << "! Recal\n";
                         std::lock_guard<std::mutex> lock(cal_mutex);
                         cal.beta *= 1 - params.recal_weight;
@@ -476,7 +476,7 @@ void feedback::loop()
 
                 // Compute estimated position
                 Vector3f error = Vector3f::Zero();
-                if (cal.max_singular_value > params.min_sing_value) {
+                if (cal.max_singular_value > params.min_singular_value) {
                         Vector4f samp = scale_psd_position(psd_sample) - cal.psd_mean;
                         Matrix<float, Dynamic,9> psd_in = pack_psd_inputs(samp.transpose());
                         error = cal.beta * psd_in.transpose();

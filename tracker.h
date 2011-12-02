@@ -81,7 +81,7 @@ struct feedback_params {
         float rate_report_period;
         array<pid_loop,3> pids;
         Vector3f setpoint;
-        float min_sing_value;        // Minimum singular value necessary to use feedback signal
+        float min_singular_value;    // Minimum singular value necessary to use feedback signal
 
         // On-the-fly recalibration
         unsigned int recal_delay;    // Delay in us between recalibrations

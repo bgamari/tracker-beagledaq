@@ -174,6 +174,8 @@ struct tracker_cli {
                                 "Y axis setpoint");
                 def_param("feedback.setpoint_z", fb_params.setpoint.z(),
                                 "Z axis setpoint");
+                def_param("feedback.min_singular_value", fb_params.min_singular_value,
+                                "Minimum singular value of a reasonable regression");
                 def_param("feedback.recal_delay", fb_params.recal_delay,
                                 "Recalibration delay (in microseconds)");
                 def_param("feedback.recal_weight", fb_params.recal_weight,

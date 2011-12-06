@@ -370,6 +370,8 @@ void feedback::recal()
                         continue;
                 }
 
+                std::cout << "! Recal started\n";
+
                 // Generate sinusoid data for regression
                 Matrix<double, Dynamic,9> R(samples,9);
                 Matrix<double, Dynamic,3> S(samples,3);

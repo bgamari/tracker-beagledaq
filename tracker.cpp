@@ -463,6 +463,7 @@ void feedback::loop()
                         Vector4f samp = scale_psd_position(psd_sample) - cal.psd_mean;
                         Matrix<float, Dynamic,9> psd_in = pack_psd_inputs(samp.transpose());
                         error = cal.beta * psd_in.transpose();
+                        error -= params.setpoint;
                 }
 
                 // Get PID response

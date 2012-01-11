@@ -70,6 +70,7 @@ static std::string cmd_help =
 "  load-coeffs [file]           Load fine calibration regression matrix from file\n"
 "  feedback-start               Start feedback (requires fine-cal)\n"
 "  feedback-stop                Stop feedback loop\n"
+"  scan [file]                  Run a manual scan (see scan.* parameters)\n"
 "  wait [n]                     Wait n milliseconds\n"
 "  exit                         Exit\n"
 "  version                      Show version information\n"
@@ -412,15 +413,20 @@ struct tracker_cli {
                 } else if (cmd == "version") {
                         std::cout << branch << "\t" << version << "\n";
                 } else if (cmd == "scan") {
+                        std::string fname;
+                        ss >> fname;
+                        if (fname.length() == 0) fname = "scan";
                         Vector3f start = scan_center - scan_range / 2;
                         Vector3f step = scan_range.array() / scan_points.array().cast<float>();
                         raster_route rt(start, step, scan_points);
-                        std::ofstream of("scan");
+                        _stage.smooth_move(rt.get_pos(), 4000);
+                        std::ofstream of(fname);
                         for (int i=0; rt.has_more(); ++i, ++rt) {
-                                _stage.smooth_move(rt.get_pos(), 4000);
+                                _stage.move(rt.get_pos());
                                 Vector3f fb = _stage.get_pos();
                                 Vector4f psd = psd_inputs.get();
-                                of << (Matrix<float,1,7>() << fb, psd).finished() << "\n";
+                                of << fb[0] << "  " << fb[2] << "  " << fb[2] << "\t"
+                                   << psd[0] << "  " << psd[1] << "  " << psd[2] << "  " << psd[3] << "\n";
                         }
                 } else
                         std::cout << "! ERR\tInvalid command\n";

@@ -14,6 +14,7 @@ fine_cal_params fine_params =
         , z_range: 0.02
         , npts: 400
         , dwell: 1000
+        , compute_residuals: false
         };
 
 rough_cal_params def_rough_cal_params() {

@@ -285,8 +285,7 @@ fine_cal_result fine_calibrate( stage& stage
         std::cout << "Singular values: " << svd.singularValues() << "\n";
         res.beta = bt.transpose().cast<float>();
 
-        bool compute_residuals = true;
-        if (compute_residuals) {
+        if (params.compute_residuals) {
                 FILE* of = fopen("fine-resid", "w");
                 fprintf(of, "# fb_x fb_y fb_z\tP_Lx P_Ly P_Lz\tresid_x resid_y resid_z\n");
                 Vector3d rms = Vector3d::Zero();

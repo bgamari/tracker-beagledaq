@@ -59,6 +59,7 @@ rough_cal_result rough_calibrate( stage& stage
 struct fine_cal_params {
         float xy_range, z_range;
         unsigned int npts, dwell;
+        bool compute_residuals;
 };
 
 struct fine_cal_result {

@@ -163,6 +163,8 @@ struct tracker_cli {
                                 "Number of points in fine calibration scan");
                 def_param("fine_cal.dwell", fine_params.dwell,
                                 "Delay in usec between fine calibration points");
+                def_param("fine_cal.compute_residuals", fine_params.compute_residuals,
+                                "Compute residuals of calibration");
 
                 def_param("feedback.delay", fb_params.delay,
                                 "Delay between feedback loop iterations");

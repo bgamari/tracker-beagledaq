@@ -427,8 +427,9 @@ struct tracker_cli {
                                 _stage.move(rt.get_pos());
                                 Vector3f fb = _stage.get_pos();
                                 Vector4f psd = psd_inputs.get();
-                                of << fb[0] << "  " << fb[2] << "  " << fb[2] << "\t"
+                                of << fb[0] << "  " << fb[1] << "  " << fb[2] << "\t"
                                    << psd[0] << "  " << psd[1] << "  " << psd[2] << "  " << psd[3] << "\n";
+                                usleep(scan_delay);
                         }
                 } else
                         std::cout << "! ERR\tInvalid command\n";

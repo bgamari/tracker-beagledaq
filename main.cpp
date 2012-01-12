@@ -86,7 +86,7 @@ void add_pid_params(std::vector<parameter*>& params, string name, pid_loop& pid)
 {
         def_param(params, name + ".prop", pid.prop_gain, "PID Proportional gain");
         def_param(params, name + ".int", pid.int_gain, "PID Integral gain");
-        params.push_back(new pid_tau_param(name + "_tau", pid, "PID Integral time constant"));
+        params.push_back(new pid_tau_param(name + ".tau", pid, "PID Integral time constant"));
         def_param(params, name + ".diff", pid.diff_gain, "PID Differential gain");
 }
 
@@ -250,7 +250,7 @@ struct tracker_cli {
                 def_param("scan.points.x", scan_points.x(), "Number of points in manual scan (X axis)");
                 def_param("scan.points.y", scan_points.y(), "Number of points in manual scan (Y axis)");
                 def_param("scan.points.z", scan_points.z(), "Number of points in manual scan (Z axis)");
-                def_param("scan.delay", scan_delay, "Delay between points in manual scan");
+                def_param("scan.delay", scan_delay, "Delay between points in manual scan (ms)");
 
                 std::cout << "Tracker " << version << "\n";
         }

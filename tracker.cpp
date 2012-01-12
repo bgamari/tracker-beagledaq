@@ -282,7 +282,7 @@ fine_cal_result fine_calibrate( stage& stage
         JacobiSVD<Matrix<double, Dynamic,9> > svd = R.jacobiSvd(ComputeFullU | ComputeFullV);
         Matrix<double, 9,3> bt = svd.solve(S);
         res.max_singular_value = svd.singularValues()[0];
-        std::cout << "Singular values: " << svd.singularValues() << "\n";
+        std::cout << "Singular values: " << svd.singularValues().transpose() << "\n";
         res.beta = bt.transpose().cast<float>();
 
         if (params.compute_residuals) {

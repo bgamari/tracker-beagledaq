@@ -292,6 +292,7 @@ struct tracker_cli {
                                         std::cout << "! ERR\tInvalid value\n";
                                 }
                         }
+                        std::cout << "! OK\n";
                 } else if (cmd == "get") {
                         string param;
                         ss >> param;
@@ -300,6 +301,7 @@ struct tracker_cli {
                                 std::cout << "! ERR\tUnknown parameter\n";
                         else
                                 std::cout << param << " = " << *p << "\n";
+                        std::cout << "! OK\n";
                 } else if (cmd == "list") {
                         string match = "";
                         if (!ss.eof())
@@ -313,12 +315,15 @@ struct tracker_cli {
                                                 tmp.str().c_str(),
                                                 (**p).description.c_str());
                                 }
+                        std::cout << "! OK\n";
                 } else if (cmd == "read-psd") {
                         Vector4f psd = psd_inputs.get();
                         std::cout << psd.transpose().format(mat_fmt) << "\n";
+                        std::cout << "! OK\n";
                 } else if (cmd == "read-pos") {
                         Vector3f fb = _stage.get_pos();
                         std::cout << fb.transpose().format(mat_fmt) << "\n";
+                        std::cout << "! OK\n";
                 } else if (cmd == "move") {
                         Vector3f pos;
                         ss >> pos.x();
@@ -341,6 +346,7 @@ struct tracker_cli {
                                         fine_params.xy_range = res.xy_size * auto_xy_range_factor;
                                 _stage.move(rough_pos);
                                 std::cout << rough_pos.transpose().format(mat_fmt) << "\n";
+                                std::cout << "! OK\n";
                         } catch (clamped_output_error e) {
                                 std::cout << "! ERR\tClamped output\n";
                         }
@@ -350,6 +356,7 @@ struct tracker_cli {
                         std::cout << "! OK\n";
                 } else if (cmd == "show-coeffs") {
                         std::cout << fine_cal.beta.format(mat_fmt) << "\n";
+                        std::cout << "! OK\n";
                 } else if (cmd == "save-coeffs") {
                         std::string s;
                         ss >> s;
@@ -366,6 +373,7 @@ struct tracker_cli {
                         } catch (std::exception& e) {
                                 std::cout << "! ERR\t" << e.what() << "\n";
                         }
+                        std::cout << "! OK\n";
                 } else if (cmd == "load-coeffs") {
                         std::string s;
                         ss >> s;
@@ -406,14 +414,17 @@ struct tracker_cli {
                         int a;
                         ss >> a;
                         usleep(a*1000);
+                        std::cout << "! OK\n";
                 } else if (cmd == "exit") {
                         return true;
                 } else if (cmd == "quit") {
                         return true;
                 } else if (cmd == "help") {
                         std::cout << cmd_help << "\n";
+                        std::cout << "! OK\n";
                 } else if (cmd == "version") {
                         std::cout << branch << "\t" << version << "\n";
+                        std::cout << "! OK\n";
                 } else if (cmd == "scan") {
                         std::string fname;
                         ss >> fname;
@@ -431,6 +442,7 @@ struct tracker_cli {
                                    << psd[0] << "  " << psd[1] << "  " << psd[2] << "  " << psd[3] << "\n";
                                 usleep(scan_delay);
                         }
+                        std::cout << "! OK\n";
                 } else
                         std::cout << "! ERR\tInvalid command\n";
                 return false;
